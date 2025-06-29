@@ -26,11 +26,15 @@ urlpatterns = [
     # Vista raíz de la API
     path('api/', views.api_root, name='api-root'),
     
+    # Endpoints de información de la API
+    path('api/health/', views.health_check, name='health-check'),
+    path('api/info/', views.api_info, name='api-info'),
+    
     # Admin de Django
     path('admin/', admin.site.urls),
     
-    # URLs de la app store
-    path('store/', include('store.urls')),
+    # URLs de la app store (con prefijo api)
+    path('api/', include('store.urls')),
     
     # Autenticación REST Framework
     path('api-auth/', include('rest_framework.urls')),
