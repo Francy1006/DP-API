@@ -182,10 +182,10 @@ CORS_ALLOWED_ORIGINS = str(env("CORS_ALLOWED_ORIGINS")).split(",")
 # Disable Django migrations - using Flyway instead
 MIGRATION_MODULES = {
     'store': None,
-    'admin': None,
-    'auth': None,
-    'contenttypes': None,
-    'sessions': None,
+    # 'admin': None,  # Habilitar para tablas del sistema
+    # 'auth': None,   # Habilitar para tablas del sistema
+    # 'contenttypes': None,  # Habilitar para tablas del sistema
+    # 'sessions': None,  # Habilitar para tablas del sistema
 }
 
 # Django Jazzmin Configuration
