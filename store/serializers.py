@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import ItemGroup, Menu, ItemCategory, ItemType, InstructionType, Instruction
+from .models import ItemGroup, Menu, ItemCategory, ItemType, InstructionType, Instruction, Cataloge
 
 
 # Menu Serializers
@@ -156,4 +156,79 @@ class InstructionUpdateSerializer(serializers.ModelSerializer):
         fields = [
             'instruction', 'description', 'url_documentation', 
             'type', 'updated_by'
+        ]
+
+
+# Cataloge Serializers
+class CatalogeSerializer(serializers.ModelSerializer):
+    """
+    Serializer para el modelo Cataloge
+    """
+    menu_name = serializers.CharField(source='menu.menu', read_only=True)
+    group_name = serializers.CharField(source='group.group_name', read_only=True)
+    category_name = serializers.CharField(source='category.category', read_only=True)
+    type_name = serializers.CharField(source='type.type', read_only=True)
+    
+    class Meta:
+        model = Cataloge
+        fields = [
+            'id', 'sku', 'menu', 'menu_name', 'group', 'group_name', 
+            'category', 'category_name', 'type', 'type_name', 'restriction',
+            'name', 'description', 'OBS', 'chef_recommendation', 
+            'usage_instructions', 'base_gross_price', 'min_quantity_purchase',
+            'rations_quantity', 'cover_image', 'secondary_image', 
+            'complementary_image', 'image_gallery', 'configuration',
+            'is_visible', 'is_deleted', 'is_confirmed', 'created_at', 
+            'updated_at', 'confirmed_at', 'deleted_at', 'created_by',
+            'confirmed_by', 'updated_by', 'deleted_by', 'LOG', 'version'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'confirmed_at', 'deleted_at']
+
+
+class CatalogeListSerializer(serializers.ModelSerializer):
+    """
+    Serializer simplificado para listar catálogos
+    """
+    menu_name = serializers.CharField(source='menu.menu', read_only=True)
+    group_name = serializers.CharField(source='group.group_name', read_only=True)
+    category_name = serializers.CharField(source='category.category', read_only=True)
+    type_name = serializers.CharField(source='type.type', read_only=True)
+    
+    class Meta:
+        model = Cataloge
+        fields = [
+            'id', 'sku', 'name', 'menu_name', 'group_name', 'category_name', 
+            'type_name', 'is_visible', 'is_confirmed', 'created_at'
+        ]
+
+
+class CatalogeCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer para crear catálogos (sin campos de auditoría)
+    """
+    class Meta:
+        model = Cataloge
+        fields = [
+            'sku', 'menu', 'group', 'category', 'type', 'restriction',
+            'name', 'description', 'OBS', 'chef_recommendation', 
+            'usage_instructions', 'base_gross_price', 'min_quantity_purchase',
+            'rations_quantity', 'cover_image', 'secondary_image', 
+            'complementary_image', 'image_gallery', 'configuration',
+            'is_visible', 'created_by', 'LOG'
+        ]
+
+
+class CatalogeUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer para actualizar catálogos
+    """
+    class Meta:
+        model = Cataloge
+        fields = [
+            'sku', 'menu', 'group', 'category', 'type', 'restriction',
+            'name', 'description', 'OBS', 'chef_recommendation', 
+            'usage_instructions', 'base_gross_price', 'min_quantity_purchase',
+            'rations_quantity', 'cover_image', 'secondary_image', 
+            'complementary_image', 'image_gallery', 'configuration',
+            'is_visible', 'updated_by', 'LOG'
         ] 

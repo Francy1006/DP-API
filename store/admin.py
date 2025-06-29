@@ -168,15 +168,15 @@ class CatalogeAdmin(admin.ModelAdmin):
     Configuración del admin para Cataloge
     """
     list_display = [
-        'id', 'code', 'sku', 'name', 'menu', 'group', 'category', 'type',
+        'id', 'sku', 'name', 'menu', 'group', 'category', 'type',
         'is_visible', 'is_deleted', 'is_confirmed', 'created_at'
     ]
-    list_display_links = ['id', 'code', 'name']
+    list_display_links = ['id', 'sku', 'name']
     list_filter = [
         'menu', 'group', 'category', 'type', 'is_visible', 'is_deleted', 
         'is_confirmed', 'chef_recommendation', 'created_at', 'confirmed_at', 'deleted_at'
     ]
-    search_fields = ['code', 'sku', 'name', 'description', 'created_by']
+    search_fields = ['sku', 'name', 'description', 'created_by']
     ordering = ['-created_at']
     list_per_page = 20
     readonly_fields = [
@@ -185,7 +185,7 @@ class CatalogeAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Información Básica', {
-            'fields': ('code', 'sku', 'name', 'description', 'OBS')
+            'fields': ('sku', 'name', 'description', 'OBS')
         }),
         ('Clasificación', {
             'fields': ('menu', 'group', 'category', 'type', 'restriction')
@@ -229,5 +229,5 @@ class CatalogeAdmin(admin.ModelAdmin):
         """
         readonly_fields = list(super().get_readonly_fields(request, obj))
         if obj and obj.is_deleted:
-            readonly_fields.extend(['code', 'sku', 'name', 'description'])
+            readonly_fields.extend(['sku', 'name', 'description'])
         return readonly_fields

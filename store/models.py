@@ -259,6 +259,8 @@ class Cataloge(models.Model):
     code = models.CharField(
         max_length=36, 
         unique=True,
+        null=True,  # Permitir null para que MySQL genere el UUID
+        blank=True,  # Permitir blank en formularios
         verbose_name="Código"
     )
     sku = models.CharField(max_length=50, verbose_name="SKU")
