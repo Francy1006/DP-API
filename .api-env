@@ -2,7 +2,7 @@
 DEBUG=0
 SECRET_KEY=MysecretKey
 ALLOWED_HOSTS=localhost,127.0.0.1
-CORS_ALLOWED_ORIGINS=http://localhost:8080,http://127.0.0.1:9000
+CORS_ALLOWED_ORIGINS=http://localhost:8081,http://127.0.0.1:9000
 STATIC_URL=static/
 
 
@@ -25,3 +25,8 @@ MEDIA_URL=/media/
 MEDIA_ROOT=os.path.join(BASE_DIR, "media")
 
 # AUTH_USER_MODEL = 'users.User'
+
+# Django Superuser Credentials
+DJANGO_SUPERUSER_USERNAME=sbm-admin
+DJANGO_SUPERUSER_EMAIL=operacione@ditalypasta.cl
+DJANGO_SUPERUSER_PASSWORD=sbm123
