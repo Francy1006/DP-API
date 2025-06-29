@@ -3,6 +3,7 @@ FROM python:3.9
 # apt-get installs
 RUN apt-get update && \
     apt-get --no-install-recommends install -y build-essential nano \
+    default-libmysqlclient-dev pkg-config \
     && apt-get clean
 
 # upgrade pip

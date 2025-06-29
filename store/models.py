@@ -13,8 +13,6 @@ class ItemGroup(models.Model):
         default=True, 
         verbose_name="Renderizar en Catálogo"
     )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Creación")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Fecha de Actualización")
 
     class Meta:
         db_table = 'item_group'

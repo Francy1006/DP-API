@@ -20,7 +20,7 @@ class ItemGroupViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['cataloge_render']
     search_fields = ['group_name', 'description']
-    ordering_fields = ['group_name', 'created_at', 'updated_at']
+    ordering_fields = ['group_name']
     ordering = ['group_name']
 
     def get_serializer_class(self):

@@ -8,8 +8,8 @@ class ItemGroupSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = ItemGroup
-        fields = ['id', 'group_name', 'description', 'cataloge_render', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        fields = ['id', 'group_name', 'description', 'cataloge_render']
+        read_only_fields = ['id']
 
 
 class ItemGroupListSerializer(serializers.ModelSerializer):

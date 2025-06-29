@@ -7,11 +7,11 @@ class ItemGroupAdmin(admin.ModelAdmin):
     """
     Configuración del admin para ItemGroup
     """
-    list_display = ['id', 'group_name', 'description', 'cataloge_render', 'created_at', 'updated_at']
-    list_filter = ['cataloge_render', 'created_at', 'updated_at']
+    list_display = ['id', 'group_name', 'description', 'cataloge_render']
+    list_filter = ['cataloge_render']
     search_fields = ['group_name', 'description']
     list_editable = ['cataloge_render']
-    readonly_fields = ['id', 'created_at', 'updated_at']
+    readonly_fields = ['id']
     
     fieldsets = (
         ('Información Básica', {
@@ -21,7 +21,7 @@ class ItemGroupAdmin(admin.ModelAdmin):
             'fields': ('cataloge_render',)
         }),
         ('Información del Sistema', {
-            'fields': ('id', 'created_at', 'updated_at'),
+            'fields': ('id',),
             'classes': ('collapse',)
         }),
     )
