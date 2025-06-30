@@ -1,0 +1,36 @@
+# Django settings
+DEBUG=0
+SECRET_KEY=MysecretKey
+ALLOWED_HOSTS=localhost,127.0.0.1
+CORS_ALLOWED_ORIGINS=http://localhost:8080,http://127.0.0.1:9000
+STATIC_URL=static/
+
+
+# Internationalization
+LANGUAGE_CODE=es-ar
+TIME_ZONE=America/Santiago
+USE_I18N=1
+USE_TZ=1
+
+# MYSQL connection
+DB_NAME=ditaly_pasta
+DB_USER=sbmqa
+DB_PASSWORD=FrancY1
+DB_HOST=mysql
+DB_PORT=3306
+
+
+# add in settings
+MEDIA_URL=/media/
+MEDIA_ROOT=os.path.join(BASE_DIR, "media")
+
+# AUTH_USER_MODEL = 'users.User'
+
+# Django Superuser Credentials
+DJANGO_SUPERUSER_USERNAME=sbm-admin
+DJANGO_SUPERUSER_EMAIL=operacione@ditalypasta.cl
+DJANGO_SUPERUSER_PASSWORD=sbm123
+
+# Command to create superuser (run this if superuser doesn't exist):
+# docker-compose exec api python manage.py createsuperuser --username sbm-admin --email operacione@ditalypasta.cl --noinput
+# docker-compose exec api python manage.py shell -c "from django.contrib.auth.models import User; user = User.objects.get(username='sbm-admin'); user.set_password('sbm123'); user.save(); print('Contraseña establecida: sbm123')"
