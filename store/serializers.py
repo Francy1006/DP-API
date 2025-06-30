@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import ItemGroup, Menu, ItemCategory, ItemType, InstructionType, Instruction, Cataloge
+from .models import ItemGroup, Menu, ItemCategory, ItemType, InstructionType, Instruction, Catalog
 
 
 # Menu Serializers
@@ -29,7 +29,7 @@ class ItemCategorySerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = ItemCategory
-        fields = ['id', 'category', 'description', 'cataloge_render']
+        fields = ['id', 'category', 'description', 'catalog_render']
         read_only_fields = ['id']
 
 
@@ -39,7 +39,7 @@ class ItemCategoryListSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = ItemCategory
-        fields = ['id', 'category', 'cataloge_render']
+        fields = ['id', 'category', 'catalog_render']
 
 
 # ItemType Serializers
@@ -69,7 +69,7 @@ class ItemGroupSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = ItemGroup
-        fields = ['id', 'group_name', 'description', 'cataloge_render']
+        fields = ['id', 'group_name', 'description', 'catalog_render']
         read_only_fields = ['id']
 
 
@@ -79,7 +79,7 @@ class ItemGroupListSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = ItemGroup
-        fields = ['id', 'group_name', 'cataloge_render']
+        fields = ['id', 'group_name', 'catalog_render']
 
 
 # InstructionType Serializers
@@ -159,10 +159,10 @@ class InstructionUpdateSerializer(serializers.ModelSerializer):
         ]
 
 
-# Cataloge Serializers
-class CatalogeSerializer(serializers.ModelSerializer):
+# Catalog Serializers
+class CatalogSerializer(serializers.ModelSerializer):
     """
-    Serializer para el modelo Cataloge
+    Serializer para el modelo Catalog
     """
     menu_name = serializers.CharField(source='menu.menu', read_only=True)
     group_name = serializers.CharField(source='group.group_name', read_only=True)
@@ -170,7 +170,7 @@ class CatalogeSerializer(serializers.ModelSerializer):
     type_name = serializers.CharField(source='type.type', read_only=True)
     
     class Meta:
-        model = Cataloge
+        model = Catalog
         fields = [
             'id', 'sku', 'menu', 'menu_name', 'group', 'group_name', 
             'category', 'category_name', 'type', 'type_name', 'restriction',
@@ -185,7 +185,7 @@ class CatalogeSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at', 'confirmed_at', 'deleted_at']
 
 
-class CatalogeListSerializer(serializers.ModelSerializer):
+class CatalogListSerializer(serializers.ModelSerializer):
     """
     Serializer simplificado para listar catálogos
     """
@@ -195,19 +195,19 @@ class CatalogeListSerializer(serializers.ModelSerializer):
     type_name = serializers.CharField(source='type.type', read_only=True)
     
     class Meta:
-        model = Cataloge
+        model = Catalog
         fields = [
             'id', 'sku', 'name', 'menu_name', 'group_name', 'category_name', 
             'type_name', 'is_visible', 'is_confirmed', 'created_at'
         ]
 
 
-class CatalogeCreateSerializer(serializers.ModelSerializer):
+class CatalogCreateSerializer(serializers.ModelSerializer):
     """
     Serializer para crear catálogos (sin campos de auditoría)
     """
     class Meta:
-        model = Cataloge
+        model = Catalog
         fields = [
             'sku', 'menu', 'group', 'category', 'type', 'restriction',
             'name', 'description', 'OBS', 'chef_recommendation', 
@@ -218,12 +218,12 @@ class CatalogeCreateSerializer(serializers.ModelSerializer):
         ]
 
 
-class CatalogeUpdateSerializer(serializers.ModelSerializer):
+class CatalogUpdateSerializer(serializers.ModelSerializer):
     """
     Serializer para actualizar catálogos
     """
     class Meta:
-        model = Cataloge
+        model = Catalog
         fields = [
             'sku', 'menu', 'group', 'category', 'type', 'restriction',
             'name', 'description', 'OBS', 'chef_recommendation', 

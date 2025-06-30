@@ -11,7 +11,7 @@ router.register(r'item-groups', views.ItemGroupViewSet)
 router.register(r'instruction-types', views.InstructionTypeViewSet)
 router.register(r'instructions', views.InstructionViewSet)
 # Nuevos ViewSets
-router.register(r'cataloge', views.CatalogeViewSet)
+router.register(r'catalog', views.CatalogViewSet)
 router.register(r'restrictions', views.RestrictionViewSet)
 router.register(r'permission-types', views.PermissionTypeViewSet)
 router.register(r'permissions', views.PermissionViewSet)
@@ -74,7 +74,7 @@ urlpatterns = viewset_urls + api_view_urls
 
 # URLs adicionales del ViewSet
 # Estas se generan automáticamente:
-# 
+#
 # Endpoints disponibles:
 #
 # Menu:
@@ -128,14 +128,14 @@ urlpatterns = viewset_urls + api_view_urls
 # POST /api/instructions/{id}/soft_delete/ - Eliminación lógica
 # POST /api/instructions/{id}/restore/ - Restaurar
 #
-# Cataloge:
-# GET /api/cataloge/ - Listar todos
-# POST /api/cataloge/ - Crear nuevo
-# GET /api/cataloge/{id}/ - Obtener específico
-# PUT /api/cataloge/{id}/ - Actualizar
-# DELETE /api/cataloge/{id}/ - Eliminar
-# GET /api/cataloge/visible/ - Solo visibles
-# POST /api/cataloge/{id}/toggle_visibility/ - Alternar visibilidad
+# Catalog:
+# GET /api/catalog/ - Listar todos
+# POST /api/catalog/ - Crear nuevo
+# GET /api/catalog/{id}/ - Obtener específico
+# PUT /api/catalog/{id}/ - Actualizar
+# DELETE /api/catalog/{id}/ - Eliminar
+# GET /api/catalog/visible/ - Solo visibles
+# POST /api/catalog/{id}/toggle_visibility/ - Alternar visibilidad
 #
 # Restriction:
 # GET /api/restrictions/ - Listar todos

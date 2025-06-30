@@ -193,7 +193,7 @@ JAZZMIN_SETTINGS = {
     "site_logo": None,
     "welcome_sign": "Bienvenido a DP-API",
     "copyright": "DP-API Ltd",
-    "search_model": ["auth.User", "store.Cataloge"],
+    "search_model": ["auth.User", "store.Catalog"],
     "user_avatar": None,
     "topmenu_links": [
         {"name": "Home", "url": "admin:index", "permissions": ["auth.view_user"]},
@@ -206,7 +206,7 @@ JAZZMIN_SETTINGS = {
         "auth.user": "fas fa-user",
         "auth.Group": "fas fa-users",
         "store": "fas fa-shopping-cart",
-        "store.Cataloge": "fas fa-list",
+        "store.Catalog": "fas fa-list",
         "store.Instruction": "fas fa-file-alt",
         "store.InstructionType": "fas fa-tags",
         "store.ItemGroup": "fas fa-layer-group",

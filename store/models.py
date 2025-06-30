@@ -29,7 +29,7 @@ class ItemCategory(models.Model):
     id = models.AutoField(primary_key=True)
     category = models.CharField(max_length=50, verbose_name="Categoría")
     description = models.TextField(verbose_name="Descripción")
-    cataloge_render = models.BooleanField(
+    catalog_render = models.BooleanField(
         default=True, 
         verbose_name="Renderizar en Catálogo"
     )
@@ -69,7 +69,7 @@ class ItemGroup(models.Model):
     id = models.AutoField(primary_key=True)
     group_name = models.CharField(max_length=50, verbose_name="Nombre del Grupo")
     description = models.TextField(verbose_name="Descripción")
-    cataloge_render = models.BooleanField(
+    catalog_render = models.BooleanField(
         default=True, 
         verbose_name="Renderizar en Catálogo"
     )
@@ -251,7 +251,7 @@ class Instruction(models.Model):
         super().save(*args, **kwargs)
 
 
-class Cataloge(models.Model):
+class Catalog(models.Model):
     """
     Modelo para catálogo de productos
     """
@@ -412,7 +412,7 @@ class Cataloge(models.Model):
     )
 
     class Meta:
-        db_table = 'cataloge'
+        db_table = 'catalog'
         verbose_name = "Catálogo"
         verbose_name_plural = "Catálogos"
         ordering = ['-created_at']

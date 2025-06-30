@@ -47,7 +47,7 @@ class ItemCategoryViewSet(viewsets.ModelViewSet):
     serializer_class = ItemCategorySerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['cataloge_render']
+    filterset_fields = ['catalog_render']
     search_fields = ['category', 'description']
     ordering_fields = ['category']
     ordering = ['category']
@@ -62,7 +62,7 @@ class ItemCategoryViewSet(viewsets.ModelViewSet):
         """
         Endpoint para obtener solo categorías que se renderizan en catálogo
         """
-        queryset = self.queryset.filter(cataloge_render=True)
+        queryset = self.queryset.filter(catalog_render=True)
         serializer = ItemCategoryListSerializer(queryset, many=True)
         return Response(serializer.data)
 
@@ -72,7 +72,7 @@ class ItemCategoryViewSet(viewsets.ModelViewSet):
         Endpoint para alternar el estado de renderizado en catálogo
         """
         item_category = self.get_object()
-        item_category.cataloge_render = not item_category.cataloge_render
+        item_category.catalog_render = not item_category.catalog_render
         item_category.save()
         serializer = self.get_serializer(item_category)
         return Response(serializer.data)
@@ -106,7 +106,7 @@ class ItemGroupViewSet(viewsets.ModelViewSet):
     serializer_class = ItemGroupSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['cataloge_render']
+    filterset_fields = ['catalog_render']
     search_fields = ['group_name', 'description']
     ordering_fields = ['group_name']
     ordering = ['group_name']
@@ -124,7 +124,7 @@ class ItemGroupViewSet(viewsets.ModelViewSet):
         """
         Endpoint para obtener solo grupos que se renderizan en catálogo
         """
-        queryset = self.queryset.filter(cataloge_render=True)
+        queryset = self.queryset.filter(catalog_render=True)
         serializer = ItemGroupListSerializer(queryset, many=True)
         return Response(serializer.data)
 
@@ -134,7 +134,7 @@ class ItemGroupViewSet(viewsets.ModelViewSet):
         Endpoint para alternar el estado de renderizado en catálogo
         """
         item_group = self.get_object()
-        item_group.cataloge_render = not item_group.cataloge_render
+        item_group.catalog_render = not item_group.catalog_render
         item_group.save()
         serializer = self.get_serializer(item_group)
         return Response(serializer.data)

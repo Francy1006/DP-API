@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import ItemGroup, Menu, ItemCategory, ItemType, InstructionType, Instruction, Cataloge
+from .models import ItemGroup, Menu, ItemCategory, ItemType, InstructionType, Instruction, Catalog
 
 
 @admin.register(Menu)
@@ -19,13 +19,13 @@ class ItemCategoryAdmin(admin.ModelAdmin):
     """
     Configuración del admin para ItemCategory
     """
-    list_display = ['id', 'category', 'description', 'cataloge_render']
+    list_display = ['id', 'category', 'description', 'catalog_render']
     list_display_links = ['id', 'category']
-    list_filter = ['cataloge_render']
+    list_filter = ['catalog_render']
     search_fields = ['category', 'description']
     ordering = ['category']
     list_per_page = 20
-    list_editable = ['cataloge_render']
+    list_editable = ['catalog_render']
 
 
 @admin.register(ItemType)
@@ -45,13 +45,13 @@ class ItemGroupAdmin(admin.ModelAdmin):
     """
     Configuración del admin para ItemGroup
     """
-    list_display = ['id', 'group_name', 'description', 'cataloge_render']
+    list_display = ['id', 'group_name', 'description', 'catalog_render']
     list_display_links = ['id', 'group_name']
-    list_filter = ['cataloge_render']
+    list_filter = ['catalog_render']
     search_fields = ['group_name', 'description']
     ordering = ['group_name']
     list_per_page = 20
-    list_editable = ['cataloge_render']
+    list_editable = ['catalog_render']
 
 
 @admin.register(InstructionType)
@@ -162,10 +162,10 @@ class InstructionAdmin(admin.ModelAdmin):
         return readonly_fields
 
 
-@admin.register(Cataloge)
-class CatalogeAdmin(admin.ModelAdmin):
+@admin.register(Catalog)
+class CatalogAdmin(admin.ModelAdmin):
     """
-    Configuración del admin para Cataloge
+    Configuración del admin para Catalog
     """
     list_display = [
         'id', 'sku', 'name', 'menu', 'group', 'category', 'type',

@@ -29,7 +29,7 @@ class ItemCategory(models.Model):
     id = models.AutoField(primary_key=True)
     category = models.CharField(max_length=50, verbose_name="Categoría")
     description = models.TextField(verbose_name="Descripción")
-    cataloge_render = models.BooleanField(
+    catalog_render = models.BooleanField(
         default=True, 
         verbose_name="Renderizar en Catálogo"
     )
@@ -69,7 +69,7 @@ class ItemGroup(models.Model):
     id = models.AutoField(primary_key=True)
     group_name = models.CharField(max_length=50, verbose_name="Nombre del Grupo")
     description = models.TextField(verbose_name="Descripción")
-    cataloge_render = models.BooleanField(
+    catalog_render = models.BooleanField(
         default=True, 
         verbose_name="Renderizar en Catálogo"
     )
@@ -251,7 +251,7 @@ class Instruction(models.Model):
         super().save(*args, **kwargs)
 
 
-class Cataloge(models.Model):
+class Catalog(models.Model):
     """
     Modelo para catálogo de productos
     """
@@ -274,21 +274,21 @@ class Cataloge(models.Model):
         ItemGroup,
         on_delete=models.CASCADE,
         db_column='group',
-        related_name='cataloges',
+        related_name='catalogs',
         verbose_name="Grupo"
     )
     category = models.ForeignKey(
         ItemCategory,
         on_delete=models.CASCADE,
         db_column='category',
-        related_name='cataloges',
+        related_name='catalogs',
         verbose_name="Categoría"
     )
     type = models.ForeignKey(
         ItemType,
         on_delete=models.CASCADE,
         db_column='type',
-        related_name='cataloge_items',
+        related_name='catalog_items',
         verbose_name="Tipo"
     )
     restriction = models.CharField(
@@ -311,7 +311,7 @@ class Cataloge(models.Model):
         Instruction,
         on_delete=models.CASCADE,
         db_column='usage_instructions',
-        related_name='usage_cataloges',
+        related_name='usage_catalogs',
         verbose_name="Instrucciones de Uso"
     )
     base_gross_price = models.IntegerField(
@@ -416,7 +416,7 @@ class Cataloge(models.Model):
     )
 
     class Meta:
-        db_table = 'cataloge'
+        db_table = 'catalog'
         verbose_name = "Catálogo"
         verbose_name_plural = "Catálogos"
         ordering = ['-created_at']

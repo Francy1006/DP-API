@@ -8,7 +8,7 @@ from django.utils import timezone
 
 from .models import (
     ItemGroup, Menu, ItemCategory, ItemType, InstructionType, Instruction,
-    Cataloge, Restriction, PermissionType, Permission, Role, RestrictionRoles, 
+    Catalog, Restriction, PermissionType, Permission, Role, RestrictionRoles, 
     RolePermissions, PackageType, TransportType, MeasureUnit, ProviderType,
     BankAccountType, Region, District, Bank, UserType, User, UserToken, 
     Package, ItemConfiguration, ItemConfigurationDetail, Provider, Product, 
@@ -22,7 +22,7 @@ from .serializers import (
     InstructionTypeSerializer, InstructionTypeListSerializer,
     InstructionSerializer, InstructionListSerializer,
     InstructionCreateSerializer, InstructionUpdateSerializer,
-    CatalogeSerializer, CatalogeListSerializer, CatalogeCreateSerializer, CatalogeUpdateSerializer,
+    CatalogSerializer, CatalogListSerializer, CatalogCreateSerializer, CatalogUpdateSerializer,
     RestrictionSerializer, RestrictionListSerializer, RestrictionCreateSerializer, RestrictionUpdateSerializer,
     PermissionTypeSerializer, PermissionTypeListSerializer,
     PermissionSerializer, PermissionListSerializer,
@@ -76,7 +76,7 @@ class ItemCategoryViewSet(viewsets.ModelViewSet):
     queryset = ItemCategory.objects.all()
     serializer_class = ItemCategorySerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['cataloge_render']
+    filterset_fields = ['catalog_render']
     search_fields = ['category', 'description']
     ordering_fields = ['category']
     ordering = ['category']
@@ -91,7 +91,7 @@ class ItemCategoryViewSet(viewsets.ModelViewSet):
         """
         Endpoint para obtener solo categorías que se renderizan en catálogo
         """
-        queryset = self.queryset.filter(cataloge_render=True)
+        queryset = self.queryset.filter(catalog_render=True)
         serializer = ItemCategoryListSerializer(queryset, many=True)
         return Response(serializer.data)
 
@@ -101,7 +101,7 @@ class ItemCategoryViewSet(viewsets.ModelViewSet):
         Endpoint para alternar el estado de renderizado en catálogo
         """
         item_category = self.get_object()
-        item_category.cataloge_render = not item_category.cataloge_render
+        item_category.catalog_render = not item_category.catalog_render
         item_category.save()
         serializer = self.get_serializer(item_category)
         return Response(serializer.data)
@@ -133,7 +133,7 @@ class ItemGroupViewSet(viewsets.ModelViewSet):
     queryset = ItemGroup.objects.all()
     serializer_class = ItemGroupSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['cataloge_render']
+    filterset_fields = ['catalog_render']
     search_fields = ['group_name', 'description']
     ordering_fields = ['group_name']
     ordering = ['group_name']
@@ -151,7 +151,7 @@ class ItemGroupViewSet(viewsets.ModelViewSet):
         """
         Endpoint para obtener solo grupos que se renderizan en catálogo
         """
-        queryset = self.queryset.filter(cataloge_render=True)
+        queryset = self.queryset.filter(catalog_render=True)
         serializer = ItemGroupListSerializer(queryset, many=True)
         return Response(serializer.data)
 
@@ -161,7 +161,7 @@ class ItemGroupViewSet(viewsets.ModelViewSet):
         Endpoint para alternar el estado de renderizado en catálogo
         """
         item_group = self.get_object()
-        item_group.cataloge_render = not item_group.cataloge_render
+        item_group.catalog_render = not item_group.catalog_render
         item_group.save()
         serializer = self.get_serializer(item_group)
         return Response(serializer.data)
@@ -628,13 +628,13 @@ class ItemGroupDetailAPIView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-# Cataloge ViewSet
-class CatalogeViewSet(viewsets.ModelViewSet):
+# Catalog ViewSet
+class CatalogViewSet(viewsets.ModelViewSet):
     """
-    ViewSet para operaciones CRUD completas de Cataloge
+    ViewSet para operaciones CRUD completas de Catalog
     """
-    queryset = Cataloge.objects.all()
-    serializer_class = CatalogeSerializer
+    queryset = Catalog.objects.all()
+    serializer_class = CatalogSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['menu', 'group', 'category', 'type', 'is_visible', 'is_deleted', 'is_confirmed']
     search_fields = ['sku', 'name', 'description']
@@ -643,12 +643,12 @@ class CatalogeViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action == 'list':
-            return CatalogeListSerializer
+            return CatalogListSerializer
         elif self.action == 'create':
-            return CatalogeCreateSerializer
+            return CatalogCreateSerializer
         elif self.action in ['update', 'partial_update']:
-            return CatalogeUpdateSerializer
-        return CatalogeSerializer
+            return CatalogUpdateSerializer
+        return CatalogSerializer
 
     def get_queryset(self):
         """
@@ -665,7 +665,7 @@ class CatalogeViewSet(viewsets.ModelViewSet):
         Endpoint para obtener solo catálogos visibles
         """
         queryset = self.queryset.filter(is_visible=True, is_deleted__isnull=True)
-        serializer = CatalogeListSerializer(queryset, many=True)
+        serializer = CatalogListSerializer(queryset, many=True)
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'])
@@ -673,10 +673,10 @@ class CatalogeViewSet(viewsets.ModelViewSet):
         """
         Endpoint para alternar la visibilidad de un catálogo
         """
-        cataloge = self.get_object()
-        cataloge.is_visible = not cataloge.is_visible
-        cataloge.save()
-        serializer = self.get_serializer(cataloge)
+        catalog = self.get_object()
+        catalog.is_visible = not catalog.is_visible
+        catalog.save()
+        serializer = self.get_serializer(catalog)
         return Response(serializer.data)
 
 
