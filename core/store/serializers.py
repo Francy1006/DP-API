@@ -205,7 +205,8 @@ class CatalogeListSerializer(serializers.ModelSerializer):
         model = Cataloge
         fields = [
             'id', 'sku', 'name', 'menu_name', 'group_name', 'category_name', 
-            'type_name', 'is_visible', 'is_confirmed', 'created_at'
+            'type_name', 'is_visible', 'is_confirmed', 'created_at',
+            'cover_image', 'secondary_image', 'complementary_image', 'image_gallery'
         ]
 
 
