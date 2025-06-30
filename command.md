@@ -81,3 +81,11 @@ sonar-scanner \
   -Dsonar.sources=. \
   -Dsonar.host.url=http://localhost:9000 \
   -Dsonar.token=sqp_6f5d5ea7fa107b156e15f4a19a80cbcb0d30273c
+
+
+
+
+# Command to create superuser (run this if superuser doesn't exist):
+docker-compose exec api python manage.py createsuperuser --username sbm-admin --email operacione@ditalypasta.cl --noinput
+ 
+docker-compose exec api python manage.py shell -c "from django.contrib.auth.models import User; user = User.objects.get(username='sbm-admin'); user.set_password('sbm123'); user.save(); print('Contraseña establecida: sbm123')"
