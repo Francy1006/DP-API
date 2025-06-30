@@ -1,0 +1,19 @@
+version: '3.9'
+
+services:
+  api:
+    container_name: core
+    build: ./core
+    command: sh -c "sleep 10s; python manage.py migrate; python manage.py runserver 0.0.0.0:8081"
+    ports:
+      - "8081:8081"
+    env_file:
+      - ./core/.api-env
+    volumes:
+      - ./core:/usr/src/app
+    networks:
+      - shared-net
+
+networks:
+  shared-net:
+    external: true

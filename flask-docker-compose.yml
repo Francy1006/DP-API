@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  flask-app:
+    container_name: flask-app
+    build: .
+    ports:
+      - "8001:8001"
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+    volumes:
+      # Solo montar archivos específicos si necesitas desarrollo en tiempo real
+      - ./app/static:/app/app/static
+      - ./app/templates:/app/app/templates
+    restart: unless-stopped
+    networks:
+      - shared-net
+
+networks:
+  shared-net:
+    external: true 
