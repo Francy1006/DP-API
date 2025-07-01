@@ -19,7 +19,7 @@ http://localhost:8000/store/api/
 {
     "group_name": "Electrónicos",
     "description": "Productos electrónicos",
-    "cataloge_render": true
+    "catalog_render": true
 }
 ```
 
@@ -47,7 +47,7 @@ def get_catalog_groups():
 ```
 
 ## Filtros
-- `?cataloge_render=true` - Solo grupos de catálogo
+- `?catalog_render=true` - Solo grupos de catálogo
 - `?search=texto` - Búsqueda por nombre/descripción
 - `?ordering=group_name` - Ordenamiento
 

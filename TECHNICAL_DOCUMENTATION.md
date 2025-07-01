@@ -165,7 +165,7 @@ class ItemCategory(models.Model):
     id = models.AutoField(primary_key=True)
     category = models.CharField(max_length=50)
     description = models.TextField()
-    cataloge_render = models.BooleanField(default=True)
+    catalog_render = models.BooleanField(default=True)
 ```
 **Tabla**: `item_category`
 **Propósito**: Categorías de items con opción de renderizado en catálogo
@@ -186,14 +186,14 @@ class ItemGroup(models.Model):
     id = models.AutoField(primary_key=True)
     group_name = models.CharField(max_length=50)
     description = models.TextField()
-    cataloge_render = models.BooleanField(default=True)
+    catalog_render = models.BooleanField(default=True)
 ```
 **Tabla**: `item_group`
 **Propósito**: Grupos de items con opción de renderizado en catálogo
 
-#### 5. Cataloge
+#### 5. catalog
 ```python
-class Cataloge(models.Model):
+class catalog(models.Model):
     id = models.AutoField(primary_key=True)
     code = models.CharField(max_length=36, unique=True)
     sku = models.CharField(max_length=50)
@@ -207,7 +207,7 @@ class Cataloge(models.Model):
     is_visible = models.BooleanField(default=True)
     # ... campos de auditoría
 ```
-**Tabla**: `cataloge`
+**Tabla**: `catalog`
 **Propósito**: Catálogo principal de productos
 
 #### 6. User
@@ -354,7 +354,7 @@ class Instruction(models.Model):
 /api/item-groups/          # CRUD de grupos
 /api/instruction-types/    # CRUD de tipos de instrucción
 /api/instructions/         # CRUD de instrucciones
-/api/cataloge/             # CRUD de catálogo
+/api/catalog/             # CRUD de catálogo
 /api/restrictions/         # CRUD de restricciones
 /api/permission-types/     # CRUD de tipos de permiso
 /api/permissions/          # CRUD de permisos
@@ -392,8 +392,8 @@ class Instruction(models.Model):
 /api/instructions/{id}/confirm/                    # Confirmar instrucción
 /api/instructions/{id}/soft_delete/                # Eliminación lógica
 /api/instructions/{id}/restore/                    # Restaurar instrucción
-/api/cataloge/visible/                             # Solo catálogo visible
-/api/cataloge/{id}/toggle_visibility/              # Alternar visibilidad
+/api/catalog/visible/                             # Solo catálogo visible
+/api/catalog/{id}/toggle_visibility/              # Alternar visibilidad
 ```
 
 ### Operaciones CRUD por Endpoint
