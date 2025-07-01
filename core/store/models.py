@@ -297,7 +297,7 @@ class Catalog(models.Model):
     )
     name = models.CharField(max_length=50, verbose_name="Nombre")
     description = models.TextField(verbose_name="Descripción")
-    OBS = models.CharField(
+    obs = models.CharField(
         max_length=255,
         null=True,
         blank=True,
@@ -307,16 +307,9 @@ class Catalog(models.Model):
         default=False,
         verbose_name="Recomendación del Chef"
     )
-    usage_instructions = models.ForeignKey(
-        Instruction,
-        on_delete=models.CASCADE,
-        db_column='usage_instructions',
-        related_name='usage_catalogs',
+    usage_instructions = models.CharField(
+        max_length=36,
         verbose_name="Instrucciones de Uso"
-    )
-    base_gross_price = models.IntegerField(
-        default=0,
-        verbose_name="Precio Bruto Base"
     )
     min_quantity_purchase = models.IntegerField(
         default=1,
@@ -409,7 +402,7 @@ class Catalog(models.Model):
         blank=True,
         verbose_name="Eliminado por"
     )
-    LOG = models.TextField(verbose_name="Log")
+    log = models.TextField(verbose_name="Log")
     version = models.IntegerField(
         default=1,
         verbose_name="Versión"
@@ -498,7 +491,7 @@ class Restriction(models.Model):
         blank=True,
         verbose_name="Eliminado por"
     )
-    LOG = models.TextField(verbose_name="Log")
+    log = models.TextField(verbose_name="Log")
     version = models.IntegerField(
         default=1,
         verbose_name="Versión"
@@ -525,17 +518,17 @@ class PermissionType(models.Model):
     Modelo para tipos de permisos
     """
     id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=50, verbose_name="Nombre del Tipo")
+    type = models.CharField(max_length=50, verbose_name="Tipo")
     description = models.TextField(verbose_name="Descripción")
 
     class Meta:
         db_table = 'permission_type'
         verbose_name = "Tipo de Permiso"
         verbose_name_plural = "Tipos de Permisos"
-        ordering = ['name']
+        ordering = ['type']
 
     def __str__(self):
-        return self.name
+        return self.type
 
 
 class Permission(models.Model):
@@ -611,7 +604,7 @@ class Permission(models.Model):
         blank=True,
         verbose_name="Eliminado por"
     )
-    LOG = models.TextField(verbose_name="Log")
+    log = models.TextField(verbose_name="Log")
     version = models.IntegerField(
         default=1,
         verbose_name="Versión"
@@ -700,7 +693,7 @@ class Role(models.Model):
         blank=True,
         verbose_name="Eliminado por"
     )
-    LOG = models.TextField(verbose_name="Log")
+    log = models.TextField(verbose_name="Log")
     version = models.IntegerField(
         default=1,
         verbose_name="Versión"
@@ -1149,7 +1142,7 @@ class User(models.Model):
         blank=True,
         verbose_name="Eliminado por"
     )
-    LOG = models.TextField(verbose_name="Log")
+    log = models.TextField(verbose_name="Log")
     version = models.IntegerField(
         default=1,
         verbose_name="Versión"
@@ -1413,7 +1406,7 @@ class ItemConfiguration(models.Model):
         blank=True,
         verbose_name="Eliminado por"
     )
-    LOG = models.TextField(verbose_name="Log")
+    log = models.TextField(verbose_name="Log")
     version = models.IntegerField(
         default=1,
         verbose_name="Versión"
@@ -1439,7 +1432,6 @@ class ItemConfigurationDetail(models.Model):
     """
     Modelo para detalles de configuración de items
     """
-    id = models.AutoField(primary_key=True)
     code = models.CharField(max_length=36, verbose_name="Código")
     detail = models.CharField(max_length=50, verbose_name="Detalle")
     type = models.ForeignKey(
@@ -1512,6 +1504,7 @@ class ItemConfigurationDetail(models.Model):
         db_table = 'item_configuration_detail'
         verbose_name = "Detalle de Configuración"
         verbose_name_plural = "Detalles de Configuración"
+        unique_together = ['code', 'type', 'id_item']
         ordering = ['configuration', 'detail']
 
     def __str__(self):
@@ -1551,7 +1544,7 @@ class Provider(models.Model):
         default=0,
         verbose_name="Calificación"
     )
-    OBS_provider = models.TextField(verbose_name="Observaciones del Proveedor")
+    obs_provider = models.TextField(verbose_name="Observaciones del Proveedor")
     contact_name = models.CharField(
         max_length=100,
         null=True, 
@@ -1579,7 +1572,7 @@ class Provider(models.Model):
         blank=True,
         verbose_name="URL del Sitio Web"
     )
-    OBS_contact = models.CharField(
+    obs_contact = models.CharField(
         max_length=255,
         null=True, 
         blank=True,
@@ -1665,7 +1658,7 @@ class Provider(models.Model):
         blank=True,
         verbose_name="Ubicación en Maps"
     )
-    OBS_dispatch = models.TextField(
+    obs_dispatch = models.TextField(
         null=True, 
         blank=True,
         verbose_name="Observaciones de Despacho"
@@ -1742,7 +1735,7 @@ class Provider(models.Model):
         blank=True,
         verbose_name="Eliminado por"
     )
-    LOG = models.TextField(verbose_name="Log")
+    log = models.TextField(verbose_name="Log")
     version = models.IntegerField(
         default=1,
         verbose_name="Versión"
@@ -1778,12 +1771,12 @@ class Product(models.Model):
     )
     sku = models.CharField(max_length=50, verbose_name="SKU")
     description = models.TextField(verbose_name="Descripción")
-    OBS = models.TextField(verbose_name="Observaciones")
+    obs = models.TextField(verbose_name="Observaciones")
     package_unit = models.IntegerField(verbose_name="Unidad de Paquete")
     min_package_purchase = models.IntegerField(verbose_name="Compra Mínima de Paquete")
-    gross_price = models.IntegerField(
-        default=0,
-        verbose_name="Precio Bruto"
+    price = models.CharField(
+        max_length=36,
+        verbose_name="Precio"
     )
     provider = models.ForeignKey(
         Provider,
@@ -1881,7 +1874,7 @@ class Product(models.Model):
         blank=True,
         verbose_name="Eliminado por"
     )
-    LOG = models.TextField(verbose_name="Log")
+    log = models.TextField(verbose_name="Log")
     version = models.IntegerField(
         default=1,
         verbose_name="Versión"
@@ -1917,12 +1910,12 @@ class Material(models.Model):
     )
     sku = models.CharField(max_length=50, verbose_name="SKU")
     description = models.TextField(verbose_name="Descripción")
-    OBS = models.TextField(verbose_name="Observaciones")
+    obs = models.TextField(verbose_name="Observaciones")
     package_unit = models.IntegerField(verbose_name="Unidad de Paquete")
     min_package_purchase = models.IntegerField(verbose_name="Compra Mínima de Paquete")
-    gross_price = models.IntegerField(
-        default=0,
-        verbose_name="Precio Bruto"
+    price = models.CharField(
+        max_length=36,
+        verbose_name="Precio"
     )
     provider = models.ForeignKey(
         Provider,
@@ -2020,7 +2013,7 @@ class Material(models.Model):
         blank=True,
         verbose_name="Eliminado por"
     )
-    LOG = models.TextField(verbose_name="Log")
+    log = models.TextField(verbose_name="Log")
     version = models.IntegerField(
         default=1,
         verbose_name="Versión"
@@ -2056,12 +2049,12 @@ class Service(models.Model):
     )
     sku = models.CharField(max_length=50, verbose_name="SKU")
     description = models.TextField(verbose_name="Descripción")
-    OBS = models.TextField(verbose_name="Observaciones")
+    obs = models.TextField(verbose_name="Observaciones")
     package_unit = models.IntegerField(verbose_name="Unidad de Paquete")
     min_package_purchase = models.IntegerField(verbose_name="Compra Mínima de Paquete")
-    gross_price = models.IntegerField(
-        default=0,
-        verbose_name="Precio Bruto"
+    price = models.CharField(
+        max_length=36,
+        verbose_name="Precio"
     )
     provider = models.ForeignKey(
         Provider,
@@ -2152,7 +2145,7 @@ class Service(models.Model):
         blank=True,
         verbose_name="Eliminado por"
     )
-    LOG = models.TextField(verbose_name="Log")
+    log = models.TextField(verbose_name="Log")
     version = models.IntegerField(
         default=1,
         verbose_name="Versión"
@@ -2172,3 +2165,426 @@ class Service(models.Model):
         if not self._state.adding:  # Si no es una nueva instancia
             self.updated_at = timezone.now()
         super().save(*args, **kwargs)
+
+
+# Nuevos modelos para precios y configuración fiscal
+
+class Price(models.Model):
+    """
+    Modelo para precios
+    """
+    id = models.AutoField(primary_key=True)
+    code = models.CharField(
+        max_length=36, 
+        unique=True,
+        null=True,
+        blank=True,
+        verbose_name="Código"
+    )
+    net_amount = models.IntegerField(
+        default=0,
+        verbose_name="Monto Neto"
+    )
+    gross_amount = models.IntegerField(
+        default=0,
+        verbose_name="Monto Bruto"
+    )
+    iva_amount = models.IntegerField(
+        default=0,
+        verbose_name="Monto IVA"
+    )
+    retention_amount = models.IntegerField(
+        default=0,
+        verbose_name="Monto de Retención"
+    )
+    price_fiscal_configuration = models.CharField(
+        max_length=36,
+        verbose_name="Configuración Fiscal del Precio"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="Activo"
+    )
+    is_deleted = models.BooleanField(
+        null=True,
+        blank=True,
+        verbose_name="Eliminado"
+    )
+    is_confirmed = models.BooleanField(
+        null=True,
+        blank=True,
+        verbose_name="Confirmado"
+    )
+    created_at = models.DateTimeField(
+        default=timezone.now,
+        verbose_name="Fecha de Creación"
+    )
+    updated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha de Actualización"
+    )
+    confirmed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha de Confirmación"
+    )
+    deleted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha de Eliminación"
+    )
+    created_by = models.CharField(
+        max_length=36,
+        verbose_name="Creado por"
+    )
+    confirmed_by = models.CharField(
+        max_length=36,
+        null=True,
+        blank=True,
+        verbose_name="Confirmado por"
+    )
+    updated_by = models.CharField(
+        max_length=36,
+        null=True,
+        blank=True,
+        verbose_name="Actualizado por"
+    )
+    deleted_by = models.CharField(
+        max_length=36,
+        null=True,
+        blank=True,
+        verbose_name="Eliminado por"
+    )
+
+    class Meta:
+        db_table = 'price'
+        verbose_name = "Precio"
+        verbose_name_plural = "Precios"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Precio {self.code} - ${self.gross_amount}"
+
+
+class FiscalDirectiveType(models.Model):
+    """
+    Modelo para tipos de directivas fiscales
+    """
+    id = models.AutoField(primary_key=True)
+    type = models.CharField(max_length=255, verbose_name="Tipo")
+    description = models.TextField(verbose_name="Descripción")
+
+    class Meta:
+        db_table = 'fiscal_directive_type'
+        verbose_name = "Tipo de Directiva Fiscal"
+        verbose_name_plural = "Tipos de Directivas Fiscales"
+        ordering = ['type']
+
+    def __str__(self):
+        return self.type
+
+
+class FiscalDirective(models.Model):
+    """
+    Modelo para directivas fiscales
+    """
+    id = models.AutoField(primary_key=True)
+    code = models.CharField(
+        max_length=36, 
+        unique=True,
+        null=True,
+        blank=True,
+        verbose_name="Código"
+    )
+    obs = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name="Observaciones"
+    )
+    fiscal_directive = models.CharField(
+        max_length=50,
+        unique=True,
+        verbose_name="Directiva Fiscal"
+    )
+    type = models.ForeignKey(
+        FiscalDirectiveType,
+        on_delete=models.CASCADE,
+        db_column='type',
+        verbose_name="Tipo"
+    )
+    percentage = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name="Porcentaje"
+    )
+    official_source_url = models.CharField(
+        max_length=255,
+        verbose_name="URL de Fuente Oficial"
+    )
+    is_deleted = models.BooleanField(
+        null=True,
+        blank=True,
+        verbose_name="Eliminado"
+    )
+    is_confirmed = models.BooleanField(
+        null=True,
+        blank=True,
+        verbose_name="Confirmado"
+    )
+    created_at = models.DateTimeField(
+        default=timezone.now,
+        verbose_name="Fecha de Creación"
+    )
+    updated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha de Actualización"
+    )
+    confirmed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha de Confirmación"
+    )
+    deleted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha de Eliminación"
+    )
+    created_by = models.CharField(
+        max_length=36,
+        verbose_name="Creado por"
+    )
+    confirmed_by = models.CharField(
+        max_length=36,
+        null=True,
+        blank=True,
+        verbose_name="Confirmado por"
+    )
+    updated_by = models.CharField(
+        max_length=36,
+        null=True,
+        blank=True,
+        verbose_name="Actualizado por"
+    )
+    deleted_by = models.CharField(
+        max_length=36,
+        null=True,
+        blank=True,
+        verbose_name="Eliminado por"
+    )
+
+    class Meta:
+        db_table = 'fiscal_directive'
+        verbose_name = "Directiva Fiscal"
+        verbose_name_plural = "Directivas Fiscales"
+        ordering = ['fiscal_directive']
+
+    def __str__(self):
+        return self.fiscal_directive
+
+
+class FiscalFormula(models.Model):
+    """
+    Modelo para fórmulas fiscales
+    """
+    id = models.CharField(
+        primary_key=True, 
+        max_length=36, 
+        default=uuid.uuid4,
+        verbose_name="ID"
+    )
+    formula = models.CharField(
+        max_length=50,
+        verbose_name="Fórmula"
+    )
+    formula_template = models.TextField(
+        verbose_name="Plantilla de Fórmula"
+    )
+    is_deleted = models.BooleanField(
+        null=True,
+        blank=True,
+        verbose_name="Eliminado"
+    )
+    is_confirmed = models.BooleanField(
+        null=True,
+        blank=True,
+        verbose_name="Confirmado"
+    )
+    created_at = models.DateTimeField(
+        default=timezone.now,
+        verbose_name="Fecha de Creación"
+    )
+    updated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha de Actualización"
+    )
+    confirmed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha de Confirmación"
+    )
+    deleted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha de Eliminación"
+    )
+    created_by = models.CharField(
+        max_length=36,
+        verbose_name="Creado por"
+    )
+    confirmed_by = models.CharField(
+        max_length=36,
+        null=True,
+        blank=True,
+        verbose_name="Confirmado por"
+    )
+    updated_by = models.CharField(
+        max_length=36,
+        null=True,
+        blank=True,
+        verbose_name="Actualizado por"
+    )
+    deleted_by = models.CharField(
+        max_length=36,
+        null=True,
+        blank=True,
+        verbose_name="Eliminado por"
+    )
+
+    class Meta:
+        db_table = 'fiscal_formula'
+        verbose_name = "Fórmula Fiscal"
+        verbose_name_plural = "Fórmulas Fiscales"
+        ordering = ['formula']
+
+    def __str__(self):
+        return self.formula
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            self.updated_at = timezone.now()
+        super().save(*args, **kwargs)
+
+
+class PriceFiscalConfiguration(models.Model):
+    """
+    Modelo para configuración fiscal de precios
+    """
+    id = models.CharField(
+        primary_key=True, 
+        max_length=36, 
+        default=uuid.uuid4,
+        verbose_name="ID"
+    )
+    fiscal_configuration = models.CharField(
+        max_length=50,
+        unique=True,
+        verbose_name="Configuración Fiscal"
+    )
+    fiscal_formula = models.ForeignKey(
+        FiscalFormula,
+        on_delete=models.CASCADE,
+        db_column='fiscal_formula',
+        verbose_name="Fórmula Fiscal"
+    )
+    is_deleted = models.BooleanField(
+        null=True,
+        blank=True,
+        verbose_name="Eliminado"
+    )
+    is_confirmed = models.BooleanField(
+        null=True,
+        blank=True,
+        verbose_name="Confirmado"
+    )
+    created_at = models.DateTimeField(
+        default=timezone.now,
+        verbose_name="Fecha de Creación"
+    )
+    updated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha de Actualización"
+    )
+    confirmed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha de Confirmación"
+    )
+    deleted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha de Eliminación"
+    )
+    created_by = models.CharField(
+        max_length=36,
+        verbose_name="Creado por"
+    )
+    confirmed_by = models.CharField(
+        max_length=36,
+        null=True,
+        blank=True,
+        verbose_name="Confirmado por"
+    )
+    updated_by = models.CharField(
+        max_length=36,
+        null=True,
+        blank=True,
+        verbose_name="Actualizado por"
+    )
+    deleted_by = models.CharField(
+        max_length=36,
+        null=True,
+        blank=True,
+        verbose_name="Eliminado por"
+    )
+
+    class Meta:
+        db_table = 'price_fiscal_configuration'
+        verbose_name = "Configuración Fiscal de Precio"
+        verbose_name_plural = "Configuraciones Fiscales de Precios"
+        ordering = ['fiscal_configuration']
+
+    def __str__(self):
+        return self.fiscal_configuration
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            self.updated_at = timezone.now()
+        super().save(*args, **kwargs)
+
+
+class FiscalConfigurationDetail(models.Model):
+    """
+    Modelo para detalles de configuración fiscal
+    """
+    id = models.AutoField(primary_key=True)
+    price_fiscal_configuration = models.CharField(
+        max_length=36,
+        verbose_name="Configuración Fiscal del Precio"
+    )
+    price = models.CharField(
+        max_length=36,
+        verbose_name="Precio"
+    )
+    fiscal_directive = models.CharField(
+        max_length=36,
+        verbose_name="Directiva Fiscal"
+    )
+    log = models.TextField(
+        default="init;",
+        verbose_name="Log"
+    )
+
+    class Meta:
+        db_table = 'fiscal_configuration_detail'
+        verbose_name = "Detalle de Configuración Fiscal"
+        verbose_name_plural = "Detalles de Configuración Fiscal"
+        unique_together = ['id', 'price', 'fiscal_directive']
+        ordering = ['id']
+
+    def __str__(self):
+        return f"Detalle {self.id} - {self.price}"

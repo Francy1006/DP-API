@@ -1,76 +1,68 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from . import views
+from .views import (
+    MenuViewSet, ItemCategoryViewSet, ItemTypeViewSet, ItemGroupViewSet,
+    InstructionTypeViewSet, InstructionViewSet, CatalogViewSet, RestrictionViewSet,
+    PermissionTypeViewSet, PermissionViewSet, RoleViewSet, RestrictionRolesViewSet,
+    RolePermissionsViewSet, PackageTypeViewSet, TransportTypeViewSet, MeasureUnitViewSet,
+    ProviderTypeViewSet, BankAccountTypeViewSet, RegionViewSet, DistrictViewSet,
+    BankViewSet, UserTypeViewSet, UserViewSet, UserTokenViewSet, PackageViewSet,
+    ItemConfigurationViewSet, ItemConfigurationDetailViewSet, ProviderViewSet,
+    ProductViewSet, MaterialViewSet, ServiceViewSet,
+    PriceViewSet, FiscalDirectiveTypeViewSet, FiscalDirectiveViewSet,
+    FiscalFormulaViewSet, PriceFiscalConfigurationViewSet, FiscalConfigurationDetailViewSet
+)
 
 # Configurar el router para ViewSets
 router = DefaultRouter()
-router.register(r'menus', views.MenuViewSet)
-router.register(r'item-categories', views.ItemCategoryViewSet)
-router.register(r'item-types', views.ItemTypeViewSet)
-router.register(r'item-groups', views.ItemGroupViewSet)
-router.register(r'instruction-types', views.InstructionTypeViewSet)
-router.register(r'instructions', views.InstructionViewSet)
+router.register(r'menus', MenuViewSet)
+router.register(r'item-categories', ItemCategoryViewSet)
+router.register(r'item-types', ItemTypeViewSet)
+router.register(r'item-groups', ItemGroupViewSet)
+router.register(r'instruction-types', InstructionTypeViewSet)
+router.register(r'instructions', InstructionViewSet)
 # Nuevos ViewSets
-router.register(r'catalog', views.CatalogViewSet)
-router.register(r'restrictions', views.RestrictionViewSet)
-router.register(r'permission-types', views.PermissionTypeViewSet)
-router.register(r'permissions', views.PermissionViewSet)
-router.register(r'roles', views.RoleViewSet)
-router.register(r'restriction-roles', views.RestrictionRolesViewSet)
-router.register(r'role-permissions', views.RolePermissionsViewSet)
-router.register(r'package-types', views.PackageTypeViewSet)
-router.register(r'transport-types', views.TransportTypeViewSet)
-router.register(r'measure-units', views.MeasureUnitViewSet)
-router.register(r'provider-types', views.ProviderTypeViewSet)
-router.register(r'bank-account-types', views.BankAccountTypeViewSet)
-router.register(r'regions', views.RegionViewSet)
-router.register(r'districts', views.DistrictViewSet)
-router.register(r'banks', views.BankViewSet)
-router.register(r'user-types', views.UserTypeViewSet)
-router.register(r'users', views.UserViewSet)
-router.register(r'user-tokens', views.UserTokenViewSet)
-router.register(r'packages', views.PackageViewSet)
-router.register(r'item-configurations', views.ItemConfigurationViewSet)
-router.register(r'item-configuration-details', views.ItemConfigurationDetailViewSet)
-router.register(r'providers', views.ProviderViewSet)
-router.register(r'products', views.ProductViewSet)
-router.register(r'materials', views.MaterialViewSet)
-router.register(r'services', views.ServiceViewSet)
+router.register(r'catalog', CatalogViewSet)
+router.register(r'restrictions', RestrictionViewSet)
+router.register(r'permission-types', PermissionTypeViewSet)
+router.register(r'permissions', PermissionViewSet)
+router.register(r'roles', RoleViewSet)
+router.register(r'restriction-roles', RestrictionRolesViewSet)
+router.register(r'role-permissions', RolePermissionsViewSet)
+router.register(r'package-types', PackageTypeViewSet)
+router.register(r'transport-types', TransportTypeViewSet)
+router.register(r'measure-units', MeasureUnitViewSet)
+router.register(r'provider-types', ProviderTypeViewSet)
+router.register(r'bank-account-types', BankAccountTypeViewSet)
+router.register(r'regions', RegionViewSet)
+router.register(r'districts', DistrictViewSet)
+router.register(r'banks', BankViewSet)
+router.register(r'user-types', UserTypeViewSet)
+router.register(r'users', UserViewSet)
+router.register(r'user-tokens', UserTokenViewSet)
+router.register(r'packages', PackageViewSet)
+router.register(r'item-configurations', ItemConfigurationViewSet)
+router.register(r'item-configuration-details', ItemConfigurationDetailViewSet)
+router.register(r'providers', ProviderViewSet)
+router.register(r'products', ProductViewSet)
+router.register(r'materials', MaterialViewSet)
+router.register(r'services', ServiceViewSet)
+
+# Nuevas rutas para precios y configuración fiscal
+router.register(r'prices', PriceViewSet)
+router.register(r'fiscal-directive-types', FiscalDirectiveTypeViewSet)
+router.register(r'fiscal-directives', FiscalDirectiveViewSet)
+router.register(r'fiscal-formulas', FiscalFormulaViewSet)
+router.register(r'price-fiscal-configurations', PriceFiscalConfigurationViewSet)
+router.register(r'fiscal-configuration-details', FiscalConfigurationDetailViewSet)
 
 # URLs para ViewSets
 viewset_urls = [
     path('', include(router.urls)),
 ]
 
-# URLs para API Views individuales
-api_view_urls = [
-    # Menu URLs
-    path('menus/', views.MenuListAPIView.as_view(), name='menu-list'),
-    path('menus/<int:pk>/', views.MenuDetailAPIView.as_view(), name='menu-detail'),
-    
-    # ItemCategory URLs
-    path('item-categories/', views.ItemCategoryListAPIView.as_view(), name='item-category-list'),
-    path('item-categories/<int:pk>/', views.ItemCategoryDetailAPIView.as_view(), name='item-category-detail'),
-    
-    # ItemType URLs
-    path('item-types/', views.ItemTypeListAPIView.as_view(), name='item-type-list'),
-    path('item-types/<int:pk>/', views.ItemTypeDetailAPIView.as_view(), name='item-type-detail'),
-    
-    # ItemGroup URLs
-    path('item-groups/', views.ItemGroupListAPIView.as_view(), name='item-group-list'),
-    path('item-groups/<int:pk>/', views.ItemGroupDetailAPIView.as_view(), name='item-group-detail'),
-    
-    # InstructionType URLs
-    path('instruction-types/', views.InstructionTypeListAPIView.as_view(), name='instruction-type-list'),
-    path('instruction-types/<int:pk>/', views.InstructionTypeDetailAPIView.as_view(), name='instruction-type-detail'),
-    
-    # Instruction URLs
-    path('instructions/', views.InstructionListAPIView.as_view(), name='instruction-list'),
-    path('instructions/<str:pk>/', views.InstructionDetailAPIView.as_view(), name='instruction-detail'),
-]
-
-# Combinar todas las URLs
-urlpatterns = viewset_urls + api_view_urls
+# Eliminamos api_view_urls y la suma en urlpatterns
+urlpatterns = viewset_urls
 
 # URLs adicionales del ViewSet
 # Estas se generan automáticamente:

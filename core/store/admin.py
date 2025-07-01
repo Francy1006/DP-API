@@ -5,7 +5,8 @@ from .models import (
     User, UserToken, Package, ItemConfiguration, ItemConfigurationDetail, 
     Provider, Product, Material, Service, PermissionType, Permission, Role, 
     RestrictionRoles, RolePermissions, PackageType, TransportType, MeasureUnit, 
-    ProviderType
+    ProviderType, Price, FiscalDirectiveType, FiscalDirective, FiscalFormula, 
+    PriceFiscalConfiguration, FiscalConfigurationDetail
 )
 
 
@@ -192,7 +193,7 @@ class CatalogAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Información Básica', {
-            'fields': ('sku', 'name', 'description', 'OBS')
+            'fields': ('sku', 'name', 'description', 'obs')
         }),
         ('Clasificación', {
             'fields': ('menu', 'group', 'category', 'type', 'restriction')
@@ -219,7 +220,7 @@ class CatalogAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
         ('Sistema', {
-            'fields': ('LOG', 'version'),
+            'fields': ('log', 'version'),
             'classes': ('collapse',)
         }),
     )
@@ -277,7 +278,7 @@ class RestrictionAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
         ('Sistema', {
-            'fields': ('LOG', 'version'),
+            'fields': ('log', 'version'),
             'classes': ('collapse',)
         }),
     )
@@ -355,7 +356,7 @@ class UserAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
         ('Auditoría', {
-            'fields': ('LOG', 'version'),
+            'fields': ('log', 'version'),
             'classes': ('collapse',)
         }),
     )
@@ -420,7 +421,7 @@ class ItemConfigurationAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
         ('Auditoría', {
-            'fields': ('created_by', 'confirmed_by', 'updated_by', 'deleted_by', 'LOG', 'version'),
+            'fields': ('created_by', 'confirmed_by', 'updated_by', 'deleted_by', 'log', 'version'),
             'classes': ('collapse',)
         }),
     )
@@ -460,10 +461,10 @@ class ProviderAdmin(admin.ModelAdmin):
     readonly_fields = ['created_at', 'updated_at', 'confirmed_at', 'deleted_at']
     fieldsets = (
         ('Información Básica', {
-            'fields': ('code', 'provider', 'type', 'rating', 'OBS_provider')
+            'fields': ('code', 'provider', 'type', 'rating', 'obs_provider')
         }),
         ('Información de Contacto', {
-            'fields': ('contact_name', 'contact_mail', 'contact_phone', 'contact_phone2', 'website_url', 'OBS_contact'),
+            'fields': ('contact_name', 'contact_mail', 'contact_phone', 'contact_phone2', 'website_url', 'obs_contact'),
             'classes': ('collapse',)
         }),
         ('Información de Empresa', {
@@ -486,7 +487,7 @@ class ProviderAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
         ('Auditoría', {
-            'fields': ('created_by', 'confirmed_by', 'updated_by', 'deleted_by', 'LOG', 'version'),
+            'fields': ('created_by', 'confirmed_by', 'updated_by', 'deleted_by', 'log', 'version'),
             'classes': ('collapse',)
         }),
     )
@@ -494,20 +495,20 @@ class ProviderAdmin(admin.ModelAdmin):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ['description', 'sku', 'provider', 'type', 'gross_price', 'is_active', 'is_confirmed']
+    list_display = ['description', 'sku', 'provider', 'type', 'price', 'is_active', 'is_confirmed']
     list_filter = ['provider', 'type', 'group', 'category', 'is_active', 'is_confirmed', 'is_deleted', 'created_at']
-    search_fields = ['description', 'sku', 'code', 'OBS']
+    search_fields = ['description', 'sku', 'code', 'obs']
     ordering = ['description']
     readonly_fields = ['created_at', 'updated_at', 'confirmed_at', 'deleted_at']
     fieldsets = (
         ('Información Básica', {
-            'fields': ('code', 'sku', 'description', 'OBS')
+            'fields': ('code', 'sku', 'description', 'obs')
         }),
         ('Clasificación', {
             'fields': ('provider', 'type', 'group', 'category')
         }),
         ('Precios y Cantidades', {
-            'fields': ('package_unit', 'min_package_purchase', 'gross_price')
+            'fields': ('package_unit', 'min_package_purchase', 'price')
         }),
         ('Información Adicional', {
             'fields': ('url', 'package')
@@ -520,7 +521,7 @@ class ProductAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
         ('Auditoría', {
-            'fields': ('created_by', 'confirmed_by', 'updated_by', 'deleted_by', 'LOG', 'version'),
+            'fields': ('created_by', 'confirmed_by', 'updated_by', 'deleted_by', 'log', 'version'),
             'classes': ('collapse',)
         }),
     )
@@ -528,20 +529,20 @@ class ProductAdmin(admin.ModelAdmin):
 
 @admin.register(Material)
 class MaterialAdmin(admin.ModelAdmin):
-    list_display = ['description', 'sku', 'provider', 'type', 'gross_price', 'is_active', 'is_confirmed']
+    list_display = ['description', 'sku', 'provider', 'type', 'price', 'is_active', 'is_confirmed']
     list_filter = ['provider', 'type', 'group', 'category', 'is_active', 'is_confirmed', 'is_deleted', 'created_at']
-    search_fields = ['description', 'sku', 'code', 'OBS']
+    search_fields = ['description', 'sku', 'code', 'obs']
     ordering = ['description']
     readonly_fields = ['created_at', 'updated_at', 'confirmed_at', 'deleted_at']
     fieldsets = (
         ('Información Básica', {
-            'fields': ('code', 'sku', 'description', 'OBS')
+            'fields': ('code', 'sku', 'description', 'obs')
         }),
         ('Clasificación', {
             'fields': ('provider', 'type', 'group', 'category')
         }),
         ('Precios y Cantidades', {
-            'fields': ('package_unit', 'min_package_purchase', 'gross_price')
+            'fields': ('package_unit', 'min_package_purchase', 'price')
         }),
         ('Información Adicional', {
             'fields': ('url', 'package')
@@ -554,7 +555,7 @@ class MaterialAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
         ('Auditoría', {
-            'fields': ('created_by', 'confirmed_by', 'updated_by', 'deleted_by', 'LOG', 'version'),
+            'fields': ('created_by', 'confirmed_by', 'updated_by', 'deleted_by', 'log', 'version'),
             'classes': ('collapse',)
         }),
     )
@@ -562,20 +563,20 @@ class MaterialAdmin(admin.ModelAdmin):
 
 @admin.register(Service)
 class ServiceAdmin(admin.ModelAdmin):
-    list_display = ['description', 'sku', 'provider', 'type', 'gross_price', 'is_active', 'is_confirmed']
+    list_display = ['description', 'sku', 'provider', 'type', 'price', 'is_active', 'is_confirmed']
     list_filter = ['provider', 'type', 'group', 'category', 'is_active', 'is_confirmed', 'is_deleted', 'created_at']
-    search_fields = ['description', 'sku', 'code', 'OBS']
+    search_fields = ['description', 'sku', 'code', 'obs']
     ordering = ['description']
     readonly_fields = ['created_at', 'updated_at', 'confirmed_at', 'deleted_at']
     fieldsets = (
         ('Información Básica', {
-            'fields': ('code', 'sku', 'description', 'OBS')
+            'fields': ('code', 'sku', 'description', 'obs')
         }),
         ('Clasificación', {
             'fields': ('provider', 'type', 'group', 'category')
         }),
         ('Precios y Cantidades', {
-            'fields': ('package_unit', 'min_package_purchase', 'gross_price')
+            'fields': ('package_unit', 'min_package_purchase', 'price')
         }),
         ('Información Adicional', {
             'fields': ('url',)
@@ -588,7 +589,7 @@ class ServiceAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
         ('Auditoría', {
-            'fields': ('created_by', 'confirmed_by', 'updated_by', 'deleted_by', 'LOG', 'version'),
+            'fields': ('created_by', 'confirmed_by', 'updated_by', 'deleted_by', 'log', 'version'),
             'classes': ('collapse',)
         }),
     )
@@ -596,9 +597,9 @@ class ServiceAdmin(admin.ModelAdmin):
 
 @admin.register(PermissionType)
 class PermissionTypeAdmin(admin.ModelAdmin):
-    list_display = ['name', 'description']
-    search_fields = ['name', 'description']
-    ordering = ['name']
+    list_display = ['type', 'description']
+    search_fields = ['type', 'description']
+    ordering = ['type']
 
 
 @admin.register(Permission)
@@ -620,7 +621,7 @@ class PermissionAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
         ('Auditoría', {
-            'fields': ('created_by', 'updated_by', 'confirmed_by', 'deleted_by', 'LOG', 'version'),
+            'fields': ('created_by', 'updated_by', 'confirmed_by', 'deleted_by', 'log', 'version'),
             'classes': ('collapse',)
         }),
     )
@@ -645,7 +646,7 @@ class RoleAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
         ('Auditoría', {
-            'fields': ('created_by', 'confirmed_by', 'updated_by', 'deleted_by', 'LOG', 'version'),
+            'fields': ('created_by', 'confirmed_by', 'updated_by', 'deleted_by', 'log', 'version'),
             'classes': ('collapse',)
         }),
     )
@@ -727,3 +728,54 @@ class ProviderTypeAdmin(admin.ModelAdmin):
     list_display = ['type', 'description']
     search_fields = ['type', 'description']
     ordering = ['type']
+
+
+@admin.register(Price)
+class PriceAdmin(admin.ModelAdmin):
+    list_display = ('code', 'net_amount', 'gross_amount', 'iva_amount', 'is_active', 'created_at')
+    list_filter = ('is_active', 'is_deleted', 'is_confirmed', 'created_at')
+    search_fields = ('code',)
+    readonly_fields = ('id', 'created_at', 'updated_at', 'confirmed_at', 'deleted_at')
+    ordering = ('-created_at',)
+
+
+@admin.register(FiscalDirectiveType)
+class FiscalDirectiveTypeAdmin(admin.ModelAdmin):
+    list_display = ('type', 'description')
+    search_fields = ('type', 'description')
+    ordering = ('type',)
+
+
+@admin.register(FiscalDirective)
+class FiscalDirectiveAdmin(admin.ModelAdmin):
+    list_display = ('code', 'fiscal_directive', 'type', 'percentage', 'is_deleted', 'is_confirmed')
+    list_filter = ('type', 'is_deleted', 'is_confirmed', 'created_at')
+    search_fields = ('code', 'fiscal_directive', 'type__type')
+    readonly_fields = ('id', 'created_at', 'updated_at', 'confirmed_at', 'deleted_at')
+    ordering = ('fiscal_directive',)
+
+
+@admin.register(FiscalFormula)
+class FiscalFormulaAdmin(admin.ModelAdmin):
+    list_display = ('id', 'formula', 'is_deleted', 'is_confirmed', 'created_at')
+    list_filter = ('is_deleted', 'is_confirmed', 'created_at')
+    search_fields = ('formula', 'formula_template')
+    readonly_fields = ('id', 'created_at', 'updated_at', 'confirmed_at', 'deleted_at')
+    ordering = ('formula',)
+
+
+@admin.register(PriceFiscalConfiguration)
+class PriceFiscalConfigurationAdmin(admin.ModelAdmin):
+    list_display = ('id', 'fiscal_configuration', 'fiscal_formula', 'is_deleted', 'is_confirmed')
+    list_filter = ('fiscal_formula', 'is_deleted', 'is_confirmed', 'created_at')
+    search_fields = ('fiscal_configuration', 'fiscal_formula__formula')
+    readonly_fields = ('id', 'created_at', 'updated_at', 'confirmed_at', 'deleted_at')
+    ordering = ('fiscal_configuration',)
+
+
+@admin.register(FiscalConfigurationDetail)
+class FiscalConfigurationDetailAdmin(admin.ModelAdmin):
+    list_display = ('id', 'price_fiscal_configuration', 'price', 'fiscal_directive')
+    list_filter = ('price_fiscal_configuration', 'fiscal_directive')
+    search_fields = ('price', 'fiscal_directive')
+    ordering = ('id',)

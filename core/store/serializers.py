@@ -5,7 +5,8 @@ from .models import (
     User, UserToken, Package, ItemConfiguration, ItemConfigurationDetail, 
     Provider, Product, Material, Service, PermissionType, Permission, Role, 
     RestrictionRoles, RolePermissions, PackageType, TransportType, MeasureUnit, 
-    ProviderType
+    ProviderType, Price, FiscalDirectiveType, FiscalDirective, FiscalFormula, 
+    PriceFiscalConfiguration, FiscalConfigurationDetail
 )
 
 
@@ -181,13 +182,13 @@ class CatalogSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'sku', 'menu', 'menu_name', 'group', 'group_name', 
             'category', 'category_name', 'type', 'type_name', 'restriction',
-            'name', 'description', 'OBS', 'chef_recommendation', 
-            'usage_instructions', 'base_gross_price', 'min_quantity_purchase',
+            'name', 'description', 'obs', 'chef_recommendation', 
+            'usage_instructions', 'min_quantity_purchase',
             'rations_quantity', 'cover_image', 'secondary_image', 
             'complementary_image', 'image_gallery', 'configuration',
             'is_visible', 'is_deleted', 'is_confirmed', 'created_at', 
             'updated_at', 'confirmed_at', 'deleted_at', 'created_by',
-            'confirmed_by', 'updated_by', 'deleted_by', 'LOG', 'version'
+            'confirmed_by', 'updated_by', 'deleted_by', 'log', 'version'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'confirmed_at', 'deleted_at']
 
@@ -218,11 +219,11 @@ class CatalogCreateSerializer(serializers.ModelSerializer):
         model = Catalog
         fields = [
             'sku', 'menu', 'group', 'category', 'type', 'restriction',
-            'name', 'description', 'OBS', 'chef_recommendation',
-            'usage_instructions', 'base_gross_price', 'min_quantity_purchase',
+            'name', 'description', 'obs', 'chef_recommendation',
+            'usage_instructions', 'min_quantity_purchase',
             'rations_quantity', 'cover_image', 'secondary_image',
             'complementary_image', 'image_gallery', 'configuration',
-            'is_visible', 'created_by', 'LOG', 'version'
+            'is_visible', 'created_by', 'log', 'version'
         ]
 
 
@@ -234,11 +235,11 @@ class CatalogUpdateSerializer(serializers.ModelSerializer):
         model = Catalog
         fields = [
             'sku', 'menu', 'group', 'category', 'type', 'restriction',
-            'name', 'description', 'OBS', 'chef_recommendation',
-            'usage_instructions', 'base_gross_price', 'min_quantity_purchase',
+            'name', 'description', 'obs', 'chef_recommendation',
+            'usage_instructions', 'min_quantity_purchase',
             'rations_quantity', 'cover_image', 'secondary_image',
             'complementary_image', 'image_gallery', 'configuration',
-            'is_visible', 'updated_by', 'LOG', 'version'
+            'is_visible', 'updated_by', 'log', 'version'
         ]
 
 
@@ -253,7 +254,7 @@ class RestrictionSerializer(serializers.ModelSerializer):
             'id', 'restriction', 'description', 'is_deleted', 'is_confirmed',
             'created_at', 'updated_at', 'confirmed_at', 'deleted_at',
             'created_by', 'confirmed_by', 'updated_by', 'deleted_by',
-            'LOG', 'version'
+            'log', 'version'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'confirmed_at', 'deleted_at']
 
@@ -274,7 +275,7 @@ class RestrictionCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Restriction
         fields = [
-            'restriction', 'description', 'created_by', 'LOG'
+            'restriction', 'description', 'created_by', 'log'
         ]
 
 
@@ -285,7 +286,7 @@ class RestrictionUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Restriction
         fields = [
-            'restriction', 'description', 'updated_by', 'LOG'
+            'restriction', 'description', 'updated_by', 'log'
         ]
 
 
@@ -406,7 +407,7 @@ class UserSerializer(serializers.ModelSerializer):
             'id', 'code', 'type', 'type_name', 'google_id', 'mail', 'phone',
             'name', 'last_name', 'is_active', 'is_deleted', 'is_confirmed',
             'created_at', 'updated_at', 'confirmed_at', 'deleted_at',
-            'deleted_by', 'LOG', 'version'
+            'deleted_by', 'log', 'version'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'confirmed_at', 'deleted_at']
 
@@ -499,7 +500,7 @@ class ItemConfigurationSerializer(serializers.ModelSerializer):
             'id', 'code', 'configuration', 'description', 'package',
             'package_description', 'is_deleted', 'is_confirmed', 'created_at',
             'updated_at', 'confirmed_at', 'deleted_at', 'created_by',
-            'confirmed_by', 'updated_by', 'deleted_by', 'LOG', 'version'
+            'confirmed_by', 'updated_by', 'deleted_by', 'log', 'version'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'confirmed_at', 'deleted_at']
 
@@ -560,18 +561,18 @@ class ProviderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Provider
         fields = [
-            'id', 'code', 'provider', 'type', 'type_name', 'rating', 'OBS_provider',
+            'id', 'code', 'provider', 'type', 'type_name', 'rating', 'obs_provider',
             'contact_name', 'contact_mail', 'contact_phone', 'contact_phone2',
-            'website_url', 'OBS_contact', 'company_name', 'company_rut',
+            'website_url', 'obs_contact', 'company_name', 'company_rut',
             'company_activity', 'legal_representative', 'billing_address',
             'billing_mail', 'billing_phone', 'company_bank', 'company_bank_name',
             'bank_account_type', 'bank_account_type_name', 'bank_account_number',
             'bank_account_mail', 'dispatch_address', 'dispatch_maps_location',
-            'OBS_dispatch', 'dispatch_district', 'dispatch_district_name',
+            'obs_dispatch', 'dispatch_district', 'dispatch_district_name',
             'dispatch_region', 'dispatch_region_name', 'is_active', 'is_deleted',
             'is_confirmed', 'created_at', 'updated_at', 'confirmed_at',
             'deleted_at', 'created_by', 'confirmed_by', 'updated_by', 'deleted_by',
-            'LOG', 'version'
+            'log', 'version'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'confirmed_at', 'deleted_at']
 
@@ -604,13 +605,13 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            'id', 'code', 'sku', 'description', 'OBS', 'package_unit',
-            'min_package_purchase', 'gross_price', 'provider', 'provider_name',
+            'id', 'code', 'sku', 'description', 'obs', 'package_unit',
+            'min_package_purchase', 'price', 'provider', 'provider_name',
             'type', 'type_name', 'group', 'group_name', 'category', 'category_name',
             'url', 'package', 'package_description', 'is_active', 'is_deleted',
             'is_confirmed', 'created_at', 'updated_at', 'confirmed_at',
             'deleted_at', 'created_by', 'confirmed_by', 'updated_by', 'deleted_by',
-            'LOG', 'version'
+            'log', 'version'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'confirmed_at', 'deleted_at']
 
@@ -644,13 +645,13 @@ class MaterialSerializer(serializers.ModelSerializer):
     class Meta:
         model = Material
         fields = [
-            'id', 'code', 'sku', 'description', 'OBS', 'package_unit',
-            'min_package_purchase', 'gross_price', 'provider', 'provider_name',
+            'id', 'code', 'sku', 'description', 'obs', 'package_unit',
+            'min_package_purchase', 'price', 'provider', 'provider_name',
             'type', 'type_name', 'group', 'group_name', 'category', 'category_name',
             'url', 'package', 'package_description', 'is_active', 'is_deleted',
             'is_confirmed', 'created_at', 'updated_at', 'confirmed_at',
             'deleted_at', 'created_by', 'confirmed_by', 'updated_by', 'deleted_by',
-            'LOG', 'version'
+            'log', 'version'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'confirmed_at', 'deleted_at']
 
@@ -683,12 +684,12 @@ class ServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Service
         fields = [
-            'id', 'code', 'sku', 'description', 'OBS', 'package_unit',
-            'min_package_purchase', 'gross_price', 'provider', 'provider_name',
+            'id', 'code', 'sku', 'description', 'obs', 'package_unit',
+            'min_package_purchase', 'price', 'provider', 'provider_name',
             'type', 'type_name', 'group', 'group_name', 'category', 'category_name',
             'url', 'is_active', 'is_deleted', 'is_confirmed', 'created_at',
             'updated_at', 'confirmed_at', 'deleted_at', 'created_by',
-            'confirmed_by', 'updated_by', 'deleted_by', 'LOG', 'version'
+            'confirmed_by', 'updated_by', 'deleted_by', 'log', 'version'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'confirmed_at', 'deleted_at']
 
@@ -715,7 +716,7 @@ class PermissionTypeSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = PermissionType
-        fields = ['id', 'name', 'description']
+        fields = ['id', 'type', 'description']
         read_only_fields = ['id']
 
 
@@ -725,7 +726,7 @@ class PermissionTypeListSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = PermissionType
-        fields = ['id', 'name']
+        fields = ['id', 'type']
 
 
 # Permission Serializers
@@ -733,7 +734,7 @@ class PermissionSerializer(serializers.ModelSerializer):
     """
     Serializer para el modelo Permission
     """
-    type_name = serializers.CharField(source='type.name', read_only=True)
+    type_name = serializers.CharField(source='type.type', read_only=True)
     
     class Meta:
         model = Permission
@@ -741,7 +742,7 @@ class PermissionSerializer(serializers.ModelSerializer):
             'id', 'permission', 'description', 'type', 'type_name', 'is_deleted',
             'is_confirmed', 'created_at', 'updated_at', 'confirmed_at',
             'deleted_at', 'created_by', 'updated_by', 'confirmed_by', 'deleted_by',
-            'LOG', 'version'
+            'log', 'version'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'confirmed_at', 'deleted_at']
 
@@ -750,7 +751,7 @@ class PermissionListSerializer(serializers.ModelSerializer):
     """
     Serializer simplificado para listar permisos
     """
-    type_name = serializers.CharField(source='type.name', read_only=True)
+    type_name = serializers.CharField(source='type.type', read_only=True)
     
     class Meta:
         model = Permission
@@ -768,7 +769,7 @@ class RoleSerializer(serializers.ModelSerializer):
             'id', 'role', 'description', 'is_deleted', 'is_confirmed',
             'created_at', 'updated_at', 'confirmed_at', 'deleted_at',
             'created_by', 'confirmed_by', 'updated_by', 'deleted_by',
-            'LOG', 'version'
+            'log', 'version'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'confirmed_at', 'deleted_at']
 
@@ -921,4 +922,68 @@ class ProviderTypeListSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = ProviderType
-        fields = ['id', 'type'] 
+        fields = ['id', 'type']
+
+
+# Serializers para nuevos modelos de precios y configuración fiscal
+
+class PriceSerializer(serializers.ModelSerializer):
+    """
+    Serializer para el modelo Price
+    """
+    class Meta:
+        model = Price
+        fields = '__all__'
+        read_only_fields = ('id', 'created_at', 'updated_at', 'confirmed_at', 'deleted_at')
+
+
+class FiscalDirectiveTypeSerializer(serializers.ModelSerializer):
+    """
+    Serializer para el modelo FiscalDirectiveType
+    """
+    class Meta:
+        model = FiscalDirectiveType
+        fields = '__all__'
+
+
+class FiscalDirectiveSerializer(serializers.ModelSerializer):
+    """
+    Serializer para el modelo FiscalDirective
+    """
+    type_detail = FiscalDirectiveTypeSerializer(source='type', read_only=True)
+    
+    class Meta:
+        model = FiscalDirective
+        fields = '__all__'
+        read_only_fields = ('id', 'created_at', 'updated_at', 'confirmed_at', 'deleted_at')
+
+
+class FiscalFormulaSerializer(serializers.ModelSerializer):
+    """
+    Serializer para el modelo FiscalFormula
+    """
+    class Meta:
+        model = FiscalFormula
+        fields = '__all__'
+        read_only_fields = ('id', 'created_at', 'updated_at', 'confirmed_at', 'deleted_at')
+
+
+class PriceFiscalConfigurationSerializer(serializers.ModelSerializer):
+    """
+    Serializer para el modelo PriceFiscalConfiguration
+    """
+    fiscal_formula_detail = FiscalFormulaSerializer(source='fiscal_formula', read_only=True)
+    
+    class Meta:
+        model = PriceFiscalConfiguration
+        fields = '__all__'
+        read_only_fields = ('id', 'created_at', 'updated_at', 'confirmed_at', 'deleted_at')
+
+
+class FiscalConfigurationDetailSerializer(serializers.ModelSerializer):
+    """
+    Serializer para el modelo FiscalConfigurationDetail
+    """
+    class Meta:
+        model = FiscalConfigurationDetail
+        fields = '__all__' 

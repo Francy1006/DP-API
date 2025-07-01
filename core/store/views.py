@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.utils import timezone
+from rest_framework.permissions import IsAuthenticated
 
 from .models import (
     ItemGroup, Menu, ItemCategory, ItemType, InstructionType, Instruction,
@@ -12,7 +13,8 @@ from .models import (
     RolePermissions, PackageType, TransportType, MeasureUnit, ProviderType,
     BankAccountType, Region, District, Bank, UserType, User, UserToken, 
     Package, ItemConfiguration, ItemConfigurationDetail, Provider, Product, 
-    Material, Service
+    Material, Service, Price, FiscalDirectiveType, FiscalDirective, FiscalFormula,
+    PriceFiscalConfiguration, FiscalConfigurationDetail
 )
 from .serializers import (
     ItemGroupSerializer, ItemGroupListSerializer,
@@ -46,7 +48,9 @@ from .serializers import (
     ProviderSerializer, ProviderListSerializer,
     ProductSerializer, ProductListSerializer,
     MaterialSerializer, MaterialListSerializer,
-    ServiceSerializer, ServiceListSerializer
+    ServiceSerializer, ServiceListSerializer,
+    PriceSerializer, FiscalDirectiveTypeSerializer, FiscalDirectiveSerializer,
+    FiscalFormulaSerializer, PriceFiscalConfigurationSerializer, FiscalConfigurationDetailSerializer
 )
 
 
@@ -175,9 +179,9 @@ class InstructionTypeViewSet(viewsets.ModelViewSet):
     queryset = InstructionType.objects.all()
     serializer_class = InstructionTypeSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    search_fields = ['name', 'description']
-    ordering_fields = ['name']
-    ordering = ['name']
+    search_fields = ['type', 'description']
+    ordering_fields = ['type']
+    ordering = ['type']
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -720,9 +724,9 @@ class PermissionTypeViewSet(viewsets.ModelViewSet):
     queryset = PermissionType.objects.all()
     serializer_class = PermissionTypeSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    search_fields = ['name', 'description']
-    ordering_fields = ['name']
-    ordering = ['name']
+    search_fields = ['type', 'description']
+    ordering_fields = ['type']
+    ordering = ['type']
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -1189,8 +1193,8 @@ class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['provider', 'type', 'group', 'category', 'package', 'is_active', 'is_deleted', 'is_confirmed']
-    search_fields = ['sku', 'description', 'OBS']
-    ordering_fields = ['description', 'gross_price', 'created_at']
+    search_fields = ['sku', 'description', 'obs']
+    ordering_fields = ['description', 'price', 'created_at']
     ordering = ['description']
 
     def get_serializer_class(self):
@@ -1226,8 +1230,8 @@ class MaterialViewSet(viewsets.ModelViewSet):
     serializer_class = MaterialSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['provider', 'type', 'group', 'category', 'package', 'is_active', 'is_deleted', 'is_confirmed']
-    search_fields = ['sku', 'description', 'OBS']
-    ordering_fields = ['description', 'gross_price', 'created_at']
+    search_fields = ['sku', 'description', 'obs']
+    ordering_fields = ['description', 'price', 'created_at']
     ordering = ['description']
 
     def get_serializer_class(self):
@@ -1263,8 +1267,8 @@ class ServiceViewSet(viewsets.ModelViewSet):
     serializer_class = ServiceSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['provider', 'type', 'group', 'category', 'is_active', 'is_deleted', 'is_confirmed']
-    search_fields = ['sku', 'description', 'OBS']
-    ordering_fields = ['description', 'gross_price', 'created_at']
+    search_fields = ['sku', 'description', 'obs']
+    ordering_fields = ['description', 'price', 'created_at']
     ordering = ['description']
 
     def get_serializer_class(self):
@@ -1289,3 +1293,87 @@ class ServiceViewSet(viewsets.ModelViewSet):
         queryset = self.queryset.filter(is_active=True, is_deleted__isnull=True)
         serializer = ServiceListSerializer(queryset, many=True)
         return Response(serializer.data)
+
+
+# Viewsets para nuevos modelos de precios y configuración fiscal
+
+class PriceViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para el modelo Price
+    """
+    queryset = Price.objects.all()
+    serializer_class = PriceSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        queryset = Price.objects.all()
+        is_active = self.request.query_params.get('is_active', None)
+        if is_active is not None:
+            queryset = queryset.filter(is_active=is_active.lower() == 'true')
+        return queryset
+
+
+class FiscalDirectiveTypeViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para el modelo FiscalDirectiveType
+    """
+    queryset = FiscalDirectiveType.objects.all()
+    serializer_class = FiscalDirectiveTypeSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class FiscalDirectiveViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para el modelo FiscalDirective
+    """
+    queryset = FiscalDirective.objects.all()
+    serializer_class = FiscalDirectiveSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        queryset = FiscalDirective.objects.all()
+        is_deleted = self.request.query_params.get('is_deleted', None)
+        if is_deleted is not None:
+            queryset = queryset.filter(is_deleted=is_deleted.lower() == 'true')
+        return queryset
+
+
+class FiscalFormulaViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para el modelo FiscalFormula
+    """
+    queryset = FiscalFormula.objects.all()
+    serializer_class = FiscalFormulaSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        queryset = FiscalFormula.objects.all()
+        is_deleted = self.request.query_params.get('is_deleted', None)
+        if is_deleted is not None:
+            queryset = queryset.filter(is_deleted=is_deleted.lower() == 'true')
+        return queryset
+
+
+class PriceFiscalConfigurationViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para el modelo PriceFiscalConfiguration
+    """
+    queryset = PriceFiscalConfiguration.objects.all()
+    serializer_class = PriceFiscalConfigurationSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        queryset = PriceFiscalConfiguration.objects.all()
+        is_deleted = self.request.query_params.get('is_deleted', None)
+        if is_deleted is not None:
+            queryset = queryset.filter(is_deleted=is_deleted.lower() == 'true')
+        return queryset
+
+
+class FiscalConfigurationDetailViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para el modelo FiscalConfigurationDetail
+    """
+    queryset = FiscalConfigurationDetail.objects.all()
+    serializer_class = FiscalConfigurationDetailSerializer
+    permission_classes = [IsAuthenticated]
