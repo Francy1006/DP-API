@@ -43,7 +43,13 @@ THIRD_APPS = [
 ]
 
 OWN_APPS = [
-    'store'
+    'users',
+    'authz',
+    'documentation',
+    'products',
+    'providers',
+    'pricing',
+    'sales',
 ]
 
 INSTALLED_APPS = [
@@ -57,7 +63,13 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'django_filters',
-    'store',
+    'users',
+    'authz',
+    'documentation',
+    'products',
+    'providers',
+    'pricing',
+    'sales',
 ]
 
 MIDDLEWARE = [
@@ -181,7 +193,13 @@ CORS_ALLOWED_ORIGINS = str(env("CORS_ALLOWED_ORIGINS")).split(",")
 
 # Disable Django migrations - using Flyway instead
 MIGRATION_MODULES = {
-    'store': None,
+    'users': None,
+    'authz': None,
+    'documentation': None,
+    'products': None,
+    'providers': None,
+    'pricing': None,
+    'sales': None,
     'admin': None,  # Habilitar para tablas del sistema
     'auth': None,   # Habilitar para tablas del sistema
     'contenttypes': None,  # Habilitar para tablas del sistema
@@ -196,7 +214,7 @@ JAZZMIN_SETTINGS = {
     "site_logo": None,
     "welcome_sign": "Bienvenido a DP-API",
     "copyright": "DP-API Ltd",
-    "search_model": ["auth.User", "store.Catalog"],
+    "search_model": ["auth.User", "products.Catalog"],
     "user_avatar": None,
     "topmenu_links": [
         {"name": "Home", "url": "admin:index", "permissions": ["auth.view_user"]},
@@ -208,14 +226,14 @@ JAZZMIN_SETTINGS = {
         "auth": "fas fa-users-cog",
         "auth.user": "fas fa-user",
         "auth.Group": "fas fa-users",
-        "store": "fas fa-shopping-cart",
-        "store.Catalog": "fas fa-list",
-        "store.Instruction": "fas fa-file-alt",
-        "store.InstructionType": "fas fa-tags",
-        "store.ItemGroup": "fas fa-layer-group",
-        "store.ItemCategory": "fas fa-th-large",
-        "store.ItemType": "fas fa-cube",
-        "store.Menu": "fas fa-bars",
+        "products": "fas fa-shopping-cart",
+        "products.Catalog": "fas fa-list",
+        "documentation.Instruction": "fas fa-file-alt",
+        "documentation.InstructionType": "fas fa-tags",
+        "products.ItemGroup": "fas fa-layer-group",
+        "products.ItemCategory": "fas fa-th-large",
+        "products.ItemType": "fas fa-cube",
+        "products.Menu": "fas fa-bars",
     },
     "default_icon_parents": "fas fa-chevron-circle-right",
     "default_icon_children": "fas fa-circle",

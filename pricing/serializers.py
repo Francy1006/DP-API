@@ -1,0 +1,78 @@
+from rest_framework import serializers
+from .models import (
+    FiscalDirectiveType, FiscalDirective, FiscalFormula, 
+    PriceFiscalConfiguration, Price, FiscalConfigurationDetail
+)
+
+class FiscalDirectiveTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FiscalDirectiveType
+        fields = ['id', 'type', 'description']
+        read_only_fields = ['id']
+
+
+class FiscalDirectiveSerializer(serializers.ModelSerializer):
+    type_name = serializers.CharField(source='type.type', read_only=True)
+    
+    class Meta:
+        model = FiscalDirective
+        fields = [
+            'id', 'code', 'obs', 'fiscal_directive', 'type', 'type_name',
+            'percentage', 'official_source_url', 'is_deleted', 'is_confirmed',
+            'created_at', 'updated_at', 'confirmed_at', 'deleted_at',
+            'created_by', 'confirmed_by', 'updated_by', 'deleted_by'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'confirmed_at', 'deleted_at']
+
+
+class FiscalFormulaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FiscalFormula
+        fields = [
+            'id', 'formula', 'formula_template', 'is_deleted', 'is_confirmed',
+            'created_at', 'updated_at', 'confirmed_at', 'deleted_at',
+            'created_by', 'confirmed_by', 'updated_by', 'deleted_by'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'confirmed_at', 'deleted_at']
+
+
+class PriceFiscalConfigurationSerializer(serializers.ModelSerializer):
+    fiscal_formula_name = serializers.CharField(source='fiscal_formula.formula', read_only=True)
+    
+    class Meta:
+        model = PriceFiscalConfiguration
+        fields = [
+            'id', 'fiscal_configuration', 'fiscal_formula', 'fiscal_formula_name',
+            'is_deleted', 'is_confirmed', 'created_at', 'updated_at',
+            'confirmed_at', 'deleted_at', 'created_by', 'confirmed_by',
+            'updated_by', 'deleted_by'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'confirmed_at', 'deleted_at']
+
+
+class PriceSerializer(serializers.ModelSerializer):
+    price_fiscal_configuration_name = serializers.CharField(source='price_fiscal_configuration.fiscal_configuration', read_only=True)
+    
+    class Meta:
+        model = Price
+        fields = [
+            'id', 'code', 'net_amount', 'gross_amount', 'iva_amount', 'retention_amount',
+            'price_fiscal_configuration', 'price_fiscal_configuration_name', 'is_active',
+            'is_deleted', 'is_confirmed', 'created_at', 'updated_at', 'confirmed_at',
+            'deleted_at', 'created_by', 'confirmed_by', 'updated_by', 'deleted_by'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'confirmed_at', 'deleted_at']
+
+
+class FiscalConfigurationDetailSerializer(serializers.ModelSerializer):
+    price_fiscal_configuration_name = serializers.CharField(source='price_fiscal_configuration.fiscal_configuration', read_only=True)
+    price_code = serializers.CharField(source='price.code', read_only=True)
+    fiscal_directive_name = serializers.CharField(source='fiscal_directive.fiscal_directive', read_only=True)
+    
+    class Meta:
+        model = FiscalConfigurationDetail
+        fields = [
+            'id', 'price_fiscal_configuration', 'price_fiscal_configuration_name',
+            'price', 'price_code', 'fiscal_directive', 'fiscal_directive_name', 'log'
+        ]
+        read_only_fields = ['id'] 

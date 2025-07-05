@@ -5,12 +5,15 @@
 2. [Arquitectura del Sistema](#arquitectura-del-sistema)
 3. [Configuración del Proyecto](#configuración-del-proyecto)
 4. [Base de Datos](#base-de-datos)
-5. [Modelos de Datos](#modelos-de-datos)
-6. [API Endpoints](#api-endpoints)
-7. [Autenticación y Permisos](#autenticación-y-permisos)
-8. [Configuración de Docker](#configuración-de-docker)
-9. [Despliegue](#despliegue)
-10. [Guías de Desarrollo](#guías-de-desarrollo)
+5. [Aplicaciones Django](#aplicaciones-django)
+6. [Modelos de Datos](#modelos-de-datos)
+7. [API Endpoints](#api-endpoints)
+8. [Autenticación y Permisos](#autenticación-y-permisos)
+9. [Configuración de Docker](#configuración-de-docker)
+10. [Despliegue](#despliegue)
+11. [Guías de Desarrollo](#guías-de-desarrollo)
+12. [Troubleshooting](#troubleshooting)
+13. [Referencias](#referencias)
 
 ---
 
@@ -40,18 +43,56 @@ DP-API/
 │   ├── urls.py             # URLs principales
 │   ├── views.py            # Vistas del proyecto
 │   ├── wsgi.py             # Configuración WSGI
-│   └── asgi.py             # Configuración ASGI
-├── store/                   # App principal de negocio
-│   ├── models.py           # Modelos de datos
-│   ├── views.py            # ViewSets y vistas
-│   ├── serializers.py      # Serializers DRF
-│   ├── urls.py             # URLs de la app
-│   └── admin.py            # Configuración admin
+│   ├── asgi.py             # Configuración ASGI
+│   ├── Dockerfile          # Imagen Docker (PostgreSQL)
+│   ├── entrypoint.sh       # Script de inicio
+│   └── requirements.txt    # Dependencias Python
+├── users/                   # Gestión de usuarios
+│   ├── models.py           # Modelos de usuarios
+│   ├── views.py            # ViewSets de usuarios
+│   ├── serializers.py      # Serializers de usuarios
+│   ├── urls.py             # URLs de usuarios
+│   └── admin.py            # Admin de usuarios
+├── authz/                   # Autorización y permisos
+│   ├── models.py           # Modelos de roles y permisos
+│   ├── views.py            # ViewSets de autorización
+│   ├── serializers.py      # Serializers de autorización
+│   ├── urls.py             # URLs de autorización
+│   └── admin.py            # Admin de autorización
+├── products/                # Gestión de productos
+│   ├── models.py           # Modelos de productos
+│   ├── views.py            # ViewSets de productos
+│   ├── serializers.py      # Serializers de productos
+│   ├── urls.py             # URLs de productos
+│   └── admin.py            # Admin de productos
+├── providers/               # Gestión de proveedores
+│   ├── models.py           # Modelos de proveedores
+│   ├── views.py            # ViewSets de proveedores
+│   ├── serializers.py      # Serializers de proveedores
+│   ├── urls.py             # URLs de proveedores
+│   └── admin.py            # Admin de proveedores
+├── pricing/                 # Gestión de precios
+│   ├── models.py           # Modelos de precios
+│   ├── views.py            # ViewSets de precios
+│   ├── serializers.py      # Serializers de precios
+│   ├── urls.py             # URLs de precios
+│   └── admin.py            # Admin de precios
+├── documentation/           # Gestión de documentación
+│   ├── models.py           # Modelos de documentación
+│   ├── views.py            # ViewSets de documentación
+│   ├── serializers.py      # Serializers de documentación
+│   ├── urls.py             # URLs de documentación
+│   └── admin.py            # Admin de documentación
+├── sales/                   # Gestión de ventas (placeholder)
+│   ├── models.py           # Modelos de ventas
+│   ├── views.py            # ViewSets de ventas
+│   ├── serializers.py      # Serializers de ventas
+│   ├── urls.py             # URLs de ventas
+│   └── admin.py            # Admin de ventas
 ├── templates/               # Templates HTML
+├── manage.py                # Comando Django (raíz)
 ├── docker-compose.yml       # Configuración Docker
-├── Dockerfile              # Imagen Docker
-├── requirements.txt         # Dependencias Python
-└── .api-env                # Variables de entorno
+└── .env                     # Variables de entorno
 ```
 
 ### Tecnologías Utilizadas
@@ -67,7 +108,7 @@ DP-API/
 
 ## 3. Configuración del Proyecto
 
-### Variables de Entorno (.api-env)
+### Variables de Entorno (.env)
 ```bash
 # Django settings
 DEBUG=0
@@ -114,7 +155,13 @@ INSTALLED_APPS = [
     'rest_framework',             # API REST
     'corsheaders',                # CORS
     'django_filters',             # Filtros
-    'store',                      # App principal
+    'users',                      # Gestión de usuarios
+    'authz',                      # Autorización y permisos
+    'products',                   # Gestión de productos
+    'providers',                  # Gestión de proveedores
+    'pricing',                    # Gestión de precios
+    'documentation',              # Gestión de documentación
+    'sales',                      # Gestión de ventas (placeholder)
 ]
 ```
 
@@ -170,7 +217,13 @@ CORS_ALLOWED_ORIGINS = str(env("CORS_ALLOWED_ORIGINS")).split(",")
 #### Deshabilitación de Migraciones
 ```python
 MIGRATION_MODULES = {
-    'store': None,
+    'users': None,
+    'authz': None,
+    'products': None,
+    'providers': None,
+    'pricing': None,
+    'documentation': None,
+    'sales': None,
     'admin': None,
     'auth': None,
     'contenttypes': None,
@@ -229,7 +282,99 @@ SET search_path TO ditaly_pasta, sbm_business, public;
 
 ---
 
-## 5. Modelos de Datos
+## 5. Aplicaciones Django
+
+### Organización de Aplicaciones
+
+El proyecto está organizado en 7 aplicaciones Django especializadas, cada una responsable de un dominio específico del negocio:
+
+#### 1. **users** - Gestión de Usuarios
+- **Responsabilidad**: Gestión de usuarios del sistema
+- **Modelos principales**: `User`, `UserType`
+- **Endpoints**: `/api/users/`, `/api/user-types/`
+- **Funcionalidades**: CRUD de usuarios, tipos de usuario, autenticación
+
+#### 2. **authz** - Autorización y Permisos
+- **Responsabilidad**: Gestión de roles, permisos y restricciones
+- **Modelos principales**: `Role`, `Permission`, `Restriction`
+- **Endpoints**: `/api/roles/`, `/api/permissions/`, `/api/restrictions/`
+- **Funcionalidades**: Control de acceso, gestión de permisos
+
+#### 3. **products** - Gestión de Productos
+- **Responsabilidad**: Gestión de catálogos y productos
+- **Modelos principales**: `Menu`, `ItemGroup`, `ItemCategory`, `ItemType`, `Catalog`, `Product`, `Package`, `PackageType`, `TransportType`, `MeasureUnit`
+- **Endpoints**: `/api/menus/`, `/api/item-groups/`, `/api/item-categories/`, `/api/item-types/`, `/api/catalogs/`, `/api/products/`, `/api/packages/`, `/api/package-types/`, `/api/transport-types/`, `/api/measure-units/`
+- **Funcionalidades**: CRUD de productos, catálogos, organización de productos, categorización
+
+#### 4. **providers** - Gestión de Proveedores
+- **Responsabilidad**: Gestión de proveedores y sus datos
+- **Modelos principales**: `Provider`, `ProviderType`, `Region`, `District`, `Bank`, `BankAccountType`
+- **Endpoints**: `/api/providers/`, `/api/provider-types/`, `/api/regions/`, `/api/districts/`, `/api/banks/`, `/api/bank-account-types/`
+- **Funcionalidades**: CRUD de proveedores, información de contacto, datos bancarios, regiones y distritos
+
+#### 5. **pricing** - Gestión de Precios
+- **Responsabilidad**: Gestión de precios y configuraciones fiscales
+- **Modelos principales**: `Price`, `FiscalDirective`, `FiscalDirectiveType`, `FiscalFormula`, `PriceFiscalConfiguration`, `FiscalConfigurationDetail`
+- **Endpoints**: `/api/prices/`, `/api/fiscal-directives/`, `/api/fiscal-directive-types/`, `/api/fiscal-formulas/`, `/api/price-fiscal-configurations/`, `/api/fiscal-configuration-details/`
+- **Funcionalidades**: Gestión de precios, directivas fiscales, configuraciones de precios
+
+#### 6. **documentation** - Gestión de Documentación
+- **Responsabilidad**: Gestión de instrucciones y documentación
+- **Modelos principales**: `Instruction`, `InstructionType`
+- **Endpoints**: `/api/instructions/`, `/api/instruction-types/`
+- **Funcionalidades**: CRUD de instrucciones, tipos de instrucción
+
+#### 7. **sales** - Gestión de Ventas (Placeholder)
+- **Responsabilidad**: Gestión de ventas (preparado para futuras implementaciones)
+- **Modelos principales**: `SalesBase` (abstracto)
+- **Endpoints**: Placeholder - funcionalidad futura
+- **Funcionalidades**: Preparado para futuras implementaciones de ventas
+
+### Estructura de Cada Aplicación
+
+Cada aplicación sigue la estructura estándar de Django:
+
+```
+app_name/
+├── __init__.py              # Inicialización de la app
+├── admin.py                 # Configuración del admin Django
+├── apps.py                  # Configuración de la aplicación
+├── models.py                # Modelos de datos
+├── serializers.py           # Serializers de DRF
+├── views.py                 # ViewSets y vistas
+├── urls.py                  # URLs de la aplicación
+└── tests.py                 # Tests unitarios
+```
+
+### Configuración de URLs
+
+Las URLs están organizadas jerárquicamente:
+
+```python
+# core/urls.py
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api/', include('users.urls')),
+    path('api/', include('authz.urls')),
+    path('api/', include('products.urls')),
+    path('api/', include('providers.urls')),
+    path('api/', include('pricing.urls')),
+    path('api/', include('documentation.urls')),
+    path('api/', include('sales.urls')),
+]
+```
+
+### Convenciones de Nomenclatura
+
+- **Aplicaciones**: Nombres en minúsculas, descriptivos del dominio
+- **Modelos**: PascalCase (ej: `User`, `Product`)
+- **ViewSets**: PascalCase + ViewSet (ej: `UserViewSet`)
+- **Serializers**: PascalCase + Serializer (ej: `UserSerializer`)
+- **URLs**: kebab-case (ej: `/api/users/`, `/api/user-types/`)
+
+---
+
+## 6. Modelos de Datos
 
 ### Modelos Principales
 
@@ -419,17 +564,81 @@ class Provider(models.Model):
 
 ---
 
-## 6. API Endpoints
+## 7. API Endpoints
 
 ### Base URL
 ```
 http://localhost:8081/api/
 ```
 
-### Endpoints Principales
+### Endpoints por Aplicación
 
-#### Catálogos
+#### **users** - Gestión de Usuarios
 ```
+GET    /api/users/                       # Listar usuarios
+POST   /api/users/                       # Crear usuario
+GET    /api/users/{id}/                  # Obtener usuario específico
+PUT    /api/users/{id}/                  # Actualizar usuario
+DELETE /api/users/{id}/                  # Eliminar usuario
+GET    /api/users/active/                # Solo usuarios activos
+GET    /api/users/confirmed/             # Solo usuarios confirmados
+
+GET    /api/user-types/                  # Listar tipos de usuario
+POST   /api/user-types/                  # Crear tipo de usuario
+GET    /api/user-types/{id}/             # Obtener tipo específico
+PUT    /api/user-types/{id}/             # Actualizar tipo
+DELETE /api/user-types/{id}/             # Eliminar tipo
+```
+
+#### **authz** - Autorización y Permisos
+```
+GET    /api/roles/                       # Listar roles
+POST   /api/roles/                       # Crear rol
+GET    /api/roles/{id}/                  # Obtener rol específico
+PUT    /api/roles/{id}/                  # Actualizar rol
+DELETE /api/roles/{id}/                  # Eliminar rol
+
+GET    /api/permissions/                 # Listar permisos
+POST   /api/permissions/                 # Crear permiso
+GET    /api/permissions/{id}/            # Obtener permiso específico
+PUT    /api/permissions/{id}/            # Actualizar permiso
+DELETE /api/permissions/{id}/            # Eliminar permiso
+
+GET    /api/restrictions/                # Listar restricciones
+POST   /api/restrictions/                # Crear restricción
+GET    /api/restrictions/{id}/           # Obtener restricción específica
+PUT    /api/restrictions/{id}/           # Actualizar restricción
+DELETE /api/restrictions/{id}/           # Eliminar restricción
+```
+
+#### **products** - Gestión de Productos
+```
+GET    /api/menus/                       # Listar menús
+POST   /api/menus/                       # Crear menú
+GET    /api/menus/{id}/                  # Obtener menú específico
+PUT    /api/menus/{id}/                  # Actualizar menú
+DELETE /api/menus/{id}/                  # Eliminar menú
+
+GET    /api/item-groups/                 # Listar grupos
+POST   /api/item-groups/                 # Crear grupo
+GET    /api/item-groups/{id}/            # Obtener grupo específico
+PUT    /api/item-groups/{id}/            # Actualizar grupo
+DELETE /api/item-groups/{id}/            # Eliminar grupo
+GET    /api/item-groups/catalog_groups/  # Solo grupos de catálogo
+
+GET    /api/item-categories/             # Listar categorías
+POST   /api/item-categories/             # Crear categoría
+GET    /api/item-categories/{id}/        # Obtener categoría específica
+PUT    /api/item-categories/{id}/        # Actualizar categoría
+DELETE /api/item-categories/{id}/        # Eliminar categoría
+GET    /api/item-categories/catalog_categories/  # Solo categorías de catálogo
+
+GET    /api/item-types/                  # Listar tipos
+POST   /api/item-types/                  # Crear tipo
+GET    /api/item-types/{id}/             # Obtener tipo específico
+PUT    /api/item-types/{id}/             # Actualizar tipo
+DELETE /api/item-types/{id}/             # Eliminar tipo
+
 GET    /api/catalogs/                    # Listar catálogos
 POST   /api/catalogs/                    # Crear catálogo
 GET    /api/catalogs/{id}/               # Obtener catálogo específico
@@ -437,69 +646,39 @@ PUT    /api/catalogs/{id}/               # Actualizar catálogo
 DELETE /api/catalogs/{id}/               # Eliminar catálogo
 GET    /api/catalogs/visible/            # Solo catálogos visibles
 POST   /api/catalogs/{id}/toggle_visibility/  # Alternar visibilidad
+
+GET    /api/products/                    # Listar productos
+POST   /api/products/                    # Crear producto
+GET    /api/products/{id}/               # Obtener producto específico
+PUT    /api/products/{id}/               # Actualizar producto
+DELETE /api/products/{id}/               # Eliminar producto
+
+GET    /api/packages/                    # Listar paquetes
+POST   /api/packages/                    # Crear paquete
+GET    /api/packages/{id}/               # Obtener paquete específico
+PUT    /api/packages/{id}/               # Actualizar paquete
+DELETE /api/packages/{id}/               # Eliminar paquete
+
+GET    /api/package-types/               # Listar tipos de paquete
+POST   /api/package-types/               # Crear tipo de paquete
+GET    /api/package-types/{id}/          # Obtener tipo específico
+PUT    /api/package-types/{id}/          # Actualizar tipo
+DELETE /api/package-types/{id}/          # Eliminar tipo
+
+GET    /api/transport-types/             # Listar tipos de transporte
+POST   /api/transport-types/             # Crear tipo de transporte
+GET    /api/transport-types/{id}/        # Obtener tipo específico
+PUT    /api/transport-types/{id}/        # Actualizar tipo
+DELETE /api/transport-types/{id}/        # Eliminar tipo
+
+GET    /api/measure-units/               # Listar unidades de medida
+POST   /api/measure-units/               # Crear unidad de medida
+GET    /api/measure-units/{id}/          # Obtener unidad específica
+PUT    /api/measure-units/{id}/          # Actualizar unidad
+DELETE /api/measure-units/{id}/          # Eliminar unidad
 ```
 
-**Campos del Catálogo:**
-- `id` - ID único
-- `sku` - Código SKU
-- `name` - Nombre del producto
-- `description` - Descripción
-- `menu_name` - Nombre del menú
-- `group_name` - Nombre del grupo
-- `category_name` - Nombre de la categoría
-- `type_name` - Nombre del tipo
-- `chef_recommendation` - Recomendación del chef
-- `is_visible` - Visible en catálogo
-- `cover_image` - Imagen de portada
-- `secondary_image` - Imagen secundaria
-- `complementary_image` - Imagen complementaria
-- `image_gallery` - Galería de imágenes
-- `price` - Precio
-- `min_quantity_purchase` - Cantidad mínima de compra
-- `rations_quantity` - Cantidad de raciones
-- `created_at` - Fecha de creación
-
-#### Menús
-```
-GET    /api/menus/                       # Listar menús
-POST   /api/menus/                       # Crear menú
-GET    /api/menus/{id}/                  # Obtener menú específico
-PUT    /api/menus/{id}/                  # Actualizar menú
-DELETE /api/menus/{id}/                  # Eliminar menú
-```
-
-#### Grupos de Items
-```
-GET    /api/item-groups/                 # Listar grupos
-POST   /api/item-groups/                 # Crear grupo
-GET    /api/item-groups/{id}/            # Obtener grupo específico
-PUT    /api/item-groups/{id}/            # Actualizar grupo
-DELETE /api/item-groups/{id}/            # Eliminar grupo
-GET    /api/item-groups/catalog_groups/  # Solo grupos de catálogo
-POST   /api/item-groups/{id}/toggle_catalog_render/  # Alternar renderizado
-```
-
-#### Categorías de Items
-```
-GET    /api/item-categories/             # Listar categorías
-POST   /api/item-categories/             # Crear categoría
-GET    /api/item-categories/{id}/        # Obtener categoría específica
-PUT    /api/item-categories/{id}/        # Actualizar categoría
-DELETE /api/item-categories/{id}/        # Eliminar categoría
-GET    /api/item-categories/catalog_categories/  # Solo categorías de catálogo
-POST   /api/item-categories/{id}/toggle_catalog_render/  # Alternar renderizado
-```
-
-#### Tipos de Items
-```
-GET    /api/item-types/                  # Listar tipos
-POST   /api/item-types/                  # Crear tipo
-GET    /api/item-types/{id}/             # Obtener tipo específico
-PUT    /api/item-types/{id}/             # Actualizar tipo
-DELETE /api/item-types/{id}/             # Eliminar tipo
-```
-
-#### Proveedores
+#### **providers** - Gestión de Proveedores
 ```
 GET    /api/providers/                   # Listar proveedores
 POST   /api/providers/                   # Crear proveedor
@@ -507,18 +686,78 @@ GET    /api/providers/{id}/              # Obtener proveedor específico
 PUT    /api/providers/{id}/              # Actualizar proveedor
 DELETE /api/providers/{id}/              # Eliminar proveedor
 GET    /api/providers/active/            # Solo proveedores activos
+
+GET    /api/provider-types/              # Listar tipos de proveedor
+POST   /api/provider-types/              # Crear tipo de proveedor
+GET    /api/provider-types/{id}/         # Obtener tipo específico
+PUT    /api/provider-types/{id}/         # Actualizar tipo
+DELETE /api/provider-types/{id}/         # Eliminar tipo
+
+GET    /api/regions/                     # Listar regiones
+POST   /api/regions/                     # Crear región
+GET    /api/regions/{id}/                # Obtener región específica
+PUT    /api/regions/{id}/                # Actualizar región
+DELETE /api/regions/{id}/                # Eliminar región
+
+GET    /api/districts/                   # Listar distritos
+POST   /api/districts/                   # Crear distrito
+GET    /api/districts/{id}/              # Obtener distrito específico
+PUT    /api/districts/{id}/              # Actualizar distrito
+DELETE /api/districts/{id}/              # Eliminar distrito
+
+GET    /api/banks/                       # Listar bancos
+POST   /api/banks/                       # Crear banco
+GET    /api/banks/{id}/                  # Obtener banco específico
+PUT    /api/banks/{id}/                  # Actualizar banco
+DELETE /api/banks/{id}/                  # Eliminar banco
+
+GET    /api/bank-account-types/          # Listar tipos de cuenta bancaria
+POST   /api/bank-account-types/          # Crear tipo de cuenta
+GET    /api/bank-account-types/{id}/     # Obtener tipo específico
+PUT    /api/bank-account-types/{id}/     # Actualizar tipo
+DELETE /api/bank-account-types/{id}/     # Eliminar tipo
 ```
 
-#### Usuarios
+#### **pricing** - Gestión de Precios
 ```
-GET    /api/users/                       # Listar usuarios
-POST   /api/users/                       # Crear usuario
-GET    /api/users/{id}/                  # Obtener usuario específico
-PUT    /api/users/{id}/                  # Actualizar usuario
-DELETE /api/users/{id}/                  # Eliminar usuario
+GET    /api/prices/                      # Listar precios
+POST   /api/prices/                      # Crear precio
+GET    /api/prices/{id}/                 # Obtener precio específico
+PUT    /api/prices/{id}/                 # Actualizar precio
+DELETE /api/prices/{id}/                 # Eliminar precio
+
+GET    /api/fiscal-directives/           # Listar directivas fiscales
+POST   /api/fiscal-directives/           # Crear directiva fiscal
+GET    /api/fiscal-directives/{id}/      # Obtener directiva específica
+PUT    /api/fiscal-directives/{id}/      # Actualizar directiva
+DELETE /api/fiscal-directives/{id}/      # Eliminar directiva
+
+GET    /api/fiscal-directive-types/      # Listar tipos de directiva fiscal
+POST   /api/fiscal-directive-types/      # Crear tipo de directiva
+GET    /api/fiscal-directive-types/{id}/ # Obtener tipo específico
+PUT    /api/fiscal-directive-types/{id}/ # Actualizar tipo
+DELETE /api/fiscal-directive-types/{id}/ # Eliminar tipo
+
+GET    /api/fiscal-formulas/             # Listar fórmulas fiscales
+POST   /api/fiscal-formulas/             # Crear fórmula fiscal
+GET    /api/fiscal-formulas/{id}/        # Obtener fórmula específica
+PUT    /api/fiscal-formulas/{id}/        # Actualizar fórmula
+DELETE /api/fiscal-formulas/{id}/        # Eliminar fórmula
+
+GET    /api/price-fiscal-configurations/ # Listar configuraciones fiscales de precios
+POST   /api/price-fiscal-configurations/ # Crear configuración
+GET    /api/price-fiscal-configurations/{id}/  # Obtener configuración específica
+PUT    /api/price-fiscal-configurations/{id}/  # Actualizar configuración
+DELETE /api/price-fiscal-configurations/{id}/  # Eliminar configuración
+
+GET    /api/fiscal-configuration-details/ # Listar detalles de configuración fiscal
+POST   /api/fiscal-configuration-details/ # Crear detalle
+GET    /api/fiscal-configuration-details/{id}/  # Obtener detalle específico
+PUT    /api/fiscal-configuration-details/{id}/  # Actualizar detalle
+DELETE /api/fiscal-configuration-details/{id}/  # Eliminar detalle
 ```
 
-#### Instrucciones
+#### **documentation** - Gestión de Documentación
 ```
 GET    /api/instructions/                # Listar instrucciones
 POST   /api/instructions/                # Crear instrucción
@@ -527,45 +766,18 @@ PUT    /api/instructions/{id}/           # Actualizar instrucción
 DELETE /api/instructions/{id}/           # Eliminar instrucción
 GET    /api/instructions/active/         # Solo instrucciones activas
 GET    /api/instructions/confirmed/      # Solo instrucciones confirmadas
-POST   /api/instructions/{id}/confirm/   # Confirmar instrucción
-POST   /api/instructions/{id}/soft_delete/  # Eliminación lógica
-POST   /api/instructions/{id}/restore/   # Restaurar instrucción
+
+GET    /api/instruction-types/           # Listar tipos de instrucción
+POST   /api/instruction-types/           # Crear tipo de instrucción
+GET    /api/instruction-types/{id}/      # Obtener tipo específico
+PUT    /api/instruction-types/{id}/      # Actualizar tipo
+DELETE /api/instruction-types/{id}/      # Eliminar tipo
 ```
 
-#### Paquetes
+#### **sales** - Gestión de Ventas (Placeholder)
 ```
-GET    /api/packages/                    # Listar paquetes
-POST   /api/packages/                    # Crear paquete
-GET    /api/packages/{id}/               # Obtener paquete específico
-PUT    /api/packages/{id}/               # Actualizar paquete
-DELETE /api/packages/{id}/               # Eliminar paquete
-```
-
-#### Bancos
-```
-GET    /api/banks/                       # Listar bancos
-POST   /api/banks/                       # Crear banco
-GET    /api/banks/{id}/                  # Obtener banco específico
-PUT    /api/banks/{id}/                  # Actualizar banco
-DELETE /api/banks/{id}/                  # Eliminar banco
-```
-
-#### Regiones
-```
-GET    /api/regions/                     # Listar regiones
-POST   /api/regions/                     # Crear región
-GET    /api/regions/{id}/                # Obtener región específica
-PUT    /api/regions/{id}/                # Actualizar región
-DELETE /api/regions/{id}/                # Eliminar región
-```
-
-#### Distritos
-```
-GET    /api/districts/                   # Listar distritos
-POST   /api/districts/                   # Crear distrito
-GET    /api/districts/{id}/              # Obtener distrito específico
-PUT    /api/districts/{id}/              # Actualizar distrito
-DELETE /api/districts/{id}/              # Eliminar distrito
+# Esta aplicación está preparada para futuras implementaciones
+# Los endpoints se agregarán cuando se implemente la funcionalidad de ventas
 ```
 
 ### Endpoints de Información
@@ -596,31 +808,32 @@ curl -H "Authorization: Token tu_token" \
      "http://localhost:8081/api/catalogs/?is_visible=true&search=pasta"
 ```
 
-#### Crear un catálogo
+#### Crear un usuario
 ```bash
 curl -X POST \
      -H "Authorization: Token tu_token" \
      -H "Content-Type: application/json" \
      -d '{
-       "sku": "PASTA001",
-       "name": "Pasta Carbonara",
-       "description": "Pasta italiana con salsa carbonara",
-       "menu": 1,
-       "group": 1,
-       "category": 1,
+       "code": "USER001",
        "type": 1,
-       "restriction": "uuid-restriction",
-       "usage_instructions": "uuid-instructions",
-       "price": "uuid-price",
-       "configuration": "uuid-config",
-       "created_by": "uuid-user"
+       "google_id": "google123",
+       "mail": "usuario@ejemplo.com",
+       "phone": 123456789,
+       "name": "Juan",
+       "last_name": "Pérez"
      }' \
-     "http://localhost:8081/api/catalogs/"
+     "http://localhost:8081/api/users/"
+```
+
+#### Obtener proveedores activos
+```bash
+curl -H "Authorization: Token tu_token" \
+     "http://localhost:8081/api/providers/active/"
 ```
 
 ---
 
-## 7. Autenticación y Permisos
+## 8. Autenticación y Permisos
 
 ### Tipos de Autenticación
 
@@ -662,7 +875,7 @@ docker-compose exec core python manage.py createsuperuser
 
 ---
 
-## 8. Configuración de Docker
+## 9. Configuración de Docker
 
 ### Docker Compose (docker-compose.yml)
 ```yaml
@@ -676,9 +889,18 @@ services:
     ports:
       - "8081:8000"
     env_file:
-      - ./.api-env
+      - ./.env
     volumes:
-      - .:/usr/src/app
+      - ./core:/usr/src/app/core
+      - ./users:/usr/src/app/users
+      - ./authz:/usr/src/app/authz
+      - ./products:/usr/src/app/products
+      - ./providers:/usr/src/app/providers
+      - ./pricing:/usr/src/app/pricing
+      - ./documentation:/usr/src/app/documentation
+      - ./sales:/usr/src/app/sales
+      - ./templates:/usr/src/app/templates
+      - ./manage.py:/usr/src/app/manage.py
     networks:
       - sbm-network
 
@@ -753,7 +975,7 @@ docker-compose down
 
 ---
 
-## 9. Despliegue
+## 10. Despliegue
 
 ### Requisitos del Sistema
 - Docker 20.10+
@@ -772,8 +994,8 @@ cd DP-API
 
 #### 2. Configurar variables de entorno
 ```bash
-cp .api-env.example .api-env
-# Editar .api-env con los valores correctos
+cp .env.example .env
+# Editar .env con los valores correctos
 ```
 
 #### 3. Construir y ejecutar
@@ -821,46 +1043,16 @@ DATABASES = {
 
 ---
 
-## 10. Guías de Desarrollo
+## 11. Guías de Desarrollo
 
 ### Estructura de Desarrollo
 
-#### Agregar un nuevo modelo
-1. Definir el modelo en `store/models.py`
-2. Crear el serializer en `store/serializers.py`
-3. Crear el ViewSet en `store/views.py`
-4. Registrar las URLs en `store/urls.py`
-5. Configurar el admin en `store/admin.py`
-
-#### Ejemplo: Agregar modelo Product
-```python
-# store/models.py
-class Product(models.Model):
-    name = models.CharField(max_length=100)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    
-    class Meta:
-        db_table = 'product'
-
-# store/serializers.py
-class ProductSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Product
-        fields = ['id', 'name', 'price']
-
-# store/views.py
-class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.all()
-    serializer_class = ProductSerializer
-
-# store/urls.py
-router.register(r'products', views.ProductViewSet)
-
-# store/admin.py
-@admin.register(Product)
-class ProductAdmin(admin.ModelAdmin):
-    list_display = ['name', 'price']
-```
+#### Agregar un nuevo modelo en una aplicación existente
+1. Definir el modelo en `app_name/models.py`
+2. Crear el serializer en `app_name/serializers.py`
+3. Crear el ViewSet en `app_name/views.py`
+4. Registrar las URLs en `app_name/urls.py`
+5. Configurar el admin en `app_name/admin.py`
 
 ### Convenciones de Código
 
@@ -872,56 +1064,26 @@ class ProductAdmin(admin.ModelAdmin):
 - Admin: `admin.py`
 
 #### Nombres de clases
-- Modelos: `PascalCase` (ej: `Product`)
-- Serializers: `PascalCase + Serializer` (ej: `ProductSerializer`)
-- ViewSets: `PascalCase + ViewSet` (ej: `ProductViewSet`)
+- Modelos: `PascalCase` (ej: `User`, `Product`)
+- Serializers: `PascalCase + Serializer` (ej: `UserSerializer`)
+- ViewSets: `PascalCase + ViewSet` (ej: `UserViewSet`)
 
 #### Nombres de URLs
-- Endpoints: `kebab-case` (ej: `/api/products/`)
-- Acciones: `snake_case` (ej: `/api/products/active/`)
+- Endpoints: `kebab-case` (ej: `/api/users/`)
+- Acciones: `snake_case` (ej: `/api/users/active/`)
 
-### Testing
-
-#### Ejecutar tests
-```bash
-docker-compose exec core python manage.py test
-```
-
-#### Ejecutar tests específicos
-```bash
-docker-compose exec core python manage.py test store.tests
-```
-
-### Debugging
-
-#### Logs de Django
-```bash
-docker-compose logs core
-```
-
-#### Shell de Django
-```bash
-docker-compose exec core python manage.py shell
-```
-
-#### Verificar base de datos
-```bash
-docker-compose exec core python manage.py dbshell
-```
-
-### Monitoreo
-
-#### Endpoints de salud
-- `GET /api/health/` - Estado general
-- `GET /api/info/` - Información del sistema
-
-#### Logs
-- Django logs: `docker-compose logs core`
-- Base de datos: Verificar conexión PostgreSQL
+#### Organización por Dominio
+- **users**: Todo lo relacionado con usuarios y tipos de usuario
+- **authz**: Roles, permisos y restricciones
+- **products**: Catálogos, productos, menús, grupos, categorías, tipos, paquetes, transporte, unidades de medida
+- **providers**: Proveedores, tipos de proveedor, regiones, distritos, bancos
+- **pricing**: Precios, directivas fiscales, fórmulas fiscales, configuraciones
+- **documentation**: Instrucciones y tipos de instrucción
+- **sales**: Placeholder para futuras implementaciones de ventas
 
 ---
 
-## 11. Troubleshooting
+## 12. Troubleshooting
 
 ### Problemas Comunes
 
@@ -931,7 +1093,7 @@ docker-compose exec core python manage.py dbshell
 docker ps | grep postgres
 
 # Verificar variables de entorno
-cat .api-env
+cat .env
 
 # Probar conexión
 docker-compose exec core python manage.py dbshell
@@ -976,7 +1138,7 @@ docker-compose exec core python manage.py check
 
 ---
 
-## 12. Referencias
+## 13. Referencias
 
 ### Documentación Oficial
 - [Django Documentation](https://docs.djangoproject.com/)
@@ -991,6 +1153,27 @@ docker-compose exec core python manage.py check
 
 ---
 
-**Última actualización**: Julio 2025
-**Versión**: 1.0.0
-**Mantenido por**: Equipo de Desarrollo DP-API 
+**Última actualización**: Enero 2025
+**Versión**: 3.1.0
+**Mantenido por**: Equipo de Desarrollo DP-API
+
+### Cambios en la Versión 3.1.0
+- ✅ Limpieza completa de archivos duplicados
+- ✅ Eliminación de Dockerfile duplicado (mantenido el de core/ con PostgreSQL)
+- ✅ Eliminación de entrypoint.sh duplicado
+- ✅ Eliminación de requirements.txt duplicado
+- ✅ Eliminación de manage.py duplicado (mantenido el de raíz)
+- ✅ Eliminación de templates duplicados
+- ✅ Eliminación de db.sqlite3 duplicado
+- ✅ Eliminación de flask-docker-compose.yml (no necesario)
+- ✅ Corrección de configuración Docker Compose con volúmenes específicos
+- ✅ Actualización de documentación técnica
+
+### Cambios en la Versión 3.0.0
+- ✅ Reorganización completa de aplicaciones Django
+- ✅ Eliminación de la aplicación `store` (funcionalidad integrada en `products`)
+- ✅ Aplicación `sales` convertida en placeholder para futuras implementaciones
+- ✅ Actualización de modelos y endpoints según la nueva estructura
+- ✅ Corrección de importaciones y referencias en todas las aplicaciones
+- ✅ Actualización de documentación técnica completa
+- ✅ Configuración de `verbose_name` en español para todas las aplicaciones

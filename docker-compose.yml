@@ -10,7 +10,16 @@ services:
     env_file:
       - ./.env
     volumes:
-      - .:/usr/src/app
+      - ./core:/usr/src/app/core
+      - ./users:/usr/src/app/users
+      - ./authz:/usr/src/app/authz
+      - ./products:/usr/src/app/products
+      - ./providers:/usr/src/app/providers
+      - ./pricing:/usr/src/app/pricing
+      - ./documentation:/usr/src/app/documentation
+      - ./sales:/usr/src/app/sales
+      - ./templates:/usr/src/app/templates
+      - ./manage.py:/usr/src/app/manage.py
     networks:
       - sbm-network
 

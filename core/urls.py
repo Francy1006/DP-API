@@ -17,6 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.authtoken import views as auth_views
+# from rest_framework.documentation import include_docs_urls
 from . import views
 
 urlpatterns = [
@@ -33,10 +34,16 @@ urlpatterns = [
     # Admin de Django
     path('admin/', admin.site.urls),
     
-    # URLs de la app store (con prefijo api)
-    path('api/', include('store.urls')),
-    
     # Autenticación REST Framework
     path('api-auth/', include('rest_framework.urls')),
     path('api-token-auth/', auth_views.obtain_auth_token),
+    
+    path('api/', include('users.urls')),
+    path('api/', include('authz.urls')),
+    path('api/', include('products.urls')),
+    path('api/', include('providers.urls')),
+    path('api/', include('pricing.urls')),
+    path('api/', include('documentation.urls')),
+    path('api/', include('sales.urls')),
+    # path('docs/', include_docs_urls(title='SBM API Documentation')),
 ]
