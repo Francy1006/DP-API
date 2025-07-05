@@ -19,7 +19,7 @@ env = environ.Env()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-environ.Env.read_env(os.path.join(BASE_DIR, '.api-env'))
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 SECRET_KEY = env("SECRET_KEY")
 DEBUG = env("DEBUG")
@@ -97,15 +97,15 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
+        'ENGINE': 'django.db.backends.postgresql',
         'NAME': env("DB_NAME"),
         'USER': env("DB_USER"),
         'PASSWORD': env("DB_PASSWORD"),
         'HOST': env("DB_HOST"),
         'PORT': env("DB_PORT"),
         'OPTIONS': {
-            'charset': 'utf8mb4',
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            'options': '-c search_path=ditaly_pasta,sbm_business,public',
+            'connect_timeout': 10,
         },
     }
 }
@@ -182,10 +182,10 @@ CORS_ALLOWED_ORIGINS = str(env("CORS_ALLOWED_ORIGINS")).split(",")
 # Disable Django migrations - using Flyway instead
 MIGRATION_MODULES = {
     'store': None,
-    # 'admin': None,  # Habilitar para tablas del sistema
-    # 'auth': None,   # Habilitar para tablas del sistema
-    # 'contenttypes': None,  # Habilitar para tablas del sistema
-    # 'sessions': None,  # Habilitar para tablas del sistema
+    'admin': None,  # Habilitar para tablas del sistema
+    'auth': None,   # Habilitar para tablas del sistema
+    'contenttypes': None,  # Habilitar para tablas del sistema
+    'sessions': None,  # Habilitar para tablas del sistema
 }
 
 # Django Jazzmin Configuration

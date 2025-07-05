@@ -1,19 +1,20 @@
-version: '3.9'
+version: '3.8'
 
 services:
   api:
     container_name: core
     build: ./core
-    command: sh -c "sleep 10s; python manage.py migrate; python manage.py runserver 0.0.0.0:8000"
+    command: sh -c "sleep 10s; python manage.py runserver 0.0.0.0:8000"
     ports:
       - "8081:8000"
     env_file:
-      - ./core/.api-env
+      - ./.env
     volumes:
-      - ./core:/usr/src/app
+      - .:/usr/src/app
     networks:
-      - shared-net
+      - sbm-network
 
 networks:
-  shared-net:
+  sbm-network:
     external: true
+    name: sbm-db_sbm-network

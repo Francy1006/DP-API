@@ -129,7 +129,6 @@ dmypy.json
 .pyre/
 
 # Django specific
-core/.api-env
 core/media/
 core/staticfiles/
 core/static/

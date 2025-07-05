@@ -3,11 +3,16 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.utils import timezone
 
-from .models import ItemGroup, Menu, ItemCategory, ItemType, InstructionType, Instruction
+from .models import (
+    ItemGroup, Menu, ItemCategory, ItemType, InstructionType, Instruction, Catalog, Provider,
+    PackageType, TransportType, MeasureUnit, ProviderType, BankAccountType, Region, District,
+    Bank, UserType, User, UserToken, Package
+)
 from .serializers import (
     ItemGroupSerializer, ItemGroupListSerializer,
     MenuSerializer, MenuListSerializer,
@@ -15,7 +20,21 @@ from .serializers import (
     ItemTypeSerializer, ItemTypeListSerializer,
     InstructionTypeSerializer, InstructionTypeListSerializer,
     InstructionSerializer, InstructionListSerializer,
-    InstructionCreateSerializer, InstructionUpdateSerializer
+    InstructionCreateSerializer, InstructionUpdateSerializer,
+    CatalogSerializer, CatalogListSerializer, CatalogCreateSerializer, CatalogUpdateSerializer,
+    ProviderSerializer, ProviderListSerializer, ProviderCreateSerializer, ProviderUpdateSerializer,
+    PackageTypeSerializer, PackageTypeListSerializer,
+    TransportTypeSerializer, TransportTypeListSerializer,
+    MeasureUnitSerializer, MeasureUnitListSerializer,
+    ProviderTypeSerializer, ProviderTypeListSerializer,
+    BankAccountTypeSerializer, BankAccountTypeListSerializer,
+    RegionSerializer, RegionListSerializer,
+    DistrictSerializer, DistrictListSerializer,
+    BankSerializer, BankListSerializer,
+    UserTypeSerializer, UserTypeListSerializer,
+    UserSerializer, UserListSerializer,
+    UserTokenSerializer, UserTokenListSerializer,
+    PackageSerializer, PackageListSerializer
 )
 
 
@@ -97,7 +116,7 @@ class ItemTypeViewSet(viewsets.ModelViewSet):
         return ItemTypeSerializer
 
 
-# ItemGroup ViewSet (existing)
+# ItemGroup ViewSet
 class ItemGroupViewSet(viewsets.ModelViewSet):
     """
     ViewSet para operaciones CRUD completas de ItemGroup
@@ -112,9 +131,6 @@ class ItemGroupViewSet(viewsets.ModelViewSet):
     ordering = ['group_name']
 
     def get_serializer_class(self):
-        """
-        Retorna el serializer apropiado según la acción
-        """
         if self.action == 'list':
             return ItemGroupListSerializer
         return ItemGroupSerializer
@@ -140,6 +156,227 @@ class ItemGroupViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
+# PackageType ViewSet
+class PackageTypeViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para operaciones CRUD completas de PackageType
+    """
+    queryset = PackageType.objects.all()
+    serializer_class = PackageTypeSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ['type', 'description']
+    ordering_fields = ['type']
+    ordering = ['type']
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return PackageTypeListSerializer
+        return PackageTypeSerializer
+
+
+# TransportType ViewSet
+class TransportTypeViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para operaciones CRUD completas de TransportType
+    """
+    queryset = TransportType.objects.all()
+    serializer_class = TransportTypeSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ['type', 'description']
+    ordering_fields = ['type']
+    ordering = ['type']
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return TransportTypeListSerializer
+        return TransportTypeSerializer
+
+
+# MeasureUnit ViewSet
+class MeasureUnitViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para operaciones CRUD completas de MeasureUnit
+    """
+    queryset = MeasureUnit.objects.all()
+    serializer_class = MeasureUnitSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ['measure_unit', 'description']
+    ordering_fields = ['measure_unit']
+    ordering = ['measure_unit']
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return MeasureUnitListSerializer
+        return MeasureUnitSerializer
+
+
+# ProviderType ViewSet
+class ProviderTypeViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para operaciones CRUD completas de ProviderType
+    """
+    queryset = ProviderType.objects.all()
+    serializer_class = ProviderTypeSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ['type', 'description']
+    ordering_fields = ['type']
+    ordering = ['type']
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return ProviderTypeListSerializer
+        return ProviderTypeSerializer
+
+
+# BankAccountType ViewSet
+class BankAccountTypeViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para operaciones CRUD completas de BankAccountType
+    """
+    queryset = BankAccountType.objects.all()
+    serializer_class = BankAccountTypeSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ['type', 'description']
+    ordering_fields = ['type']
+    ordering = ['type']
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return BankAccountTypeListSerializer
+        return BankAccountTypeSerializer
+
+
+# Region ViewSet
+class RegionViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para operaciones CRUD completas de Region
+    """
+    queryset = Region.objects.all()
+    serializer_class = RegionSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ['region', 'description']
+    ordering_fields = ['region']
+    ordering = ['region']
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return RegionListSerializer
+        return RegionSerializer
+
+
+# District ViewSet
+class DistrictViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para operaciones CRUD completas de District
+    """
+    queryset = District.objects.all()
+    serializer_class = DistrictSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['region']
+    search_fields = ['district', 'description']
+    ordering_fields = ['district']
+    ordering = ['district']
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return DistrictListSerializer
+        return DistrictSerializer
+
+
+# Bank ViewSet
+class BankViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para operaciones CRUD completas de Bank
+    """
+    queryset = Bank.objects.all()
+    serializer_class = BankSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ['bank', 'description']
+    ordering_fields = ['bank']
+    ordering = ['bank']
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return BankListSerializer
+        return BankSerializer
+
+
+# UserType ViewSet
+class UserTypeViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para operaciones CRUD completas de UserType
+    """
+    queryset = UserType.objects.all()
+    serializer_class = UserTypeSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ['type', 'description']
+    ordering_fields = ['type']
+    ordering = ['type']
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return UserTypeListSerializer
+        return UserTypeSerializer
+
+
+# User ViewSet
+class UserViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para operaciones CRUD completas de User
+    """
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['type', 'is_active', 'is_deleted', 'is_confirmed']
+    search_fields = ['name', 'last_name', 'mail', 'google_id']
+    ordering_fields = ['name', 'last_name', 'created_at']
+    ordering = ['name']
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return UserListSerializer
+        return UserSerializer
+
+    def get_queryset(self):
+        """
+        Filtrar usuarios eliminados por defecto
+        """
+        queryset = super().get_queryset()
+        if not self.request.query_params.get('include_deleted'):
+            queryset = queryset.filter(is_deleted__isnull=True)
+        return queryset
+
+
+# UserToken ViewSet
+class UserTokenViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para operaciones CRUD completas de UserToken
+    """
+    queryset = UserToken.objects.all()
+    serializer_class = UserTokenSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['user_id', 'revoked_at']
+    search_fields = ['ip_address', 'user_agent']
+    ordering_fields = ['created_at', 'expires_at']
+    ordering = ['-created_at']
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return UserTokenListSerializer
+        return UserTokenSerializer
+
+
 # InstructionType ViewSet
 class InstructionTypeViewSet(viewsets.ModelViewSet):
     """
@@ -149,14 +386,24 @@ class InstructionTypeViewSet(viewsets.ModelViewSet):
     serializer_class = InstructionTypeSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    search_fields = ['name', 'description']
-    ordering_fields = ['name']
-    ordering = ['name']
+    filterset_fields = ['is_deleted', 'is_confirmed']
+    search_fields = ['type', 'description']
+    ordering_fields = ['type']
+    ordering = ['type']
 
     def get_serializer_class(self):
         if self.action == 'list':
             return InstructionTypeListSerializer
         return InstructionTypeSerializer
+
+    def get_queryset(self):
+        """
+        Filtrar tipos de instrucción eliminados por defecto
+        """
+        queryset = super().get_queryset()
+        if not self.request.query_params.get('include_deleted'):
+            queryset = queryset.filter(is_deleted__isnull=True)
+        return queryset
 
 
 # Instruction ViewSet
@@ -187,7 +434,6 @@ class InstructionViewSet(viewsets.ModelViewSet):
         Filtrar instrucciones eliminadas por defecto
         """
         queryset = super().get_queryset()
-        # Por defecto, no mostrar instrucciones eliminadas
         if not self.request.query_params.get('include_deleted'):
             queryset = queryset.filter(is_deleted__isnull=True)
         return queryset
@@ -206,7 +452,7 @@ class InstructionViewSet(viewsets.ModelViewSet):
         """
         Endpoint para obtener solo instrucciones confirmadas
         """
-        queryset = self.queryset.filter(is_confirmed=True, is_deleted__isnull=True)
+        queryset = self.queryset.filter(is_confirmed=True)
         serializer = InstructionListSerializer(queryset, many=True)
         return Response(serializer.data)
 
@@ -218,7 +464,7 @@ class InstructionViewSet(viewsets.ModelViewSet):
         instruction = self.get_object()
         instruction.is_confirmed = True
         instruction.confirmed_at = timezone.now()
-        instruction.confirmed_by = request.data.get('confirmed_by', 'system')
+        instruction.confirmed_by = request.data.get('confirmed_by')
         instruction.save()
         serializer = self.get_serializer(instruction)
         return Response(serializer.data)
@@ -231,7 +477,7 @@ class InstructionViewSet(viewsets.ModelViewSet):
         instruction = self.get_object()
         instruction.is_deleted = True
         instruction.deleted_at = timezone.now()
-        instruction.deleted_by = request.data.get('deleted_by', 'system')
+        instruction.deleted_by = request.data.get('deleted_by')
         instruction.save()
         serializer = self.get_serializer(instruction)
         return Response(serializer.data)
@@ -250,366 +496,125 @@ class InstructionViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-# API Views individuales para mayor control
-from rest_framework.views import APIView
-
-
-# Menu API Views
-class MenuListAPIView(APIView):
+# Package ViewSet
+class PackageViewSet(viewsets.ModelViewSet):
     """
-    Vista para listar y crear menús
+    ViewSet para operaciones CRUD completas de Package
     """
+    queryset = Package.objects.all()
+    serializer_class = PackageSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['package_type', 'transport_type', 'measure_unit', 'is_deleted', 'is_confirmed']
+    search_fields = ['description']
+    ordering_fields = ['description', 'created_at']
+    ordering = ['description']
 
-    def get(self, request):
-        queryset = Menu.objects.all()
-        serializer = MenuListSerializer(queryset, many=True)
-        return Response(serializer.data)
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return PackageListSerializer
+        return PackageSerializer
 
-    def post(self, request):
-        serializer = MenuSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class MenuDetailAPIView(APIView):
-    """
-    Vista para obtener, actualizar y eliminar un menú específico
-    """
-    permission_classes = [IsAuthenticated]
-
-    def get_object(self, pk):
-        try:
-            return Menu.objects.get(pk=pk)
-        except Menu.DoesNotExist:
-            return None
-
-    def get(self, request, pk):
-        menu = self.get_object(pk)
-        if menu is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        serializer = MenuSerializer(menu)
-        return Response(serializer.data)
-
-    def put(self, request, pk):
-        menu = self.get_object(pk)
-        if menu is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        serializer = MenuSerializer(menu, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, request, pk):
-        menu = self.get_object(pk)
-        if menu is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        menu.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-# ItemCategory API Views
-class ItemCategoryListAPIView(APIView):
-    """
-    Vista para listar y crear categorías de items
-    """
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        queryset = ItemCategory.objects.all()
-        serializer = ItemCategoryListSerializer(queryset, many=True)
-        return Response(serializer.data)
-
-    def post(self, request):
-        serializer = ItemCategorySerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class ItemCategoryDetailAPIView(APIView):
-    """
-    Vista para obtener, actualizar y eliminar una categoría específica
-    """
-    permission_classes = [IsAuthenticated]
-
-    def get_object(self, pk):
-        try:
-            return ItemCategory.objects.get(pk=pk)
-        except ItemCategory.DoesNotExist:
-            return None
-
-    def get(self, request, pk):
-        item_category = self.get_object(pk)
-        if item_category is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        serializer = ItemCategorySerializer(item_category)
-        return Response(serializer.data)
-
-    def put(self, request, pk):
-        item_category = self.get_object(pk)
-        if item_category is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        serializer = ItemCategorySerializer(item_category, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, request, pk):
-        item_category = self.get_object(pk)
-        if item_category is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        item_category.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-# ItemType API Views
-class ItemTypeListAPIView(APIView):
-    """
-    Vista para listar y crear tipos de items
-    """
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        queryset = ItemType.objects.all()
-        serializer = ItemTypeListSerializer(queryset, many=True)
-        return Response(serializer.data)
-
-    def post(self, request):
-        serializer = ItemTypeSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class ItemTypeDetailAPIView(APIView):
-    """
-    Vista para obtener, actualizar y eliminar un tipo específico
-    """
-    permission_classes = [IsAuthenticated]
-
-    def get_object(self, pk):
-        try:
-            return ItemType.objects.get(pk=pk)
-        except ItemType.DoesNotExist:
-            return None
-
-    def get(self, request, pk):
-        item_type = self.get_object(pk)
-        if item_type is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        serializer = ItemTypeSerializer(item_type)
-        return Response(serializer.data)
-
-    def put(self, request, pk):
-        item_type = self.get_object(pk)
-        if item_type is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        serializer = ItemTypeSerializer(item_type, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, request, pk):
-        item_type = self.get_object(pk)
-        if item_type is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        item_type.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-# InstructionType API Views
-class InstructionTypeListAPIView(APIView):
-    """
-    Vista para listar y crear tipos de instrucciones
-    """
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        queryset = InstructionType.objects.all()
-        serializer = InstructionTypeListSerializer(queryset, many=True)
-        return Response(serializer.data)
-
-    def post(self, request):
-        serializer = InstructionTypeSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class InstructionTypeDetailAPIView(APIView):
-    """
-    Vista para obtener, actualizar y eliminar un tipo de instrucción específico
-    """
-    permission_classes = [IsAuthenticated]
-
-    def get_object(self, pk):
-        try:
-            return InstructionType.objects.get(pk=pk)
-        except InstructionType.DoesNotExist:
-            return None
-
-    def get(self, request, pk):
-        instruction_type = self.get_object(pk)
-        if instruction_type is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        serializer = InstructionTypeSerializer(instruction_type)
-        return Response(serializer.data)
-
-    def put(self, request, pk):
-        instruction_type = self.get_object(pk)
-        if instruction_type is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        serializer = InstructionTypeSerializer(instruction_type, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, request, pk):
-        instruction_type = self.get_object(pk)
-        if instruction_type is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        instruction_type.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-# Instruction API Views
-class InstructionListAPIView(APIView):
-    """
-    Vista para listar y crear instrucciones
-    """
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        queryset = Instruction.objects.filter(is_deleted__isnull=True)
-        serializer = InstructionListSerializer(queryset, many=True)
-        return Response(serializer.data)
-
-    def post(self, request):
-        serializer = InstructionCreateSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class InstructionDetailAPIView(APIView):
-    """
-    Vista para obtener, actualizar y eliminar una instrucción específica
-    """
-    permission_classes = [IsAuthenticated]
-
-    def get_object(self, pk):
-        try:
-            return Instruction.objects.get(pk=pk)
-        except Instruction.DoesNotExist:
-            return None
-
-    def get(self, request, pk):
-        instruction = self.get_object(pk)
-        if instruction is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        serializer = InstructionSerializer(instruction)
-        return Response(serializer.data)
-
-    def put(self, request, pk):
-        instruction = self.get_object(pk)
-        if instruction is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        serializer = InstructionUpdateSerializer(instruction, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, request, pk):
-        instruction = self.get_object(pk)
-        if instruction is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        # Eliminación lógica
-        instruction.is_deleted = True
-        instruction.deleted_at = timezone.now()
-        instruction.deleted_by = request.data.get('deleted_by', 'system')
-        instruction.save()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-# ItemGroup API Views (existing)
-class ItemGroupListAPIView(APIView):
-    """
-    Vista para listar y crear grupos de items
-    """
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
+    def get_queryset(self):
         """
-        Listar todos los grupos de items
+        Filtrar paquetes eliminados por defecto
         """
-        queryset = ItemGroup.objects.all()
-        serializer = ItemGroupListSerializer(queryset, many=True)
-        return Response(serializer.data)
-
-    def post(self, request):
-        """
-        Crear un nuevo grupo de items
-        """
-        serializer = ItemGroupSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        queryset = super().get_queryset()
+        if not self.request.query_params.get('include_deleted'):
+            queryset = queryset.filter(is_deleted__isnull=True)
+        return queryset
 
 
-class ItemGroupDetailAPIView(APIView):
+# Catalog ViewSet
+class CatalogViewSet(viewsets.ModelViewSet):
     """
-    Vista para obtener, actualizar y eliminar un grupo de items específico
+    ViewSet para operaciones CRUD completas de Catalog
     """
+    queryset = Catalog.objects.all()
+    serializer_class = CatalogSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['menu', 'group', 'category', 'type', 'chef_recommendation', 'is_visible', 'is_deleted', 'is_confirmed']
+    search_fields = ['name', 'description', 'sku']
+    ordering_fields = ['name', 'created_at']
+    ordering = ['-created_at']
 
-    def get_object(self, pk):
-        try:
-            return ItemGroup.objects.get(pk=pk)
-        except ItemGroup.DoesNotExist:
-            return None
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return CatalogListSerializer
+        elif self.action == 'create':
+            return CatalogCreateSerializer
+        elif self.action in ['update', 'partial_update']:
+            return CatalogUpdateSerializer
+        return CatalogSerializer
 
-    def get(self, request, pk):
+    def get_queryset(self):
         """
-        Obtener un grupo de items específico
+        Filtrar catálogos eliminados por defecto
         """
-        item_group = self.get_object(pk)
-        if item_group is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        serializer = ItemGroupSerializer(item_group)
+        queryset = super().get_queryset()
+        if not self.request.query_params.get('include_deleted'):
+            queryset = queryset.filter(is_deleted__isnull=True)
+        return queryset
+
+    @action(detail=False, methods=['get'])
+    def visible(self, request):
+        """
+        Endpoint para obtener solo catálogos visibles
+        """
+        queryset = self.queryset.filter(is_visible=True, is_deleted__isnull=True)
+        serializer = CatalogListSerializer(queryset, many=True)
         return Response(serializer.data)
 
-    def put(self, request, pk):
+    @action(detail=True, methods=['post'])
+    def toggle_visibility(self, request, pk=None):
         """
-        Actualizar un grupo de items
+        Endpoint para alternar la visibilidad de un catálogo
         """
-        item_group = self.get_object(pk)
-        if item_group is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        serializer = ItemGroupSerializer(item_group, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        catalog = self.get_object()
+        catalog.is_visible = not catalog.is_visible
+        catalog.save()
+        serializer = self.get_serializer(catalog)
+        return Response(serializer.data)
 
-    def delete(self, request, pk):
+
+# Provider ViewSet
+class ProviderViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para operaciones CRUD completas de Provider
+    """
+    queryset = Provider.objects.all()
+    serializer_class = ProviderSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['type', 'is_active', 'is_deleted', 'is_confirmed', 'dispatch_region', 'dispatch_district']
+    search_fields = ['provider', 'contact_name', 'company_name', 'contact_mail']
+    ordering_fields = ['provider', 'rating', 'created_at']
+    ordering = ['provider']
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return ProviderListSerializer
+        elif self.action == 'create':
+            return ProviderCreateSerializer
+        elif self.action in ['update', 'partial_update']:
+            return ProviderUpdateSerializer
+        return ProviderSerializer
+
+    def get_queryset(self):
         """
-        Eliminar un grupo de items
+        Filtrar proveedores eliminados por defecto
         """
-        item_group = self.get_object(pk)
-        if item_group is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        item_group.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        queryset = super().get_queryset()
+        if not self.request.query_params.get('include_deleted'):
+            queryset = queryset.filter(is_deleted__isnull=True)
+        return queryset
+
+    @action(detail=False, methods=['get'])
+    def active(self, request):
+        """
+        Endpoint para obtener solo proveedores activos
+        """
+        queryset = self.queryset.filter(is_active=True, is_deleted__isnull=True)
+        serializer = ProviderListSerializer(queryset, many=True)
+        return Response(serializer.data)
