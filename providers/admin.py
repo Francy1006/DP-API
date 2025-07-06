@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import (
-    ProviderType, BankAccountType, Region, District, Bank, Provider
+    ProviderType, ProviderGroup, BankAccountType, Region, District, Bank, Provider
 )
 
 @admin.register(ProviderType)
@@ -8,6 +8,14 @@ class ProviderTypeAdmin(admin.ModelAdmin):
     list_display = ['type', 'description']
     search_fields = ['type', 'description']
     ordering = ['type']
+
+
+@admin.register(ProviderGroup)
+class ProviderGroupAdmin(admin.ModelAdmin):
+    list_display = ['group_name', 'description', 'catalog_render']
+    list_filter = ['catalog_render']
+    search_fields = ['group_name', 'description']
+    ordering = ['group_name']
 
 
 @admin.register(BankAccountType)

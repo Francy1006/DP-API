@@ -4,9 +4,9 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
-from .models import Provider, ProviderType, Region, District, Bank, BankAccountType
+from .models import Provider, ProviderType, ProviderGroup, Region, District, Bank, BankAccountType
 from .serializers import (
-    ProviderSerializer, ProviderTypeSerializer, 
+    ProviderSerializer, ProviderTypeSerializer, ProviderGroupSerializer,
     RegionSerializer, DistrictSerializer, BankSerializer, BankAccountTypeSerializer
 )
 
@@ -19,6 +19,22 @@ class ProviderTypeViewSet(viewsets.ModelViewSet):
     search_fields = ['type', 'description']
     ordering_fields = ['type']
     ordering = ['type']
+
+
+class ProviderGroupViewSet(viewsets.ModelViewSet):
+    queryset = ProviderGroup.objects.all()
+    serializer_class = ProviderGroupSerializer
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ['group_name', 'description']
+    ordering_fields = ['group_name']
+    ordering = ['group_name']
+
+    @action(detail=False, methods=['get'])
+    def catalog_groups(self, request):
+        """Obtener solo grupos que se renderizan en catálogo"""
+        queryset = self.get_queryset().filter(catalog_render=True)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
 
 class RegionViewSet(viewsets.ModelViewSet):

@@ -1,10 +1,17 @@
 from rest_framework import serializers
-from .models import Provider, ProviderType, Region, District, Bank, BankAccountType
+from .models import Provider, ProviderType, ProviderGroup, Region, District, Bank, BankAccountType
 
 class ProviderTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProviderType
         fields = ['id', 'type', 'description']
+        read_only_fields = ['id']
+
+
+class ProviderGroupSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProviderGroup
+        fields = ['id', 'group_name', 'description', 'catalog_render']
         read_only_fields = ['id']
 
 

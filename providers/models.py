@@ -21,6 +21,25 @@ class ProviderType(models.Model):
         return self.type
 
 
+class ProviderGroup(models.Model):
+    """
+    Modelo para grupos de proveedores
+    """
+    id = models.AutoField(primary_key=True)
+    group_name = models.CharField(max_length=50, verbose_name="Nombre del Grupo")
+    description = models.TextField(verbose_name="Descripción")
+    catalog_render = models.BooleanField(default=True, verbose_name="Renderizar en Catálogo")
+
+    class Meta:
+        db_table = 'providers'
+        verbose_name = "Grupo de Proveedores"
+        verbose_name_plural = "Grupos de Proveedores"
+        ordering = ['group_name']
+
+    def __str__(self):
+        return self.group_name
+
+
 class BankAccountType(models.Model):
     """
     Modelo para tipos de cuenta bancaria
