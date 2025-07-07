@@ -1,3 +1,38 @@
+# Calavera Pirata Digital
+
+                                                       █                                                       █──▄────▄▄▄▄▄▄▄────▄───
+                                                       █─▀▀▄─▄█████████▄─▄▀▀──
+                                                       █─────██─▀███▀─██──────
+                                                       █───▄─▀████▀████▀─▄────
+                                                       █─▀█────██▀█▀██────█▀──
+        ▄████▄   ▒█████   ███▄    █  ██ ██ ▓█████ ▄▄▄  █    
+       ▒██▀ ▀█  ▒██▒  ██▒ ██ ▀█   █  ██ █▒ ▓█   ▀▒████▄     
+       ▒▓█    ▄ ▒██░  ██▒ ██  ▀█ █▒  ████░ ▒███  ▒██  ▀█▄   
+       ▒▓▓▄ ▄██ ▒██   ██░ ██▒  ▐▌█▒  ██ █▄ ▒▓█  ▄░██    ██  
+       ▒ ▓███▀ ░░ ████▓▒  ██░   ▓█░  █▒ ██▄░▒████▒▓█▄▄▄▓██▒ 
+       ░ ░▒ ▒  ░░ ▒░▒░▒░ ░ ▒░   ▒ ▒  ▒▒ ▓▒░░ ▒░ ░▒▒   ▓▒█░ 
+         ░  ▒     ░ ▒ ▒░ ░ ░░   ░ ▒  ░▒ ▒░ ░ ░  ░ ▒   ▒▒ ░ 
+       ░        ░ ░ ░ ▒     ░   ░ ░ ░ ░░ ░    ░    ░   ▒    
+       ░ ░          ░ ░           ░ ░  ░      ░  ░     ░  ░ 
+       ░                                                           
+       ▄▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄▄
+      █ ▄▄▄ █ ▀▀ ▄▀ ▀▄▀ █ ▄▄▄ █ ▄▀ ▀▄▀ █ ▄▄▄ █ ▄▄▄ █ ▀▀ ▄▀ ▀▄
+      █ ███ █ ▀ ▀▄█ ▄ ▀ █ ███ █ ▀▄█ ▄ ▀ █ ███ █ ███ █ ▀ ▀▄█ ▄
+      █▄▄▄█ █ █▄▀ █ ▀█ █ █▄▄▄█ █▄▀ █ ▀█ █▄▄▄█ █▄▄▄█ █ █▄▀ █ ▀
+      ▄▄▄▄▄▄█ ▀▄█▄▀ ▀ █▄█▄▄▄▄▄█ ▀▄█▄▀ ▀ █▄▄▄▄▄█▄▄▄▄▄█ ▀▄█▄▀ ▀
+
+
+
+
+## Símbolo Digital de los Mares Cibernéticos
+
+**Advertencia:** *Este símbolo marca territorio peligroso en el ciberespacio*
+
+---
+
+*"En las profundidades de la red, donde los datos son tesoros y la información es poder..."*
+
+
 # DP-API - Documentación Técnica Completa
 
 ## Índice
@@ -1219,7 +1254,7 @@ docker-compose exec core python manage.py check
 
 **Última actualización**: Enero 2025
 **Versión**: 3.2.0
-**Mantenido por**: Equipo de Desarrollo DP-API
+**Mantenido por**: Equipo de Desarrollo DP-API 
 
 ### Cambios en la Versión 3.2.0
 - ✅ Agregado campo `franchise_only` al modelo Menu
