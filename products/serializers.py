@@ -8,7 +8,7 @@ from .models import (
 class MenuSerializer(serializers.ModelSerializer):
     class Meta:
         model = Menu
-        fields = ['id', 'menu', 'description']
+        fields = ['id', 'menu', 'description', 'franchise_only']
         read_only_fields = ['id']
 
 

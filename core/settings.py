@@ -191,7 +191,8 @@ CORS_ALLOW_ALL_ORIGINS = True  # Solo para desarrollo
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = str(env("CORS_ALLOWED_ORIGINS")).split(",")
 
-# Disable Django migrations - using Flyway instead
+# Disable Django migrations for business apps - using Flyway instead
+# Enable migrations only for Django system apps
 MIGRATION_MODULES = {
     'users': None,
     'authz': None,
@@ -200,10 +201,11 @@ MIGRATION_MODULES = {
     'providers': None,
     'pricing': None,
     'sales': None,
-    'admin': None,  # Habilitar para tablas del sistema
-    'auth': None,   # Habilitar para tablas del sistema
-    'contenttypes': None,  # Habilitar para tablas del sistema
-    'sessions': None,  # Habilitar para tablas del sistema
+    # Django system apps - migrations enabled
+    # 'admin': None,  # Comentado para permitir migraciones
+    # 'auth': None,   # Comentado para permitir migraciones  
+    # 'contenttypes': None,  # Comentado para permitir migraciones
+    # 'sessions': None,  # Comentado para permitir migraciones
 }
 
 # Django Jazzmin Configuration

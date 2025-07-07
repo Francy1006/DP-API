@@ -28,6 +28,8 @@ class MenuViewSet(viewsets.ModelViewSet):
     ordering = ['menu']
 
 
+
+
 class ItemCategoryViewSet(viewsets.ModelViewSet):
     queryset = ItemCategory.objects.all()
     serializer_class = ItemCategorySerializer
@@ -126,6 +128,54 @@ class CatalogViewSet(viewsets.ModelViewSet):
         """Obtener solo catálogos visibles"""
         visible_catalogs = self.queryset.filter(is_visible=True)
         serializer = self.get_serializer(visible_catalogs, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def chef_recommendations(self, request):
+        """Obtener solo catálogos recomendados por el chef"""
+        chef_recommendations = self.queryset.filter(
+            chef_recommendation=True, 
+            is_visible=True,
+            is_confirmed=True,
+            is_deleted__isnull=True
+        )
+        serializer = self.get_serializer(chef_recommendations, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def salsas(self, request):
+        """Obtener solo catálogos de salsas"""
+        salsas = self.queryset.filter(
+            is_visible=True,
+            is_confirmed=True,
+            is_deleted__isnull=True,
+            category_id=2  # ID de la categoría "salsa"
+        )
+        serializer = self.get_serializer(salsas, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def pastas(self, request):
+        """Obtener solo catálogos de pastas"""
+        pastas = self.queryset.filter(
+            is_visible=True,
+            is_confirmed=True,
+            is_deleted__isnull=True,
+            category_id=1  # ID de la categoría "pasta"
+        )
+        serializer = self.get_serializer(pastas, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def franchise_only_catalogs(self, request):
+        """Obtener catálogos confirmados, activos, no eliminados y solo de franquicia"""
+        franchise_only_catalogs = self.queryset.filter(
+            is_confirmed=True,
+            is_visible=True,  # equivalente a is_active para catálogos
+            is_deleted__isnull=True,
+            menu__franchise_only=True
+        )
+        serializer = self.get_serializer(franchise_only_catalogs, many=True)
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'])

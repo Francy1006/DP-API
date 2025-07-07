@@ -7,7 +7,8 @@ from .models import (
 
 @admin.register(Menu)
 class MenuAdmin(admin.ModelAdmin):
-    list_display = ['menu', 'description']
+    list_display = ['menu', 'description', 'franchise_only']
+    list_filter = ['franchise_only']
     search_fields = ['menu', 'description']
     ordering = ['menu']
 

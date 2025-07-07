@@ -216,6 +216,8 @@ CORS_ALLOWED_ORIGINS = str(env("CORS_ALLOWED_ORIGINS")).split(",")
 
 #### Deshabilitación de Migraciones
 ```python
+# Disable Django migrations for business apps - using Flyway instead
+# Enable migrations only for Django system apps
 MIGRATION_MODULES = {
     'users': None,
     'authz': None,
@@ -224,10 +226,11 @@ MIGRATION_MODULES = {
     'pricing': None,
     'documentation': None,
     'sales': None,
-    'admin': None,
-    'auth': None,
-    'contenttypes': None,
-    'sessions': None,
+    # Django system apps - migrations enabled
+    # 'admin': None,  # Comentado para permitir migraciones
+    # 'auth': None,   # Comentado para permitir migraciones  
+    # 'contenttypes': None,  # Comentado para permitir migraciones
+    # 'sessions': None,  # Comentado para permitir migraciones
 }
 ```
 
@@ -384,6 +387,7 @@ class Menu(models.Model):
     id = models.AutoField(primary_key=True)
     menu = models.CharField(max_length=50, verbose_name="Menú")
     description = models.TextField(verbose_name="Descripción")
+    franchise_only = models.BooleanField(default=False, verbose_name="Solo Franquicia")
     
     class Meta:
         db_table = 'menu'
@@ -645,6 +649,10 @@ GET    /api/catalogs/{id}/               # Obtener catálogo específico
 PUT    /api/catalogs/{id}/               # Actualizar catálogo
 DELETE /api/catalogs/{id}/               # Eliminar catálogo
 GET    /api/catalogs/visible/            # Solo catálogos visibles
+GET    /api/catalogs/chef_recommendations/  # Solo recomendaciones del chef
+GET    /api/catalogs/salsas/             # Solo catálogos de salsas
+GET    /api/catalogs/pastas/             # Solo catálogos de pastas
+GET    /api/catalogs/franchise_only_catalogs/ # Solo catálogos de franquicia (confirmados, activos, no eliminados)
 POST   /api/catalogs/{id}/toggle_visibility/  # Alternar visibilidad
 
 GET    /api/products/                    # Listar productos
@@ -800,6 +808,37 @@ Todos los endpoints soportan:
 - **Ordenamiento**: `?ordering=field` o `?ordering=-field`
 - **Paginación**: `?page=1`
 
+### Endpoints de Filtros Personalizados
+
+#### **Catálogos - Filtros Especializados**
+```
+GET    /api/catalogs/visible/                    # Solo catálogos visibles
+GET    /api/catalogs/chef_recommendations/       # Solo recomendaciones del chef
+GET    /api/catalogs/salsas/                     # Solo catálogos de salsas (categoría=2)
+GET    /api/catalogs/pastas/                     # Solo catálogos de pastas (categoría=1)
+GET    /api/catalogs/franchise_only_catalogs/    # Solo catálogos de franquicia
+POST   /api/catalogs/{id}/toggle_visibility/     # Alternar visibilidad
+```
+
+#### **Criterios de Filtrado**
+- **visible**: `is_visible=True`
+- **chef_recommendations**: `chef_recommendation=True, is_visible=True, is_confirmed=True, is_deleted=null`
+- **salsas**: `is_visible=True, is_confirmed=True, is_deleted=null, category_id=2`
+- **pastas**: `is_visible=True, is_confirmed=True, is_deleted=null, category_id=1`
+- **franchise_only_catalogs**: `is_confirmed=True, is_visible=True, is_deleted=null, menu__franchise_only=True`
+
+#### **Otros Filtros Personalizados**
+```
+GET    /api/item-categories/catalog_categories/  # Solo categorías de catálogo
+GET    /api/item-groups/catalog_groups/          # Solo grupos de catálogo
+GET    /api/products/active/                     # Solo productos activos
+GET    /api/materials/active/                    # Solo materiales activos
+GET    /api/services/active/                     # Solo servicios activos
+GET    /api/providers/active/                    # Solo proveedores activos
+GET    /api/instructions/active/                 # Solo instrucciones activas
+GET    /api/instructions/confirmed/              # Solo instrucciones confirmadas
+```
+
 ### Ejemplos de Uso
 
 #### Obtener catálogos con filtros
@@ -808,21 +847,46 @@ curl -H "Authorization: Token tu_token" \
      "http://localhost:8081/api/catalogs/?is_visible=true&search=pasta"
 ```
 
-#### Crear un usuario
+#### Obtener recomendaciones del chef
 ```bash
-curl -X POST \
-     -H "Authorization: Token tu_token" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "code": "USER001",
-       "type": 1,
-       "google_id": "google123",
-       "mail": "usuario@ejemplo.com",
-       "phone": 123456789,
-       "name": "Juan",
-       "last_name": "Pérez"
-     }' \
-     "http://localhost:8081/api/users/"
+curl -H "Authorization: Token tu_token" \
+     "http://localhost:8081/api/catalogs/chef_recommendations/"
+```
+
+#### Obtener catálogos de salsas
+```bash
+curl -H "Authorization: Token tu_token" \
+     "http://localhost:8081/api/catalogs/salsas/"
+```
+
+#### Obtener catálogos de pastas
+```bash
+curl -H "Authorization: Token tu_token" \
+     "http://localhost:8081/api/catalogs/pastas/"
+```
+
+#### Obtener catálogos de franquicia
+```bash
+curl -H "Authorization: Token tu_token" \
+     "http://localhost:8081/api/catalogs/franchise_only_catalogs/"
+```
+
+#### Obtener solo categorías de catálogo
+```bash
+curl -H "Authorization: Token tu_token" \
+     "http://localhost:8081/api/item-categories/catalog_categories/"
+```
+
+#### Obtener solo grupos de catálogo
+```bash
+curl -H "Authorization: Token tu_token" \
+     "http://localhost:8081/api/item-groups/catalog_groups/"
+```
+
+#### Obtener productos activos
+```bash
+curl -H "Authorization: Token tu_token" \
+     "http://localhost:8081/api/products/active/"
 ```
 
 #### Obtener proveedores activos
@@ -1154,8 +1218,18 @@ docker-compose exec core python manage.py check
 ---
 
 **Última actualización**: Enero 2025
-**Versión**: 3.1.0
+**Versión**: 3.2.0
 **Mantenido por**: Equipo de Desarrollo DP-API
+
+### Cambios en la Versión 3.2.0
+- ✅ Agregado campo `franchise_only` al modelo Menu
+- ✅ Actualizado MenuSerializer para incluir el nuevo campo
+- ✅ Actualizado MenuAdmin para mostrar y filtrar por `franchise_only`
+- ✅ Creado endpoint `franchise_only_catalogs` para filtrar catálogos de franquicia
+- ✅ Configuración de migraciones del sistema Django (auth, admin, contenttypes, sessions)
+- ✅ Eliminación de endpoint redundante `selectall` para menús
+- ✅ Actualización completa de documentación técnica
+- ✅ Nuevos ejemplos de uso para endpoints de filtros personalizados
 
 ### Cambios en la Versión 3.1.0
 - ✅ Limpieza completa de archivos duplicados
@@ -1177,3 +1251,26 @@ docker-compose exec core python manage.py check
 - ✅ Corrección de importaciones y referencias en todas las aplicaciones
 - ✅ Actualización de documentación técnica completa
 - ✅ Configuración de `verbose_name` en español para todas las aplicaciones
+
+### Gestión de Migraciones
+
+#### Estrategia de Migraciones
+- **Aplicaciones de Negocio**: Las migraciones están deshabilitadas para usar Flyway
+- **Aplicaciones del Sistema Django**: Las migraciones están habilitadas para crear tablas del sistema
+
+#### Comando para Ejecutar Migraciones del Sistema
+```bash
+# Ejecutar migraciones solo para tablas del sistema Django
+docker-compose exec api python manage.py migrate --run-syncdb
+```
+
+#### Tablas del Sistema Creadas
+- `django_admin_log` - Logs del admin
+- `django_content_type` - Tipos de contenido
+- `django_session` - Sesiones de usuario
+- `auth_group` - Grupos de usuarios
+- `auth_group_permissions` - Permisos de grupos
+- `auth_permission` - Permisos del sistema
+- `auth_user` - Usuarios del sistema Django
+- `auth_user_groups` - Grupos de usuarios
+- `auth_user_user_permissions` - Permisos de usuarios

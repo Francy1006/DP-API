@@ -11,6 +11,7 @@ class Menu(models.Model):
     id = models.AutoField(primary_key=True)
     menu = models.CharField(max_length=50, verbose_name="Menú")
     description = models.TextField(verbose_name="Descripción")
+    franchise_only = models.BooleanField(default=False, verbose_name="Solo Franquicia")
 
     class Meta:
         db_table = 'menu'
