@@ -29,14 +29,14 @@
     ██  ║    │  > Ditaly pasta Official API                │    ║  ██
     ██  ║    │  > Catalogs, products, materials, service   │    ║  ██
     ██  ║    │  > BASIC CRUD                               │    ║  ██
-    ██  ║    │  > users, login and token validatio         │    ║  ██
+    ██  ║    │  > users, login and token validation        │    ║  ██
     ██  ║    │  > STATUS: ACTIVE                           │    ║  ██
     ██  ║    └─────────────────────────────────────────────┘    ║  ██
     ██  ║                                                       ║  ██
     ██  ║         ░▒▓ SBM-ADMIN ACCESS GRANTED ▓▒░              ║  ██
     ██  ║                                                       ║  ██
     ██  ╚═══════════════════════════════════════════════════════╝  ██
-    ██                                                            ██
+    ██                                                             ██
     ████████████████████████████████████████████████████████████████
 
 
