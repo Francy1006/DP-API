@@ -141,6 +141,18 @@ DP-API/
 │   ├── serializers.py      # Serializers de ventas
 │   ├── urls.py             # URLs de ventas
 │   └── admin.py            # Admin de ventas
+├── ticket/                  # Gestión de tickets
+│   ├── models.py           # Modelos de tickets
+│   ├── views.py            # ViewSets de tickets
+│   ├── serializers.py      # Serializers de tickets
+│   ├── urls.py             # URLs de tickets
+│   └── admin.py            # Admin de tickets
+├── branches/                # Gestión de sucursales
+│   ├── models.py           # Modelos de sucursales
+│   ├── views.py            # ViewSets de sucursales
+│   ├── serializers.py      # Serializers de sucursales
+│   ├── urls.py             # URLs de sucursales
+│   └── admin.py            # Admin de sucursales
 ├── templates/               # Templates HTML
 ├── manage.py                # Comando Django (raíz)
 ├── docker-compose.yml       # Configuración Docker
@@ -214,6 +226,8 @@ INSTALLED_APPS = [
     'pricing',                    # Gestión de precios
     'documentation',              # Gestión de documentación
     'sales',                      # Gestión de ventas (placeholder)
+    'ticket',                     # Gestión de tickets
+    'branches',                   # Gestión de sucursales
 ]
 ```
 
@@ -278,6 +292,8 @@ MIGRATION_MODULES = {
     'pricing': None,
     'documentation': None,
     'sales': None,
+    'ticket': None,
+    'branches': None,
     # Django system apps - migrations enabled
     # 'admin': None,  # Comentado para permitir migraciones
     # 'auth': None,   # Comentado para permitir migraciones  
@@ -334,6 +350,14 @@ SET search_path TO ditaly_pasta, sbm_business, public;
 - `service` - Servicios
 - `price` - Precios
 - `item_configuration` - Configuraciones de items
+- `ticket` - Tickets
+- `branch_types` - Tipos de sucursal
+- `branches` - Sucursales
+- `platform` - Plataformas
+- `platform_detail` - Detalles de plataforma
+- `company_agreements` - Empresas de convenios
+- `agreements` - Convenios
+- `agreement_detail` - Detalles de convenio
 
 ---
 
@@ -341,7 +365,7 @@ SET search_path TO ditaly_pasta, sbm_business, public;
 
 ### Organización de Aplicaciones
 
-El proyecto está organizado en 7 aplicaciones Django especializadas, cada una responsable de un dominio específico del negocio:
+El proyecto está organizado en 9 aplicaciones Django especializadas, cada una responsable de un dominio específico del negocio:
 
 #### 1. **users** - Gestión de Usuarios
 - **Responsabilidad**: Gestión de usuarios del sistema
@@ -385,6 +409,18 @@ El proyecto está organizado en 7 aplicaciones Django especializadas, cada una r
 - **Endpoints**: Placeholder - funcionalidad futura
 - **Funcionalidades**: Preparado para futuras implementaciones de ventas
 
+#### 8. **ticket** - Gestión de Tickets
+- **Responsabilidad**: Gestión de tickets
+- **Modelos principales**: `Ticket`
+- **Endpoints**: `/api/tickets/`
+- **Funcionalidades**: CRUD de tickets, endpoint personalizado `/web/` para filtrar por SKU
+
+#### 9. **branches** - Gestión de Sucursales
+- **Responsabilidad**: Gestión de sucursales, plataformas y convenios
+- **Modelos principales**: `BranchType`, `Branch`, `Platform`, `PlatformDetail`, `CompanyAgreement`, `Agreement`, `AgreementDetail`
+- **Endpoints**: `/api/branch-types/`, `/api/branches/`, `/api/platforms/`, `/api/platform-details/`, `/api/company-agreements/`, `/api/agreements/`, `/api/agreement-details/`
+- **Funcionalidades**: CRUD de sucursales, plataformas, empresas de convenios, convenios y sus detalles
+
 ### Estructura de Cada Aplicación
 
 Cada aplicación sigue la estructura estándar de Django:
@@ -416,6 +452,8 @@ urlpatterns = [
     path('api/', include('pricing.urls')),
     path('api/', include('documentation.urls')),
     path('api/', include('sales.urls')),
+    path('api/', include('ticket.urls')),
+    path('api/', include('branches.urls')),
 ]
 ```
 
@@ -840,6 +878,66 @@ DELETE /api/instruction-types/{id}/      # Eliminar tipo
 # Los endpoints se agregarán cuando se implemente la funcionalidad de ventas
 ```
 
+#### **ticket** - Gestión de Tickets
+```
+GET    /api/tickets/                       # Listar tickets
+POST   /api/tickets/                       # Crear ticket
+GET    /api/tickets/{id}/                  # Obtener ticket específico
+PUT    /api/tickets/{id}/                  # Actualizar ticket
+DELETE /api/tickets/{id}/                  # Eliminar ticket
+GET    /api/tickets/active/                # Solo tickets activos
+GET    /api/tickets/web/                   # Tickets con SKU que empiezan con 'DP00-'
+```
+
+#### **branches** - Gestión de Sucursales
+```
+GET    /api/branch-types/                  # Listar tipos de sucursal
+POST   /api/branch-types/                  # Crear tipo de sucursal
+GET    /api/branch-types/{id}/             # Obtener tipo específico
+PUT    /api/branch-types/{id}/             # Actualizar tipo
+DELETE /api/branch-types/{id}/             # Eliminar tipo
+
+GET    /api/branches/                      # Listar sucursales
+POST   /api/branches/                      # Crear sucursal
+GET    /api/branches/{id}/                 # Obtener sucursal específica
+PUT    /api/branches/{id}/                 # Actualizar sucursal
+DELETE /api/branches/{id}/                 # Eliminar sucursal
+GET    /api/branches/active/               # Solo sucursales activas
+
+GET    /api/platforms/                     # Listar plataformas
+POST   /api/platforms/                     # Crear plataforma
+GET    /api/platforms/{id}/                # Obtener plataforma específica
+PUT    /api/platforms/{id}/                # Actualizar plataforma
+DELETE /api/platforms/{id}/                # Eliminar plataforma
+GET    /api/platforms/active/              # Solo plataformas activas
+
+GET    /api/platform-details/              # Listar detalles de plataforma
+POST   /api/platform-details/              # Crear detalle de plataforma
+GET    /api/platform-details/{id}/         # Obtener detalle específico
+PUT    /api/platform-details/{id}/         # Actualizar detalle
+DELETE /api/platform-details/{id}/         # Eliminar detalle
+
+GET    /api/company-agreements/            # Listar empresas de convenios
+POST   /api/company-agreements/            # Crear empresa de convenio
+GET    /api/company-agreements/{id}/       # Obtener empresa específica
+PUT    /api/company-agreements/{id}/       # Actualizar empresa
+DELETE /api/company-agreements/{id}/       # Eliminar empresa
+GET    /api/company-agreements/active/     # Solo empresas activas
+
+GET    /api/agreements/                    # Listar convenios
+POST   /api/agreements/                    # Crear convenio
+GET    /api/agreements/{id}/               # Obtener convenio específico
+PUT    /api/agreements/{id}/               # Actualizar convenio
+DELETE /api/agreements/{id}/               # Eliminar convenio
+GET    /api/agreements/active/             # Solo convenios activos
+
+GET    /api/agreement-details/             # Listar detalles de convenio
+POST   /api/agreement-details/             # Crear detalle de convenio
+GET    /api/agreement-details/{id}/        # Obtener detalle específico
+PUT    /api/agreement-details/{id}/        # Actualizar detalle
+DELETE /api/agreement-details/{id}/        # Eliminar detalle
+```
+
 ### Endpoints de Información
 ```
 GET    /api/                             # Información general de la API
@@ -1015,6 +1113,8 @@ services:
       - ./pricing:/usr/src/app/pricing
       - ./documentation:/usr/src/app/documentation
       - ./sales:/usr/src/app/sales
+      - ./ticket:/usr/src/app/ticket
+      - ./branches:/usr/src/app/branches
       - ./templates:/usr/src/app/templates
       - ./manage.py:/usr/src/app/manage.py
     networks:
@@ -1196,6 +1296,8 @@ DATABASES = {
 - **pricing**: Precios, directivas fiscales, fórmulas fiscales, configuraciones
 - **documentation**: Instrucciones y tipos de instrucción
 - **sales**: Placeholder para futuras implementaciones de ventas
+- **ticket**: Tickets de venta con imágenes, SKU y referencias a productos
+- **branches**: Sucursales, tipos de sucursal, plataformas, empresas de convenios, convenios y sus detalles
 
 ---
 
@@ -1270,8 +1372,17 @@ docker-compose exec core python manage.py check
 ---
 
 **Última actualización**: Enero 2025
-**Versión**: 3.2.0
+**Versión**: 3.3.0
 **Mantenido por**: Equipo de Desarrollo DP-API 
+
+### Cambios en la Versión 3.3.0
+- ✅ Creada app `ticket` con modelo Ticket completo
+- ✅ Creada app `branches` con modelos: BranchType, Branch, Platform, PlatformDetail, CompanyAgreement, Agreement, AgreementDetail
+- ✅ Endpoint personalizado `/api/tickets/web/` para filtrar tickets por SKU que empiezan con 'DP00-'
+- ✅ CRUD completo para todas las entidades de tickets y sucursales
+- ✅ Actualización de docker-compose.yml con volúmenes de ticket y branches
+- ✅ Registro de nuevas apps en INSTALLED_APPS y MIGRATION_MODULES
+- ✅ Actualización completa de documentación técnica
 
 ### Cambios en la Versión 3.2.0
 - ✅ Agregado campo `franchise_only` al modelo Menu

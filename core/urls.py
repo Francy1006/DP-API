@@ -45,5 +45,8 @@ urlpatterns = [
     path('api/', include('pricing.urls')),
     path('api/', include('documentation.urls')),
     path('api/', include('sales.urls')),
+    path('api/', include('ticket.urls')),
+    path('api/', include('branches.urls')),
+    path('api/', include('business.urls')),
     # path('docs/', include_docs_urls(title='SBM API Documentation')),
 ]

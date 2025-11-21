@@ -50,6 +50,9 @@ OWN_APPS = [
     'providers',
     'pricing',
     'sales',
+    'ticket',
+    'branches',
+    'business',
 ]
 
 INSTALLED_APPS = [
@@ -70,6 +73,9 @@ INSTALLED_APPS = [
     'providers',
     'pricing',
     'sales',
+    'ticket',
+    'branches',
+    'business',
 ]
 
 MIDDLEWARE = [
@@ -201,6 +207,9 @@ MIGRATION_MODULES = {
     'providers': None,
     'pricing': None,
     'sales': None,
+    'ticket': None,
+    'branches': None,
+    'business': None,
     # Django system apps - migrations enabled
     # 'admin': None,  # Comentado para permitir migraciones
     # 'auth': None,   # Comentado para permitir migraciones  
@@ -216,7 +225,7 @@ JAZZMIN_SETTINGS = {
     "site_logo": None,
     "welcome_sign": "Bienvenido a DP-API",
     "copyright": "DP-API Ltd",
-    "search_model": ["auth.User", "products.Catalog"],
+    "search_model": ["auth.User", "products.Catalog", "ticket.Ticket", "branches.Branch"],
     "user_avatar": None,
     "topmenu_links": [
         {"name": "Home", "url": "admin:index", "permissions": ["auth.view_user"]},
@@ -236,6 +245,16 @@ JAZZMIN_SETTINGS = {
         "products.ItemCategory": "fas fa-th-large",
         "products.ItemType": "fas fa-cube",
         "products.Menu": "fas fa-bars",
+        "ticket": "fas fa-ticket-alt",
+        "ticket.Ticket": "fas fa-ticket-alt",
+        "branches": "fas fa-code-branch",
+        "branches.Branch": "fas fa-store",
+        "branches.BranchType": "fas fa-tag",
+        "branches.Platform": "fas fa-desktop",
+        "branches.CompanyAgreement": "fas fa-handshake",
+        "branches.Agreement": "fas fa-file-contract",
+        "business": "fas fa-briefcase",
+        "business.ItemFilterClassification": "fas fa-filter",
     },
     "default_icon_parents": "fas fa-chevron-circle-right",
     "default_icon_children": "fas fa-circle",
