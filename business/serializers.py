@@ -9,3 +9,4 @@ class ItemFilterClassificationSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
 
+

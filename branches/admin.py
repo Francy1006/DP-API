@@ -207,3 +207,4 @@ class AgreementDetailAdmin(admin.ModelAdmin):
 
 
 
+

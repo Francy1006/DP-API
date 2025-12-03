@@ -7,3 +7,4 @@ class BusinessConfig(AppConfig):
     verbose_name = 'Business'
 
 
+
