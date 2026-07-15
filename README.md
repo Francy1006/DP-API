@@ -109,6 +109,21 @@ The two APIs are independently deployable and have distinct responsibilities. Ph
 
 ## Architecture
 
+The platform currently uses a **hybrid architecture**, selected per business
+domain:
+
+- **Layered Architecture** is retained for CRUD-oriented and simple domains,
+  using the established ViewSet, serializer, model, and PostgreSQL flow.
+- **Hexagonal Architecture** is introduced incrementally for business-critical
+  domains with complex rules, workflows, audit requirements, or external
+  integrations. Controllers delegate to application use cases, use cases
+  depend on domain ports, and Django ORM acts as a persistence adapter.
+
+PostgreSQL remains the source of truth, Flyway owns schema evolution, and
+Django business models remain unmanaged where configured. Architecture changes
+do not alter the public REST contract or the ownership boundary between
+`dp-api` and `sbm-api`.
+
 ```text
 Frontend / AI channel
         ↓
@@ -123,6 +138,24 @@ PostgreSQL
 ```
 
 The physical database schema does not define API ownership by itself. Ownership is determined by the domain rule and by who is authorized to execute the operation.
+
+## Hexagonal Modules
+
+- ✅ Product (In Progress)
+- ⏳ Material
+- ⏳ Service
+- ⏳ Catalog
+- ⏳ Pricing
+- ⏳ Orders
+- ⏳ Inventory
+- ⏳ Ticket
+- ⏳ Franchise Provisioning
+- ⏳ AI Integration
+- ⏳ Workflow Automation
+
+Product is the first vertical migration and the reference implementation for
+all future hexagonal modules. The remaining modules are candidates only and
+must be migrated incrementally when their individual scope is authorized.
 
 ## API boundaries
 

@@ -11,10 +11,10 @@ from .models import (
     Catalog,
     ItemConfiguration,
     ItemConfigurationDetail,
-    Product,
     Material,
     Service,
 )
+from .presentation.serializers import ProductSerializer
 
 
 class MenuSerializer(serializers.ModelSerializer):
@@ -238,86 +238,6 @@ class ItemConfigurationDetailSerializer(serializers.ModelSerializer):
             "deleted_by",
         ]
         read_only_fields = ["created_at", "updated_at", "confirmed_at", "deleted_at"]
-
-
-class ProductSerializer(serializers.ModelSerializer):
-    type_name = serializers.CharField(
-        source="type.type",
-        read_only=True,
-    )
-
-    item_group_name = serializers.CharField(
-        source="item_group.group_name",
-        read_only=True,
-    )
-
-    category_name = serializers.CharField(
-        source="category.category",
-        read_only=True,
-    )
-
-    provider_name = serializers.CharField(
-        source="provider.provider",
-        read_only=True,
-    )
-
-    package_description = serializers.CharField(
-        source="package.description",
-        read_only=True,
-    )
-
-    price_gross_amount = serializers.IntegerField(
-        source="price.gross_amount",
-        read_only=True,
-    )
-
-    class Meta:
-        model = Product
-        fields = [
-            "id",
-            "code",
-            "sku",
-            "description",
-            "obs",
-            "package_unit",
-            "min_package_purchase",
-            "price",
-            "price_gross_amount",
-            "provider",
-            "provider_name",
-            "type",
-            "type_name",
-            "item_group",
-            "item_group_name",
-            "category",
-            "category_name",
-            "url",
-            "package",
-            "package_description",
-            "is_active",
-            "is_deleted",
-            "is_confirmed",
-            "created_at",
-            "updated_at",
-            "confirmed_at",
-            "deleted_at",
-            "created_by",
-            "confirmed_by",
-            "updated_by",
-            "deleted_by",
-            "version",
-        ]
-
-        read_only_fields = [
-            "id",
-            "is_deleted",
-            "created_at",
-            "updated_at",
-            "confirmed_at",
-            "deleted_at",
-            "deleted_by",
-            "version",
-        ]
 
 
 class MaterialSerializer(serializers.ModelSerializer):

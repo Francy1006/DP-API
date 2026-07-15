@@ -1375,9 +1375,20 @@ It is external and must exist before Compose starts.
 
 ## 13. Development conventions
 
-### 13.1 Layering
+### 13.1 Hybrid architecture
 
-Current target layering:
+The long-term architectural objective of `dp-api` is a **Hybrid Architecture**.
+Architecture is selected per business domain according to its complexity, not
+applied as a repository-wide rewrite:
+
+- **Layered Architecture** remains the default for CRUD-oriented and simple
+  domains whose behavior is adequately expressed by ViewSets, serializers,
+  models, and database constraints.
+- **Hexagonal Architecture** is used for business-critical domains with
+  complex rules, workflows, audit requirements, external integrations, or a
+  high expected rate of change.
+
+The existing layered flow remains valid for simple modules:
 
 ```text
 urls
@@ -1387,14 +1398,19 @@ urls
 → PostgreSQL
 ```
 
-Future service extraction is allowed when business operations become more complex:
+Hexagonal domains use explicit ports and adapters:
 
 ```text
-ViewSet
-→ application/service layer
-→ domain validation
-→ model/repository
+REST adapter / controller
+→ application use case
+→ domain entity and repository port
+→ Django ORM repository adapter
+→ PostgreSQL
 ```
+
+`Product` is the first vertical migration and the reference implementation for
+future hexagonal modules. This decision does not authorize migration of other
+modules as part of Product work.
 
 ### 13.2 Responsibilities
 
@@ -1646,6 +1662,32 @@ Future AI Tools must:
 
 **Reason:** The existing architecture disables migrations for domain apps and uses an externally managed database.
 
+### 18.8 Hybrid architecture by domain complexity
+
+**Decision:** `dp-api` combines Layered Architecture for simple CRUD domains
+with Hexagonal Architecture for business-critical domains.
+
+**Reason:** A universal rewrite would introduce unnecessary abstraction in
+simple modules and excessive migration risk. Incremental, vertical migrations
+allow one complete domain to be isolated, validated, and used as a reference
+before another candidate is authorized.
+
+The migration unit is always a complete vertical capability:
+
+```text
+REST contract
+→ presentation adapter
+→ application use cases
+→ domain rules and ports
+→ Django ORM persistence adapter
+→ existing PostgreSQL/Flyway schema
+→ regression validation
+```
+
+Migrations must preserve public contracts and database ownership. They do not
+permit `makemigrations`, `migrate`, schema duplication, or moving internal SBM
+responsibilities into `dp-api`.
+
 ---
 
 ## 19. Rules that must remain stable
@@ -1705,8 +1747,9 @@ Future AI Tools must:
 - ✅ Update serializer.
 - ✅ Update ViewSet and filters.
 - ✅ Validate the permitted Product operations: GET, POST, PATCH, HEAD, and logical delete.
+- ✅ Establish Product as the first Hexagonal Architecture reference implementation.
+- ✅ Add Product contract and application-use-case regression tests.
 - 🚧 Update `sbm-manager` consumer.
-- ⏳ Add regression tests.
 - ⏳ Deprecate Product endpoint in `sbm-api`.
 
 ### Phase 3 — Remaining catalog domain
@@ -1762,6 +1805,47 @@ Future AI Tools must:
 - ⏳ User and tenant propagation.
 - ⏳ Write Tools with approval.
 - ⏳ Tool observability.
+
+---
+
+## Hexagonal Architecture Roadmap
+
+Hexagonal migrations are incremental and vertical. A candidate is migrated
+only when its scope is explicitly authorized, and each migration must preserve
+the existing REST contract and Flyway-managed database mapping.
+
+1. **Product (In Progress)** — establishes the reference structure and contains
+   lifecycle, relationship, audit-log, PATCH, and logical-deletion rules that
+   should not live in HTTP controllers.
+2. **Material** — combines units, packaging, suppliers, traceability, and
+   future inventory or production constraints that require rules independent
+   of the REST and persistence layers.
+3. **Service** — can contain availability, costing, fulfillment, billing, and
+   lifecycle rules that must remain stable across different delivery channels.
+4. **Catalog** — coordinates publication, visibility, menus, product grouping,
+   franchise conditions, and channel-specific presentation rules.
+5. **Pricing** — contains fiscal calculations, price composition, effective
+   price selection, and regulatory rules that benefit from isolated domain
+   tests and replaceable data sources.
+6. **Orders** — requires transactional workflows, state transitions,
+   validations, idempotency, and coordination with pricing and inventory.
+7. **Inventory** — owns stock invariants, reservations, adjustments, and
+   concurrency-sensitive operations that must remain correct independently of
+   the delivery mechanism.
+8. **Ticket** — requires lifecycle transitions, assignment, priority, SLA,
+   authorization, notification, and audit rules beyond basic CRUD behavior.
+9. **Franchise / Tenant Provisioning** — is a critical cross-system workflow
+   with contractual, security, and provisioning rules. It is a hexagonal
+   candidate in its responsible internal platform service (`sbm-api`); its
+   inclusion here does not transfer ownership or expose it through `dp-api`.
+10. **AI Integration** — needs explicit ports for model providers and Tools,
+   with approval, authorization, observability, and audit rules independent of
+   a specific AI vendor.
+11. **Workflow Automation** — requires durable state transitions, retries,
+   idempotency, scheduling, and adapters for external systems.
+
+`Product` remains the only authorized hexagonal migration at this stage. The
+other entries are future candidates, not active refactoring scope.
 
 ---
 

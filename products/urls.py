@@ -14,10 +14,10 @@ router.register(r'packages', views.PackageViewSet)
 router.register(r'catalogs', views.CatalogViewSet)
 router.register(r'item-configurations', views.ItemConfigurationViewSet)
 router.register(r'item-configuration-details', views.ItemConfigurationDetailViewSet)
-router.register(r'products', views.ProductViewSet)
+router.register(r'products', views.ProductViewSet, basename='product')
 router.register(r'materials', views.MaterialViewSet)
 router.register(r'services', views.ServiceViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
-] 
+]

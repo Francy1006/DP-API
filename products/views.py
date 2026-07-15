@@ -1,13 +1,9 @@
 from django.shortcuts import render
-from django.db.models import Q
-from django.utils import timezone
-from rest_framework import viewsets, status
+from rest_framework import viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
-from users.models import User
 from .models import (
     Menu,
     ItemCategory,
@@ -20,7 +16,6 @@ from .models import (
     Catalog,
     ItemConfiguration,
     ItemConfigurationDetail,
-    Product,
     Material,
     Service,
 )
@@ -36,10 +31,10 @@ from .serializers import (
     CatalogSerializer,
     ItemConfigurationSerializer,
     ItemConfigurationDetailSerializer,
-    ProductSerializer,
     MaterialSerializer,
     ServiceSerializer,
 )
+from .presentation.views import ProductViewSet
 
 # Create your views here.
 
@@ -239,137 +234,6 @@ class ItemConfigurationDetailViewSet(viewsets.ModelViewSet):
     search_fields = ["code", "detail", "id_item"]
     ordering_fields = ["code", "detail"]
     ordering = ["code"]
-
-
-class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.filter(Q(is_deleted=False) | Q(is_deleted__isnull=True))
-    serializer_class = ProductSerializer
-    http_method_names = ["get", "post", "patch", "head", "options"]
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = [
-        "provider",
-        "type",
-        "item_group",
-        "category",
-        "is_active",
-        "is_deleted",
-        "is_confirmed",
-    ]
-    search_fields = ["code", "sku", "description"]
-    ordering_fields = ["description", "created_at"]
-    ordering = ["description"]
-
-    @staticmethod
-    def _format_log_timestamp(value):
-        return timezone.localtime(value).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-
-    def perform_create(self, serializer):
-        created_by = serializer.validated_data.get("created_by")
-        if created_by is None:
-            raise ValidationError({"created_by": "Este campo es requerido."})
-
-        created_at = timezone.now()
-        created_at_log = self._format_log_timestamp(created_at)
-        serializer.save(
-            created_at=created_at,
-            log=f"INIT: {created_at_log} (USER: {created_by.code});",
-        )
-
-    def perform_update(self, serializer):
-        updated_by = serializer.validated_data.get("updated_by")
-        if updated_by is None:
-            raise ValidationError({"updated_by": "Este campo es requerido."})
-
-        product = serializer.instance
-        changes = []
-
-        for field_name, new_value in serializer.validated_data.items():
-            if field_name == "updated_by":
-                continue
-
-            model_field = product._meta.get_field(field_name)
-            if model_field.is_relation:
-                log_value = getattr(new_value, model_field.target_field.attname)
-                current_value = getattr(product, model_field.attname)
-            else:
-                log_value = new_value
-                current_value = getattr(product, field_name)
-
-            if current_value != log_value:
-                changes.append(f"{field_name}={log_value!r}")
-
-        current_log = (product.log or "").strip()
-        if current_log and not current_log.endswith(";"):
-            current_log = f"{current_log};"
-
-        changes_log = ", ".join(changes) if changes else "sin cambios"
-        patch_log = f"PATCH: {changes_log} (USER: {updated_by.code});"
-        updated_log = f"{current_log} {patch_log}".strip()
-
-        serializer.save(
-            updated_at=timezone.now(),
-            log=updated_log,
-        )
-
-    @action(detail=True, methods=["post"], url_path="delete", url_name="delete")
-    def soft_delete(self, request, pk=None):
-        product = self.get_object()
-        deleted_by_code = request.data.get("deleted_by")
-
-        if not deleted_by_code:
-            return Response(
-                {"deleted_by": "Este campo es requerido."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            deleted_by = User.objects.get(code=deleted_by_code)
-        except User.DoesNotExist:
-            return Response(
-                {"deleted_by": "El usuario indicado no existe."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        deleted_at = timezone.now()
-        deleted_at_log = self._format_log_timestamp(deleted_at)
-        current_log = (product.log or "").strip()
-        if current_log and not current_log.endswith(";"):
-            current_log = f"{current_log};"
-
-        product.is_active = False
-        product.is_deleted = True
-        product.deleted_at = deleted_at
-        product.deleted_by = deleted_by
-        product.log = (
-            f"{current_log} DELETE: {deleted_at_log} (USER: {deleted_by.code});"
-        ).strip()
-        product.save(
-            update_fields=[
-                "is_active",
-                "is_deleted",
-                "deleted_at",
-                "deleted_by",
-                "log",
-            ]
-        )
-
-        return Response(
-            {
-                "id": product.id,
-                "is_active": product.is_active,
-                "is_deleted": product.is_deleted,
-                "deleted_at": product.deleted_at,
-                "deleted_by": product.deleted_by_id,
-            },
-            status=status.HTTP_200_OK,
-        )
-
-    @action(detail=False, methods=["get"])
-    def active(self, request):
-        """Obtener solo productos activos"""
-        active_products = self.queryset.filter(is_active=True)
-        serializer = self.get_serializer(active_products, many=True)
-        return Response(serializer.data)
 
 
 class MaterialViewSet(viewsets.ModelViewSet):
