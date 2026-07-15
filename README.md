@@ -141,21 +141,20 @@ The physical database schema does not define API ownership by itself. Ownership 
 
 ## Hexagonal Modules
 
-- ✅ Product (In Progress)
-- ⏳ Material
-- ⏳ Service
-- ⏳ Catalog
-- ⏳ Pricing
-- ⏳ Orders
-- ⏳ Inventory
-- ⏳ Ticket
-- ⏳ Franchise Provisioning
-- ⏳ AI Integration
-- ⏳ Workflow Automation
+- Product
+- Material
+- Service
+- Catalog
+- Pricing
+- Orders
+- Inventory
+- Ticket
+- Franchise Provisioning
+- AI Integration
+- Workflow Automation
 
 Product is the first vertical migration and the reference implementation for
-all future hexagonal modules. The remaining modules are candidates only and
-must be migrated incrementally when their individual scope is authorized.
+the platform's hexagonal modules.
 
 ## API boundaries
 
