@@ -20,7 +20,7 @@
       █▄▄▄█ █ █▄▀ █ ▀█ █ █▄▄▄█ █▄▀ █ ▀█ █▄▄▄█ █▄▄▄█ █ █▄▀ █ ▀
       ▄▄▄▄▄▄█ ▀▄█▄▀ ▀ █▄█▄▄▄▄▄█ ▀▄█▄▀ ▀ █▄▄▄▄▄█▄▄▄▄▄█ ▀▄█▄▀ ▀
 
-    ████████████████████████████████████████████████████████████████
+    █████████████████████████████████████████████████████████████████
     ██  ║                                                       ║  ██
     ██  ║               ░▒▓ DP - API ▓▒░                        ║  ██
     ██  ║                                                       ║  ██
@@ -36,7 +36,7 @@
     ██  ║                                                       ║  ██
     ██  ╚═══════════════════════════════════════════════════════╝  ██
     ██                                                             ██
-    ████████████████████████████████████████████████████████████████
+    █████████████████████████████████████████████████████████████████
 ```
 
 # DP-API
@@ -49,14 +49,14 @@ Client-facing REST API for the Ditaly Pasta business domain within **SBM Suite**
 
 ```text
 Client user
-→ SBM Manager / client application / AI assistant
+→ SBM Manager / client application
 → DP-API
 → Ditaly Pasta business operations
 ```
 
-`dp-api` owns client-facing business capabilities such as products, prices, providers, branches, catalogs and tickets.
+`dp-api` is the decoupled API boundary for Ditaly Pasta client operations. `sbm-manager` and other client applications consume `dp-api` for products, prices, providers, branches, catalogs, tickets and other brand-owned capabilities.
 
-Global platform administration remains in `sbm-api`.
+`sbm-api` is a separate internal API reserved for critical platform processes and global administration. Client applications do not use it for normal Ditaly Pasta operations.
 
 ```text
 Client operation     → dp-api
@@ -65,6 +65,8 @@ Platform operation   → sbm-api
 
 A client user may create products or modify prices, but cannot create a new franchise, activate uncontracted modules or provision a new tenant.
 
+The two APIs are independently deployable and have distinct responsibilities. Physical database schema location does not merge their API ownership boundaries.
+
 ## Current status
 
 - Active repository.
@@ -72,7 +74,8 @@ A client user may create products or modify prices, but cannot create a new fran
 - Django REST API running with Docker.
 - PostgreSQL connection using `ditaly_pasta`, `sbm_business` and `public` schemas.
 - Django Jazzmin administration interface available.
-- Domain migration from `sbm-api` pending.
+- Client-facing domain boundary decoupled from the internal `sbm-api`.
+- Designed as the Ditaly Pasta API consumed by `sbm-manager`.
 - AI integration planned through `sbm-ai-assistant`.
 - Production deployment planned.
 
@@ -267,19 +270,6 @@ ditaly_pasta,sbm_business,public
 ```
 
 Do not generate or apply Django migrations for the business apps without first validating the database ownership strategy.
-
-## Development roadmap
-
-1. Consolidate `Product` in `dp-api`.
-2. Migrate client-facing business logic currently located in `sbm-api`.
-3. Consolidate pricing and commercial configuration.
-4. Consolidate providers, branches, clients, tickets and orders.
-5. Update `sbm-manager` to consume only `dp-api` for client operations.
-6. Add automated tests and API contract validation.
-7. Harden authentication, authorization and tenant isolation.
-8. Integrate `sbm-ai-assistant` through explicit REST tools.
-9. Add auditability and human approval for sensitive AI actions.
-10. Deploy development, staging and production environments.
 
 ## AI integration
 
