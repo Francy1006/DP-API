@@ -1,6 +1,6 @@
 # PROJECT_CONTEXT.md
 
-> **Last updated:** 2026-07-14
+> **Last updated:** 2026-07-15
 >
 > **Purpose of this file**
 >
@@ -257,6 +257,175 @@ sbm-network
 ```
 
 ---
+
+
+### 3.7 Latest validated implementation progress — 2026-07-15
+
+The first backend portion of the `Product` vertical migration is now implemented and validated in `dp-api`.
+
+The migration boundary remains:
+
+```text
+Ditaly Pasta client operation
+→ sbm-manager
+→ dp-api
+
+Internal or critical platform operation
+→ sbm-api
+```
+
+The immediate continuation is no longer another backend resource. It is migrating the Product consumer in `sbm-manager` from `sbm-api` to the validated `dp-api` contract.
+
+#### `products/models.py`
+
+- `Product.group` was renamed to `Product.item_group`.
+- The mapped database column remains `item_group`.
+- `Product.price` was changed from a scalar field to a foreign key targeting `pricing.Price.code`.
+- Main domain relationships were changed to protective deletion behavior where appropriate.
+- The model remains unmanaged because Flyway owns the schema.
+- The legacy PostgreSQL column `gross_price` remains database-only. Existing rows contain `0`; the commercial value exposed by the API is `Price.gross_amount` through `price_gross_amount`.
+
+#### `products/admin.py`
+
+All stale references to `group` were replaced with `item_group` in:
+
+- `list_display`;
+- `list_filter`;
+- `fieldsets`.
+
+Validation result:
+
+```text
+System check identified no issues (0 silenced).
+```
+
+#### `products/serializers.py`
+
+`ProductSerializer` now exposes the validated Product contract, including:
+
+```text
+price
+price_gross_amount
+item_group
+item_group_name
+provider_name
+type_name
+category_name
+package_description
+```
+
+Stale Product response fields such as `group`, `group_name`, and `price_description` are no longer exposed.
+
+The internal `log` field is intentionally not exposed by Product serializers. It is an audit/tamper-detection field and must remain database-side.
+
+#### `products/views.py`
+
+`filterset_fields` was updated from `group` to `item_group`.
+
+The Product endpoint intentionally supports:
+
+```text
+GET
+POST
+PATCH
+HEAD
+OPTIONS
+```
+
+Full update through `PUT` and physical deletion through HTTP `DELETE` are disabled and return HTTP 405.
+
+Logical deletion uses:
+
+Method:
+
+```text
+POST
+```
+
+```text
+/api/products/{id}/delete/
+```
+
+Normal Product querysets exclude logically deleted rows.
+
+Audit behavior implemented for Product:
+
+```text
+INIT: <timestamp> (USER: <user_code>);
+PATCH: field='value', ... (USER: <user_code>);
+DELETE: <timestamp> (USER: <user_code>);
+```
+
+Every log entry must end in `;`. PATCH automatically sets `updated_at`; logical deletion sets `is_active=False`, `is_deleted=True`, `deleted_at`, and `deleted_by`.
+
+#### `pricing/models.py`
+
+The old Django model referenced fields that do not match the live PostgreSQL table. Observed failures included:
+
+```text
+column price.price_fiscal_configuration does not exist
+```
+
+and:
+
+```text
+column price.record_type does not exist
+```
+
+A current data extraction from PostgreSQL confirmed the real columns of `ditaly_pasta.price` include:
+
+```text
+id
+code
+base_net_amount
+net_amount
+gross_amount
+iva_amount
+aditional_tax_amount
+retention_amount
+price_configuration
+is_current
+is_deleted
+is_confirmed
+created_at
+created_by
+record_item_code
+price_record_type
+```
+
+The correct field is therefore:
+
+```text
+price_record_type
+```
+
+not:
+
+```text
+record_type
+```
+
+The Django mapping was aligned with those confirmed columns. The DBML documentation was identified as stale for `price_record_type` and must still be synchronized separately.
+
+#### `pricing` consumers
+
+`pricing/admin.py`, `pricing/serializers.py`, and `pricing/views.py` were synchronized with the final `Price` mapping. Stale Price references such as `record_type`, `price_fiscal_configuration`, and `is_active` were removed from the Price flow. References to `price_fiscal_configuration` that remain in `FiscalConfigurationDetail` are valid and belong to that separate model.
+
+#### Current validation state
+
+- Django system checks: passing.
+- `GET /api/products/`: HTTP 200 with standard pagination.
+- `GET /api/products/{id}/`: HTTP 200 for visible products.
+- `GET /api/prices/`: HTTP 200.
+- Product CREATE: validated with HTTP 201.
+- Product PATCH: validated with HTTP 200 and automatic `updated_at`.
+- Product logical delete: validated; the row remains in PostgreSQL and disappears from normal Product endpoints.
+- Product HEAD list and detail: HTTP 200.
+- Product PUT and HTTP DELETE: HTTP 405.
+- No Django migration was created.
+- PostgreSQL structure was not altered.
+
+Audit identity is not hardcoded. At present `created_by`, `updated_by`, and `deleted_by` are validated against `users.User.code` but are supplied by the client request. This is a known spoofing risk caused by the unresolved mapping between Django authentication users and business users. It belongs to the later authentication/security phase and must not displace the immediate Product frontend migration.
 
 ## 4. Current architecture
 
@@ -962,14 +1131,22 @@ The migration should establish the canonical implementation in `dp-api` before r
 
 ### 9.5 Current known `Product` concerns
 
-Preliminary review identified differences involving:
+The following backend differences were resolved in `dp-api`:
 
 - Price representation and relationship.
 - `group` versus `item_group` naming.
 - Foreign-key delete policies.
-- Model completeness between repositories.
+- Product and Price mappings against live PostgreSQL.
+- Read, create, partial update, HEAD, and logical-delete behavior.
+- Product audit-log formatting and API concealment.
 
-These must be validated against the actual database before editing.
+Remaining work for the Product vertical slice:
+
+- Redirect the `sbm-manager` Product consumer from `sbm-api` to `dp-api`.
+- Adapt frontend fields and actions to the canonical `dp-api` contract.
+- Add regression tests.
+- Resolve authenticated business-user attribution in the later security phase.
+- Deprecate the equivalent `sbm-api` Product endpoint only after frontend validation.
 
 ### 9.6 Safe migration sequence
 
@@ -1030,6 +1207,14 @@ sbm-manager
 ### 10.2 Frontend migration rule
 
 Any screen currently calling `sbm-api` for a Ditaly Pasta client operation must be redirected to the equivalent `dp-api` endpoint after the endpoint is validated.
+
+Current Product migration state:
+
+```text
+dp-api Product backend contract → validated
+sbm-manager Product consumer     → next active task
+sbm-api Product endpoint         → retained until consumer migration passes
+```
 
 ### 10.3 No direct client access to internal API
 
@@ -1508,19 +1693,19 @@ Future AI Tools must:
 - ✅ Define `dp-api` as client-facing API.
 - ✅ Define `sbm-api` as internal platform API.
 - ✅ Confirm franchise creation as internal-only.
-- 🚧 Produce persistent project context.
+- ✅ Produce persistent project context.
 - ⏳ Create final ownership matrix by table and endpoint.
 
 ### Phase 2 — Product vertical migration
 
-- ⏳ Compare Product model in both APIs.
-- ⏳ Validate Product table against DBML and PostgreSQL.
-- ⏳ Select canonical fields and relationships.
-- ⏳ Update `dp-api` model mapping.
-- ⏳ Update serializer.
-- ⏳ Update ViewSet and filters.
-- ⏳ Validate CRUD.
-- ⏳ Update `sbm-manager` consumer.
+- ✅ Compare Product model in both APIs.
+- ✅ Validate Product table against DBML and PostgreSQL.
+- ✅ Select canonical fields and relationships.
+- ✅ Update `dp-api` model mapping.
+- ✅ Update serializer.
+- ✅ Update ViewSet and filters.
+- ✅ Validate the permitted Product operations: GET, POST, PATCH, HEAD, and logical delete.
+- 🚧 Update `sbm-manager` consumer.
 - ⏳ Add regression tests.
 - ⏳ Deprecate Product endpoint in `sbm-api`.
 
@@ -1582,41 +1767,122 @@ Future AI Tools must:
 
 ## 21. Immediate next step
 
-The next development task is the **Product vertical migration**.
+### 21.1 Current exact objective
 
-Do not modify the entire domain at once.
+Migrate the Product consumer in the Vue.js 3 application `sbm-manager` from `sbm-api` to the validated `dp-api` Product contract.
 
-### First exact action
+The next work must proceed in this exact order:
 
-Inspect and compare these sources:
+1. Open the `sbm-manager` repository and read its project context and repository instructions.
+2. Audit without modifications where Product operations are implemented:
+   - API clients or service modules;
+   - Pinia/Vuex stores or composables;
+   - Product list, create, and edit views/components;
+   - route definitions;
+   - environment variables and base URLs;
+   - calls to `sbm-api` Product endpoints.
+3. Record the current frontend request and response contracts.
+4. Compare them with the canonical `dp-api` contract.
+5. Redirect only Ditaly Pasta Product operations to `dp-api`; do not globally replace the `sbm-api` base URL because internal and critical operations must remain there.
+6. Adapt frontend field names and response handling, especially:
+   - `item_group` instead of `group`;
+   - `item_group_name` instead of `group_name`;
+   - `price` as the Price code;
+   - `price_gross_amount` as the displayed gross amount;
+   - paginated list responses under `results`.
+7. Adapt frontend mutations to the permitted methods:
+   - create with POST;
+   - edit with PATCH, not PUT;
+   - logical delete with `POST /api/products/{id}/delete/`;
+   - never use HTTP DELETE for Product.
+8. Preserve authentication headers and existing user-code audit inputs during this migration. The identity-spoofing risk remains documented for the later security phase.
+9. Validate Product list, detail, create, edit, and logical delete from `sbm-manager`.
+10. Add regression coverage before deprecating the Product endpoint in `sbm-api`.
+
+### 21.2 Success criteria for the current vertical slice
+
+The Product frontend migration is complete only when:
+
+1. The Ditaly Pasta Product UI calls `dp-api`, not `sbm-api`.
+2. Product list and detail render the `dp-api` response correctly.
+3. Pagination reads from `count`, `next`, `previous`, and `results`.
+4. Create uses POST and returns a usable Product response.
+5. Edit uses PATCH and sends `updated_by` under the current transitional audit contract.
+6. Logical delete uses `POST /api/products/{id}/delete/` and never HTTP DELETE.
+7. No stale frontend dependency on `group`, `group_name`, or `price_description` remains in the Product flow.
+8. `sbm-api` continues serving internal/critical operations unaffected.
+9. Product regression tests pass.
+10. The old `sbm-api` Product endpoint is not removed until all Product consumers have migrated.
+
+### 21.3 Codex and Cursor workflow
+
+Cursor remains the primary editor and visual review environment. Codex may be used through the Cursor extension or CLI for repository-wide audits and coordinated multi-file changes.
+
+Codex must read the `sbm-manager` project context and repository instructions before working there. Its initial task in that repository should be an audit without modifications covering Product-related:
 
 ```text
-DP-API/products/models.py
-SBM-API/catalog/models.py
-SBM-business.dbml
-actual PostgreSQL product table
+API clients
+services
+stores/composables
+views/components
+routes
+environment configuration
 ```
 
-### Expected output of the comparison
+It must search the full `sbm-manager` repository for:
 
 ```text
-field
-→ current dp-api definition
-→ current sbm-api definition
-→ database definition
-→ canonical target
-→ required action
+products
+product
+sbm-api
+baseURL
+group
+item_group
+group_name
+item_group_name
+price_description
+price_gross_amount
+PUT
+DELETE
 ```
 
-### Validation gate
+It must distinguish shared/internal `sbm-api` consumers from Ditaly Pasta Product consumers. It must not apply frontend changes until the audit identifies the exact Product integration points and the user authorizes the migration edit.
 
-No serializer, ViewSet, route, frontend, or AI Tool change should begin until the canonical `Product` mapping is confirmed.
+### 21.4 Local IDE environment
 
----
+A local virtual environment was created at:
+
+```text
+DP-API/.venv
+```
+
+It is used only for Cursor/Pylance import resolution and autocomplete. Docker remains the official runtime.
+
+Dependencies are installed from:
+
+```text
+core/requirements.txt
+```
+
+Recommended Cursor interpreter:
+
+```text
+${workspaceFolder}/.venv/bin/python
+```
+
+### 21.5 Interaction rule
+
+When the user responds only with:
+
+```text
+ok
+```
+
+it means the previous validation produced exactly the expected result. Continue directly to the next step without requesting the output again.
 
 ## 22. Executive summary
 
-`dp-api` is the client-facing domain API for Ditaly Pasta inside SBM Suite. It runs with Django REST Framework and PostgreSQL, uses the `ditaly_pasta,sbm_business,public` search path, exposes CRUD ViewSets for products, providers, pricing, branches, tickets, authorization, users, and supporting business data, and was validated locally through its Jazzmin admin at `localhost:8081`.
+`dp-api` is the client-facing domain API for Ditaly Pasta inside SBM Suite. It runs with Django REST Framework and PostgreSQL, uses the `ditaly_pasta,sbm_business,public` search path, exposes resource ViewSets for products, providers, pricing, branches, tickets, authorization, users, and supporting business data, and was validated locally through its Jazzmin admin at `localhost:8081`.
 
 The central architectural rule is:
 
@@ -1627,7 +1893,7 @@ Platform operation → sbm-api
 
 A client user may create products, modify prices, manage providers, branches, catalogs, and tickets. A client user may not create `sbm_business.franchise`, activate uncontracted modules, or provision platform resources.
 
-The current problem is that recent Ditaly Pasta functionality was implemented inside `sbm-api` due to time constraints. This overlap must be corrected before integrating `sbm-ai-assistant`, otherwise AI Tool contracts, permissions, tests, and frontend integrations would be built against the wrong API boundary.
+The current migration corrects Ditaly Pasta functionality that was implemented inside `sbm-api` due to time constraints. The first backend capability, Product, now has a validated canonical contract in `dp-api`. The immediate next step is to update the Vue.js 3 `sbm-manager` Product consumer so client Product operations use `dp-api`, while internal and critical platform operations continue using `sbm-api`.
 
 The migration will be vertical and incremental. The first capability is `Product`:
 
@@ -1643,6 +1909,6 @@ model
 → AI Tool
 ```
 
-The canonical implementation must be established in `dp-api` and validated before the duplicate endpoint is removed from `sbm-api`.
+The Product backend mapping, serializers, permitted HTTP operations, logical deletion, and audit-log behavior are established in `dp-api`. The duplicate Product endpoint in `sbm-api` must remain available until `sbm-manager` has migrated, frontend regression tests pass, and all remaining consumers are confirmed.
 
 The long-term target is a production-grade, configurable ERP API where client users can operate independently and AI assists them through audited, permission-aware REST Tools without bypassing domain rules.

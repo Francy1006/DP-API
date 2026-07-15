@@ -100,15 +100,20 @@ class PriceViewSet(viewsets.ModelViewSet):
     queryset = Price.objects.all()
     serializer_class = PriceSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['price_fiscal_configuration', 'is_active', 'is_deleted', 'is_confirmed']
-    search_fields = ['code']
-    ordering_fields = ['code', 'gross_amount', 'created_at']
+    filterset_fields = [
+        'price_configuration', 'price_record_type', 'is_current',
+        'is_deleted', 'is_confirmed',
+    ]
+    search_fields = ['code', 'record_item_code']
+    ordering_fields = [
+        'code', 'base_net_amount', 'net_amount', 'gross_amount', 'created_at',
+    ]
     ordering = ['-created_at']
 
     @action(detail=False, methods=['get'])
-    def active(self, request):
-        """Obtener solo precios activos"""
-        queryset = self.get_queryset().filter(is_active=True, is_deleted=False)
+    def current(self, request):
+        """Obtener solo precios vigentes"""
+        queryset = self.get_queryset().filter(is_current=True, is_deleted=False)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 

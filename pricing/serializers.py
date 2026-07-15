@@ -51,17 +51,15 @@ class PriceFiscalConfigurationSerializer(serializers.ModelSerializer):
 
 
 class PriceSerializer(serializers.ModelSerializer):
-    price_fiscal_configuration_name = serializers.CharField(source='price_fiscal_configuration.fiscal_configuration', read_only=True)
-    
     class Meta:
         model = Price
         fields = [
-            'id', 'code', 'net_amount', 'gross_amount', 'iva_amount', 'retention_amount',
-            'price_fiscal_configuration', 'price_fiscal_configuration_name', 'is_active',
-            'is_deleted', 'is_confirmed', 'created_at', 'updated_at', 'confirmed_at',
-            'deleted_at', 'created_by', 'confirmed_by', 'updated_by', 'deleted_by'
+            'id', 'code', 'base_net_amount', 'net_amount', 'gross_amount',
+            'iva_amount', 'aditional_tax_amount', 'retention_amount',
+            'price_configuration', 'is_current', 'is_deleted', 'is_confirmed',
+            'created_at', 'created_by', 'record_item_code', 'price_record_type',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'confirmed_at', 'deleted_at']
+        read_only_fields = ['id', 'created_at']
 
 
 class FiscalConfigurationDetailSerializer(serializers.ModelSerializer):
@@ -75,4 +73,4 @@ class FiscalConfigurationDetailSerializer(serializers.ModelSerializer):
             'id', 'price_fiscal_configuration', 'price_fiscal_configuration_name',
             'price', 'price_code', 'fiscal_directive', 'fiscal_directive_name', 'log'
         ]
-        read_only_fields = ['id'] 
+        read_only_fields = ['id']
