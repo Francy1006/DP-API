@@ -138,7 +138,6 @@ core/static/
 .dockerignore
 
 # IDE
-.vscode/
 .idea/
 *.swp
 *.swo
