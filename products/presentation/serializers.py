@@ -35,7 +35,7 @@ class ProductSerializer(serializers.Serializer):
     deleted_at = serializers.DateTimeField(allow_null=True, read_only=True)
     created_by = serializers.CharField(max_length=36)
     confirmed_by = serializers.CharField(
-        max_length=36, allow_null=True, required=False
+        max_length=36, allow_null=True, read_only=True
     )
     updated_by = serializers.CharField(
         max_length=36, allow_null=True, required=False
@@ -85,6 +85,7 @@ class ProductCommandSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "confirmed_at",
+            "confirmed_by",
             "deleted_at",
             "deleted_by",
             "version",

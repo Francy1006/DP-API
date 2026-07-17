@@ -10,7 +10,10 @@ from products.application.commands import (
 )
 from products.application.use_cases import CreateProduct, DeleteProduct, UpdateProduct
 from products.domain.entities import Product
-from products.presentation.serializers import ProductSerializer
+from products.presentation.serializers import (
+    ProductCommandSerializer,
+    ProductSerializer,
+)
 from products.presentation.views import ProductViewSet
 
 
@@ -117,6 +120,12 @@ class ProductContractTests(SimpleTestCase):
             ["get", "post", "patch", "head", "options"],
         )
 
+    def test_confirmation_audit_fields_are_read_only(self):
+        fields = ProductCommandSerializer().fields
+
+        self.assertTrue(fields["confirmed_at"].read_only)
+        self.assertTrue(fields["confirmed_by"].read_only)
+
     def test_routes_remain_unchanged(self):
         self.assertEqual(reverse("product-list"), "/api/products/")
         self.assertEqual(reverse("product-detail", args=[1]), "/api/products/1/")
@@ -148,10 +157,43 @@ class ProductUseCaseTests(SimpleTestCase):
         result = CreateProduct(repository, FixedClock()).execute(command)
 
         self.assertEqual(result.id, 1)
+        self.assertFalse(result.is_confirmed)
+        self.assertIsNone(result.confirmed_at)
+        self.assertIsNone(result.confirmed_by)
         self.assertEqual(repository.product.created_at, NOW)
         self.assertEqual(
             repository.product.log,
             f"INIT: 2026-07-15 17:23:13.339 (USER: {ACTOR});",
+        )
+
+    def test_create_can_start_confirmed_with_automatic_audit(self):
+        repository = FakeProductRepository()
+        command = CreateProductCommand(
+            code="3facdae4-c44e-475c-9911-d11b5fdf9980",
+            sku="PRODUCTO-CONFIRMADO",
+            description="PRODUCTO CONFIRMADO",
+            obs="CONFIRMADO EN CREATE",
+            package_unit=1,
+            min_package_purchase=1,
+            price="bf397d95-c18c-4620-88c9-af621f553951",
+            provider=1,
+            type=1,
+            item_group=6,
+            category=8,
+            package=1,
+            created_by=ACTOR,
+            is_confirmed=True,
+        )
+
+        result = CreateProduct(repository, FixedClock()).execute(command)
+
+        self.assertTrue(result.is_confirmed)
+        self.assertEqual(result.confirmed_at, NOW)
+        self.assertEqual(result.confirmed_by, ACTOR)
+        self.assertEqual(
+            repository.product.log,
+            f"INIT: 2026-07-15 17:23:13.339 (USER: {ACTOR}) "
+            "(confirmed);",
         )
 
     def test_patch_records_only_changed_values_and_terminates_log(self):
@@ -186,3 +228,85 @@ class ProductUseCaseTests(SimpleTestCase):
             repository.product.log,
             f"init; DELETE: 2026-07-15 17:23:13.339 (USER: {ACTOR});",
         )
+
+    def test_patch_confirmation_sets_audit_from_updated_by(self):
+        repository = FakeProductRepository(product_entity())
+        command = UpdateProductCommand(
+            product_id=1,
+            changes={"is_confirmed": True},
+            updated_by=ACTOR,
+        )
+
+        result = UpdateProduct(repository, FixedClock()).execute(command)
+
+        self.assertTrue(result.is_confirmed)
+        self.assertEqual(result.confirmed_at, NOW)
+        self.assertEqual(result.confirmed_by, ACTOR)
+        self.assertEqual(
+            repository.product.log,
+            f"init; PATCH: is_confirmed=True (USER: {ACTOR});",
+        )
+
+    def test_patch_confirmation_repairs_missing_audit(self):
+        product = product_entity()
+        product.is_confirmed = True
+        repository = FakeProductRepository(product)
+
+        result = UpdateProduct(repository, FixedClock()).execute(
+            UpdateProductCommand(
+                product_id=1,
+                changes={"is_confirmed": True},
+                updated_by=ACTOR,
+            )
+        )
+
+        self.assertEqual(result.confirmed_at, NOW)
+        self.assertEqual(result.confirmed_by, ACTOR)
+        self.assertIn("PATCH: is_confirmed=True", repository.product.log)
+
+    def test_patch_unconfirmation_clears_audit_fields(self):
+        product = product_entity()
+        product.is_confirmed = True
+        product.confirmed_at = NOW
+        product.confirmed_by = ACTOR
+        repository = FakeProductRepository(product)
+
+        result = UpdateProduct(repository, FixedClock()).execute(
+            UpdateProductCommand(
+                product_id=1,
+                changes={"is_confirmed": False},
+                updated_by=ACTOR,
+            )
+        )
+
+        self.assertFalse(result.is_confirmed)
+        self.assertIsNone(result.confirmed_at)
+        self.assertIsNone(result.confirmed_by)
+        self.assertIn("PATCH: is_confirmed=False", repository.product.log)
+
+    def test_second_confirmation_preserves_original_audit(self):
+        original_confirmation = datetime(
+            2026,
+            7,
+            14,
+            12,
+            0,
+            tzinfo=timezone.utc,
+        )
+        product = product_entity()
+        product.is_confirmed = True
+        product.confirmed_at = original_confirmation
+        product.confirmed_by = ACTOR
+        repository = FakeProductRepository(product)
+
+        result = UpdateProduct(repository, FixedClock()).execute(
+            UpdateProductCommand(
+                product_id=1,
+                changes={"is_confirmed": True},
+                updated_by=ACTOR,
+            )
+        )
+
+        self.assertEqual(result.confirmed_at, original_confirmation)
+        self.assertEqual(result.confirmed_by, ACTOR)
+        self.assertIn("PATCH: sin cambios", repository.product.log)

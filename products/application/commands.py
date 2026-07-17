@@ -20,7 +20,6 @@ class CreateProductCommand:
     url: Optional[str] = None
     is_active: bool = True
     is_confirmed: Optional[bool] = None
-    confirmed_by: Optional[str] = None
     updated_by: Optional[str] = None
 
 

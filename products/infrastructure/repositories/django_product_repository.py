@@ -104,6 +104,7 @@ class DjangoProductRepository:
             is_deleted=product.is_deleted,
             is_confirmed=product.is_confirmed,
             created_at=product.created_at,
+            confirmed_at=product.confirmed_at,
             created_by_id=product.created_by,
             confirmed_by_id=product.confirmed_by,
             updated_by_id=product.updated_by,

@@ -37,7 +37,7 @@ class Product:
     url: Optional[str] = None
     is_active: bool = True
     is_deleted: Optional[bool] = None
-    is_confirmed: Optional[bool] = None
+    is_confirmed: bool = False
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     confirmed_at: Optional[datetime] = None
@@ -50,7 +50,17 @@ class Product:
 
     def initialize_audit(self, created_at: datetime, timestamp: str) -> None:
         self.created_at = created_at
-        self.log = f"INIT: {timestamp} (USER: {self.created_by});"
+        if self.is_confirmed:
+            self.confirmed_at = created_at
+            self.confirmed_by = self.created_by
+            self.log = (
+                f"INIT: {timestamp} (USER: {self.created_by}) (confirmed);"
+            )
+        else:
+            self.is_confirmed = False
+            self.confirmed_at = None
+            self.confirmed_by = None
+            self.log = f"INIT: {timestamp} (USER: {self.created_by});"
 
     def apply_patch(
         self,
@@ -60,6 +70,34 @@ class Product:
     ) -> None:
         changed_values = []
         for field_name, new_value in changes.items():
+            if field_name == "is_confirmed":
+                normalized_value = bool(new_value)
+                was_confirmed = self.is_confirmed is True
+                audit_incomplete = normalized_value and (
+                    self.confirmed_at is None or self.confirmed_by is None
+                )
+                stale_audit = not normalized_value and (
+                    self.confirmed_at is not None or self.confirmed_by is not None
+                )
+                if (
+                    self.is_confirmed != normalized_value
+                    or audit_incomplete
+                    or stale_audit
+                ):
+                    changed_values.append(
+                        f"is_confirmed={normalized_value!r}"
+                    )
+
+                self.is_confirmed = normalized_value
+                if normalized_value:
+                    if not was_confirmed or audit_incomplete:
+                        self.confirmed_at = updated_at
+                        self.confirmed_by = updated_by
+                else:
+                    self.confirmed_at = None
+                    self.confirmed_by = None
+                continue
+
             if getattr(self, field_name) != new_value:
                 changed_values.append(f"{field_name}={new_value!r}")
                 setattr(self, field_name, new_value)

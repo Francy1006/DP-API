@@ -1,6 +1,6 @@
 # PROJECT_CONTEXT.md
 
-> **Last updated:** 2026-07-15
+> **Last updated:** 2026-07-17
 >
 > **Purpose of this file**
 >
@@ -259,7 +259,7 @@ sbm-network
 ---
 
 
-### 3.7 Latest validated implementation progress — 2026-07-15
+### 3.7 Latest validated implementation progress — 2026-07-17
 
 The first backend portion of the `Product` vertical migration is now implemented and validated in `dp-api`.
 
@@ -274,7 +274,13 @@ Internal or critical platform operation
 → sbm-api
 ```
 
-The immediate continuation is no longer another backend resource. It is migrating the Product consumer in `sbm-manager` from `sbm-api` to the validated `dp-api` contract.
+The next concrete Product backend task is to correct SKU generation in
+`dp-api`. The existing implementation in the Product app of `sbm-api` will be
+provided by the user and must be inspected as the behavioral reference before
+making changes. This does not change the ownership boundary: Product remains a
+client operation owned by `dp-api`. The broader migration of the Product
+consumer in `sbm-manager` remains pending and must continue against the
+canonical `dp-api` contract.
 
 #### `products/models.py`
 
@@ -358,6 +364,36 @@ DELETE: <timestamp> (USER: <user_code>);
 
 Every log entry must end in `;`. PATCH automatically sets `updated_at`; logical deletion sets `is_active=False`, `is_deleted=True`, `deleted_at`, and `deleted_by`.
 
+Product confirmation is managed entirely by the backend using the current
+transitional business-user audit contract:
+
+- A Product created without `is_confirmed`, or with `is_confirmed=false`, is
+  stored with `is_confirmed=false`, `confirmed_at=NULL`, and
+  `confirmed_by=NULL`.
+- A Product created with `is_confirmed=true` receives `confirmed_at` from the
+  server clock and `confirmed_by=created_by`.
+- A PATCH with `is_confirmed=true` receives `confirmed_at` from the server
+  clock and `confirmed_by=updated_by`.
+- A PATCH with `is_confirmed=false` clears `confirmed_at` and `confirmed_by`.
+- Repeating `is_confirmed=true` preserves an existing complete confirmation
+  audit, but repairs missing audit fields on legacy/inconsistent rows.
+- `confirmed_at` and `confirmed_by` are read-only request fields and cannot be
+  supplied or falsified by the frontend.
+
+Confirmation log behavior is:
+
+```text
+INIT: <timestamp> (USER: <created_by>) (confirmed);
+PATCH: is_confirmed=True (USER: <updated_by>);
+PATCH: is_confirmed=False (USER: <updated_by>);
+```
+
+Authorization and role checks are intentionally outside this feature because
+the definitive role system and the mapping between Django authentication users
+and business users are not implemented. `created_by` and `updated_by` continue
+to be validated against `users.User.code`; their client-supplied nature remains
+a documented transitional spoofing risk.
+
 #### `pricing/models.py`
 
 The old Django model referenced fields that do not match the live PostgreSQL table. Observed failures included:
@@ -420,10 +456,18 @@ The Django mapping was aligned with those confirmed columns. The DBML documentat
 - Product CREATE: validated with HTTP 201.
 - Product PATCH: validated with HTTP 200 and automatic `updated_at`.
 - Product logical delete: validated; the row remains in PostgreSQL and disappears from normal Product endpoints.
+- Product create/PATCH confirmation and unconfirmation audit: validated.
+- Product confirmation through the real PATCH endpoint was revalidated against
+  PostgreSQL on 2026-07-17: `is_confirmed=true` automatically persists
+  `confirmed_at`, `confirmed_by`, `updated_at`, and `updated_by`. A legacy row
+  already marked confirmed but missing confirmation audit is repaired when the
+  PATCH reaches the current `dp-api` Product endpoint.
+- Product confirmation audit fields cannot be overridden by request payloads.
 - Product HEAD list and detail: HTTP 200.
 - Product PUT and HTTP DELETE: HTTP 405.
 - No Django migration was created.
 - PostgreSQL structure was not altered.
+- Product-specific automated tests: 11 passing.
 
 Audit identity is not hardcoded. At present `created_by`, `updated_by`, and `deleted_by` are validated against `users.User.code` but are supplied by the client request. This is a known spoofing risk caused by the unresolved mapping between Django authentication users and business users. It belongs to the later authentication/security phase and must not displace the immediate Product frontend migration.
 
@@ -1189,6 +1233,12 @@ The following backend differences were resolved in `dp-api`:
 
 Remaining work for the Product vertical slice:
 
+- Inspect the Product app supplied from `sbm-api` and document its current SKU
+  generation algorithm, inputs, format, uniqueness rules, and concurrency
+  behavior.
+- Implement the canonical Product SKU generation rule in the hexagonal
+  `dp-api` Product flow without coupling the domain/application layers to
+  Django ORM or HTTP.
 - Redirect the `sbm-manager` Product consumer from `sbm-api` to `dp-api`.
 - Adapt frontend fields and actions to the canonical `dp-api` contract.
 - Add regression tests.
@@ -1259,7 +1309,8 @@ Current Product migration state:
 
 ```text
 dp-api Product backend contract → validated
-sbm-manager Product consumer     → next active task
+dp-api Product SKU generation    → next active task; SBM-API source pending
+sbm-manager Product consumer     → pending migration work
 sbm-api Product endpoint         → retained until consumer migration passes
 ```
 
@@ -1796,6 +1847,8 @@ responsibilities into `dp-api`.
 - ✅ Validate the permitted Product operations: GET, POST, PATCH, HEAD, and logical delete.
 - ✅ Establish Product as the first Hexagonal Architecture reference implementation.
 - ✅ Add Product contract and application-use-case regression tests.
+- 🚧 Correct Product SKU generation using the existing `sbm-api` Product app
+  as the behavioral reference; source pending from the user.
 - 🚧 Update `sbm-manager` consumer.
 - ⏳ Deprecate Product endpoint in `sbm-api`.
 
@@ -1905,50 +1958,55 @@ active refactoring scope.
 
 ### 21.1 Current exact objective
 
-Migrate the Product consumer in the Vue.js 3 application `sbm-manager` from `sbm-api` to the validated `dp-api` Product contract.
+Correct Product SKU generation in `dp-api`, using the existing Product app from
+`sbm-api` as the behavioral reference while preserving the hexagonal Product
+architecture and the current REST contract.
 
 The next work must proceed in this exact order:
 
-1. Open the `sbm-manager` repository and read its project context and repository instructions.
-2. Audit without modifications where Product operations are implemented:
-   - API clients or service modules;
-   - Pinia/Vuex stores or composables;
-   - Product list, create, and edit views/components;
-   - route definitions;
-   - environment variables and base URLs;
-   - calls to `sbm-api` Product endpoints.
-3. Record the current frontend request and response contracts.
-4. Compare them with the canonical `dp-api` contract.
-5. Redirect only Ditaly Pasta Product operations to `dp-api`; do not globally replace the `sbm-api` base URL because internal and critical operations must remain there.
-6. Adapt frontend field names and response handling, especially:
-   - `item_group` instead of `group`;
-   - `item_group_name` instead of `group_name`;
-   - `price` as the Price code;
-   - `price_gross_amount` as the displayed gross amount;
-   - paginated list responses under `results`.
-7. Adapt frontend mutations to the permitted methods:
-   - create with POST;
-   - edit with PATCH, not PUT;
-   - logical delete with `POST /api/products/{id}/delete/`;
-   - never use HTTP DELETE for Product.
-8. Preserve authentication headers and existing user-code audit inputs during this migration. The identity-spoofing risk remains documented for the later security phase.
-9. Validate Product list, detail, create, edit, and logical delete from `sbm-manager`.
-10. Add regression coverage before deprecating the Product endpoint in `sbm-api`.
+1. Wait for the user to provide the Product app or relevant Product files from
+   `sbm-api`.
+2. Read the supplied source before modifying `dp-api`.
+3. Identify the exact SKU generation behavior, including:
+   - source fields and normalization;
+   - prefix, separators, padding, and sequence rules;
+   - database lookup or counter behavior;
+   - uniqueness and collision handling;
+   - behavior during create versus update;
+   - transaction and concurrency assumptions.
+4. Compare that behavior with the current `dp-api` Product entity, create use
+   case, repository port, Django persistence adapter, serializer, and database
+   constraints.
+5. Present the proposed implementation and affected files before applying the
+   change if the supplied logic exposes an ambiguity or contract decision.
+6. Implement SKU generation in the correct hexagonal layer. HTTP controllers
+   must only receive the request, use cases must coordinate the operation, and
+   Django ORM/database access must remain in the infrastructure adapter.
+7. Preserve the current Product API behavior unless the verified legacy SKU
+   contract explicitly requires an agreed request change.
+8. Add focused coverage for the generation rule, uniqueness/collisions, and
+   any relevant sequence boundaries.
+9. Run Product-specific tests and `python manage.py check` without creating or
+   executing Django migrations.
 
 ### 21.2 Success criteria for the current vertical slice
 
-The Product frontend migration is complete only when:
+The Product SKU correction is complete only when:
 
-1. The Ditaly Pasta Product UI calls `dp-api`, not `sbm-api`.
-2. Product list and detail render the `dp-api` response correctly.
-3. Pagination reads from `count`, `next`, `previous`, and `results`.
-4. Create uses POST and returns a usable Product response.
-5. Edit uses PATCH and sends `updated_by` under the current transitional audit contract.
-6. Logical delete uses `POST /api/products/{id}/delete/` and never HTTP DELETE.
-7. No stale frontend dependency on `group`, `group_name`, or `price_description` remains in the Product flow.
-8. `sbm-api` continues serving internal/critical operations unaffected.
-9. Product regression tests pass.
-10. The old `sbm-api` Product endpoint is not removed until all Product consumers have migrated.
+1. The existing `sbm-api` generation behavior has been inspected and
+   documented from source, not guessed.
+2. `dp-api` generates the expected SKU through the Product create use case.
+3. The rule is isolated from the REST controller and Django model callbacks.
+4. SKU uniqueness and collision behavior are explicit and tested.
+5. Existing Product confirmation, audit log, PATCH, HEAD, and logical-delete
+   behavior remains unchanged.
+6. Product regression tests and Django system checks pass.
+7. No Django migration or database alteration is introduced unless separately
+   reviewed and authorized.
+
+The `sbm-manager` Product consumer migration and eventual deprecation of the
+duplicate Product endpoint in `sbm-api` remain subsequent work; neither is
+implicitly completed by the SKU correction.
 
 ### 21.3 Codex and Cursor workflow
 
@@ -2029,7 +2087,13 @@ Platform operation → sbm-api
 
 A client user may create products, modify prices, manage providers, branches, catalogs, and tickets. A client user may not create `sbm_business.franchise`, activate uncontracted modules, or provision platform resources.
 
-The current migration corrects Ditaly Pasta functionality that was implemented inside `sbm-api` due to time constraints. The first backend capability, Product, now has a validated canonical contract in `dp-api`. The immediate next step is to update the Vue.js 3 `sbm-manager` Product consumer so client Product operations use `dp-api`, while internal and critical platform operations continue using `sbm-api`.
+The current migration corrects Ditaly Pasta functionality that was implemented
+inside `sbm-api` due to time constraints. The first backend capability,
+Product, now has a validated canonical contract in `dp-api`. The immediate next
+task is to inspect the Product app that the user will provide from `sbm-api` and
+correct Product SKU generation in the hexagonal `dp-api` implementation. The
+Vue.js 3 `sbm-manager` Product consumer migration remains pending, while
+internal and critical platform operations continue using `sbm-api`.
 
 The migration will be vertical and incremental. The first capability is `Product`:
 

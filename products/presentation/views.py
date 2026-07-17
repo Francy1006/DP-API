@@ -41,7 +41,6 @@ RELATION_VALUE_FIELDS = {
     "category": "pk",
     "package": "pk",
     "created_by": "code",
-    "confirmed_by": "code",
     "updated_by": "code",
 }
 
@@ -159,7 +158,6 @@ class ProductViewSet(
             url=values.get("url"),
             is_active=values.get("is_active", True),
             is_confirmed=values.get("is_confirmed"),
-            confirmed_by=values.get("confirmed_by"),
             updated_by=values.get("updated_by"),
         )
         try:

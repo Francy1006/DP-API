@@ -17,6 +17,7 @@ class CreateProduct:
             raise AuditUserNotFound("created_by")
 
         product = Product(**command.__dict__)
+        product.is_confirmed = bool(command.is_confirmed)
         now = self.clock.now()
         product.initialize_audit(now, self.clock.format_log_timestamp(now))
         return ProductDTO.from_entity(self.repository.create(product))

@@ -18,6 +18,8 @@ class UpdateProduct:
         product = self.repository.get(command.product_id)
         product.apply_patch(command.changes, command.updated_by, self.clock.now())
         changed_fields = set(command.changes) | {"updated_by", "updated_at", "log"}
+        if "is_confirmed" in command.changes:
+            changed_fields.update({"confirmed_at", "confirmed_by"})
         return ProductDTO.from_entity(
             self.repository.update(product, changed_fields)
         )
