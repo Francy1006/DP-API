@@ -256,6 +256,43 @@ Both services currently share:
 sbm-network
 ```
 
+### 3.6.1 Independent PostgreSQL and Flyway runtime
+
+The database is not owned or provisioned by the `dp-api` container.
+PostgreSQL and Flyway run as an independent database/container stack shared
+through the Docker network.
+
+The ownership boundary is:
+
+```text
+dp-api container
+→ Django/DRF application and unmanaged ORM mappings
+
+independent PostgreSQL + Flyway container stack
+→ schemas, tables, columns, constraints, indexes, triggers, functions, and
+  versioned database migrations
+```
+
+Consequences for all future work:
+
+- Django models in `dp-api` remain `managed = False` for Flyway-owned tables.
+- A Django model change is only an ORM mapping change; it does not imply a
+  database migration.
+- Do not run `python manage.py makemigrations` or
+  `python manage.py migrate` for these domain tables.
+- Do not create Django migration files to represent PostgreSQL changes.
+- If a structural database change is genuinely required, it must be planned
+  and implemented separately in the database/Flyway project and executed by
+  its independent container workflow.
+- DP-API work must not mutate the PostgreSQL structure merely because a Django
+  mapping or API contract changes.
+- Read-only schema inspection is allowed for validation, but schema/data
+  mutations require separate scope and explicit authorization.
+
+Therefore, the planned Product price-generation work is an application/API
+change unless analysis proves that a database invariant requires a separate
+Flyway change. No Django migration is part of that implementation.
+
 ---
 
 
@@ -841,6 +878,232 @@ Current endpoints:
 ```
 
 The client may modify prices and permitted commercial configurations. Global fiscal or platform policy ownership must be reviewed table by table.
+
+#### Product price generation/versioning analysis — 2026-07-17
+
+Planning sources reviewed:
+
+- Complete `SBM-API.zip`, especially `catalog`, `price`, `calculation`, and
+  `fiscal`.
+- `SBM-business.dbml` definitions for `ditaly_pasta.product`,
+  `ditaly_pasta.price`, `ditaly_pasta.price_configuration`, calculation
+  concepts, and fiscal directives.
+- Current `dp-api` Product and pricing code.
+- Read-only inspection of the live PostgreSQL configuration and price rows.
+
+No implementation code or database structure was changed during this analysis.
+
+The authoritative price table is `ditaly_pasta.price`. A Product stores the
+current price code in `product.price → price.code`. Relevant Price fields are:
+
+```text
+code
+base_net_amount
+net_amount
+gross_amount
+iva_amount
+aditional_tax_amount
+retention_amount
+price_configuration
+is_current
+is_deleted
+is_confirmed
+created_at
+created_by
+record_item_code
+price_record_type
+```
+
+The live Product configuration is:
+
+```text
+price_configuration = PRODUCT_NORMAL_IVA
+price_configuration.code = cd746343-baf4-4359-b2e6-9bd829631e30
+record_type = 1 (PRODUCT)
+is_confirmed = true
+IVA variable = 0.190
+```
+
+The configured Product formula represents:
+
+```text
+net/base amount = base_net_amount
+IVA amount      = base_net_amount * iva
+gross amount    = base_net_amount * (1 + iva)
+```
+
+Example validated from current data:
+
+```text
+base_net_amount = 16,980
+iva_amount      = 3,226
+gross_amount    = 20,206
+```
+
+##### Behavior found in `sbm-api`
+
+The old Product implementation does not update the existing Price row when
+the amount changes. Its intended behavior is versioning:
+
+1. Product create receives a base-net amount and price configuration.
+2. It creates a Price row before creating the Product.
+3. Product PATCH accepts `price_data` with `base_net_amount` and
+   `price_configuration`.
+4. When either changes, it marks the old price `is_current=false`.
+5. It creates a new Price with `record_item_code=product.code`,
+   `price_record_type=1`, and `is_current=true`.
+6. It links `product.price` to the new Price code.
+
+That implementation is only a behavioral reference and must not be copied
+literally. It duplicates formula evaluation across serializers/views, uses
+`eval()`, and some Product paths access `variable_formula.price_variables`, a
+property that does not exist on the supplied `VariableFormula` model. Other
+paths inconsistently use `formula_template` or `formula_translate`. The direct
+`PriceViewSet` also permits broad CRUD and is not the safe contract for a
+client changing a Product price.
+
+##### Requested target behavior
+
+For the next implementation, the client must edit only the Product's gross
+price. It must not submit or control:
+
+```text
+price code
+base_net_amount
+net_amount
+iva_amount
+aditional_tax_amount
+retention_amount
+price_configuration
+record_item_code
+price_record_type
+is_current
+```
+
+The proposed Product request field is the already exposed
+`price_gross_amount`. The intended contracts to validate in the next chat are:
+
+```json
+// Product creation fragment
+{
+  "price_gross_amount": 20206
+}
+```
+
+```json
+// Product price change fragment
+{
+  "price_gross_amount": 25000,
+  "updated_by": "<business-user-code>"
+}
+```
+
+The existing `price` UUID should become read-only in Product commands once
+server-side price creation is active. It remains present in responses as the
+identifier of the generated current Price.
+
+For the currently supported `PRODUCT_NORMAL_IVA` rule, gross is authoritative.
+The backend should use `Decimal`, never binary float or unrestricted `eval()`,
+and derive values so the stored identity is exact:
+
+```text
+base_net_amount = monetary_round(gross_amount / (1 + iva))
+net_amount      = base_net_amount
+iva_amount      = gross_amount - net_amount
+gross_amount    = exact client-supplied integer
+additional tax  = 0 unless the selected configuration defines it
+retention       = 0 unless the selected configuration defines it
+```
+
+The rounding policy must be explicit and tested. The initial recommended rule
+for integer CLP values is `Decimal` with `ROUND_HALF_UP`. A future configuration
+with additional taxes or retention requires an explicit inverse-calculation
+strategy; it must not silently reuse the simple IVA-only inverse formula.
+
+##### Required versioning and transaction rules
+
+Price changes must execute atomically:
+
+```text
+lock Product/current Price
+→ validate current Product price ownership
+→ resolve confirmed PRODUCT price configuration
+→ resolve applicable fiscal variables
+→ calculate derived values
+→ create new Price version
+→ mark owned previous version not current
+→ relink Product.price
+→ update Product audit fields/log
+→ commit
+```
+
+If the submitted gross amount equals the current gross amount, the operation
+should be idempotent and must not create another Price row.
+
+The database currently has no partial unique constraint guaranteeing one
+`is_current=true` Price per `record_item_code`; this invariant must be enforced
+by the application transaction and covered by tests. Flyway remains the owner
+of any future database constraint.
+
+Current test data contains an important legacy inconsistency: Price
+`bf397d95-c18c-4620-88c9-af621f553951` is linked by six Products. The old
+algorithm assumes one Price owner per Product and would incorrectly affect all
+consumers if copied directly. Before changing prices, the next implementation
+must audit ownership using `price.record_item_code` and Product references. It
+must either normalize shared test data explicitly or reject/handle a shared
+legacy Price without marking it non-current for unrelated Products. No data
+cleanup is authorized merely by this planning document.
+
+##### Architectural scope for the next chat
+
+Implement only the Product-price creation/versioning vertical slice. Do not
+refactor all pricing, fiscal, catalog, material, or service modules at once.
+
+Recommended boundaries:
+
+- Product presentation accepts only `price_gross_amount` as the client-editable
+  monetary value.
+- An application use case coordinates Product and Price creation/versioning.
+- A pricing domain policy performs deterministic gross-to-components
+  calculation without Django or DRF.
+- Repository ports expose current-price lookup, configuration/fiscal-variable
+  lookup, Price creation, current-version transition, and Product relinking.
+- Django ORM and `transaction.atomic()` remain infrastructure concerns.
+- PostgreSQL and Flyway remain the source of truth.
+- Do not introduce SQLAlchemy, a dependency-injection framework, or an
+  external formula/hexagonal library.
+
+Expected implementation files must be confirmed after re-reading the current
+repository, but likely include Product command/serializer/view/use-case files
+and a small hexagonal pricing slice under `pricing/domain`,
+`pricing/application`, and `pricing/infrastructure`.
+
+Required coverage:
+
+- Product create with only gross price creates and links one correct Price.
+- Gross-to-net/IVA calculation for 19% IVA and rounding boundaries.
+- Product price PATCH creates a new version and preserves history.
+- Same gross amount is idempotent.
+- Invalid, zero, negative, non-integer, or missing gross values follow an
+  explicitly agreed validation rule.
+- Direct client attempts to set Price internals are ignored or rejected.
+- Shared legacy Price detection does not corrupt another Product.
+- Transaction rollback leaves old Price and Product link unchanged on error.
+- Product audit log records the gross-price change and ends in `;`.
+- Existing SKU, immutable-provider, confirmation, soft-delete, HEAD, and
+  disabled PUT/DELETE behavior remains unchanged.
+
+Open decisions to resolve before implementation:
+
+1. Confirm `price_gross_amount` as the writable request field name.
+2. Confirm whether gross price is mandatory on Product create or whether the
+   existing `price` UUID remains temporarily supported for compatibility.
+3. Confirm the validation rule for gross price `0` and minimum allowed value.
+4. Confirm `ROUND_HALF_UP` for conversion to integer CLP.
+5. Decide how existing Products sharing one Price will be normalized or
+   handled during their first price change.
+6. Confirm whether a newly generated Price inherits Product confirmation state
+   or remains under the current Price confirmation convention.
 
 ### 5.7 `ticket`
 
@@ -1964,23 +2227,34 @@ active refactoring scope.
 
 ### 21.1 Current exact objective
 
-Validate the corrected Product SKU generation and provider immutability through
-the real client workflow before continuing with another Product change.
+In a new chat, implement the Product price-generation/versioning slice so the
+client modifies only `price_gross_amount` and the backend safely generates all
+Price internals.
 
 The next work must proceed in this exact order:
 
-1. Create a Product without including `sku` in the POST payload.
-2. Verify that the response contains the expected format
-   `P-<provider-number>-<four-digit-sequence>`.
-3. Attempt to PATCH the Product with a different provider and verify HTTP 400
-   with the original provider unchanged.
-4. Verify that ordinary PATCH operations and confirmation continue to work.
-5. Keep the PostgreSQL trigger and Flyway-owned schema unchanged during this
-   API correction.
+1. Read this complete context before modifying files.
+2. Reinspect current Product and pricing code; do not rely only on the old
+   `sbm-api` implementation.
+3. Review the Product price analysis in section 5.6 and resolve its six open
+   decisions with the user before implementation when they affect the public
+   contract or existing data.
+4. Present the implementation plan and exact file list before applying changes.
+5. Implement only the Product-price vertical slice using hexagonal boundaries.
+6. Preserve price history: never overwrite the current Price amounts in place.
+7. Use `Decimal` and an explicit rounding policy; do not copy any unrestricted
+   `eval()` logic from `sbm-api`.
+8. Protect shared legacy Price references before transitioning `is_current`.
+9. Add focused domain, use-case, repository, and HTTP contract tests.
+10. Run Product/pricing-specific tests and `python manage.py check`.
+11. Do not run `makemigrations` or `migrate`, and do not alter PostgreSQL
+    without separate review and authorization.
+12. Git operations remain manual and are not authorized for Codex.
 
 ### 21.2 Success criteria for the current vertical slice
 
-The Product SKU correction is technically implemented and locally validated:
+The Product SKU correction is implemented and was accepted before this
+planning phase:
 
 1. The existing `sbm-api` generation behavior has been inspected and
    documented from source, not guessed.
@@ -1996,8 +2270,20 @@ The Product SKU correction is technically implemented and locally validated:
 
 Local validation produced 13 passing Product tests, a clean Django system
 check, `P-001-0009` from a rolled-back real create, and HTTP 400 from a
-rolled-back provider-change attempt. User/client validation is the remaining
-acceptance step.
+rolled-back provider-change attempt.
+
+The next slice succeeds only when:
+
+1. Product create can generate and link its own Price from the agreed gross
+   input contract.
+2. Product price PATCH versions instead of overwriting Price history.
+3. Only gross price is client-editable; derived/internal Price fields are
+   backend-controlled.
+4. The exact gross value is preserved while net and IVA are deterministically
+   derived under the confirmed Product configuration.
+5. Shared legacy Price references cannot be corrupted.
+6. Existing Product behavior and regression tests continue passing.
+7. No unauthorized schema, data-cleanup, or Git operation occurs.
 
 The `sbm-manager` Product consumer migration and eventual deprecation of the
 duplicate Product endpoint in `sbm-api` remain subsequent work; neither is
@@ -2086,9 +2372,10 @@ The current migration corrects Ditaly Pasta functionality that was implemented
 inside `sbm-api` due to time constraints. The first backend capability,
 Product, now has a validated canonical contract in `dp-api`. Product SKU
 generation now delegates to the existing PostgreSQL trigger and the provider
-is immutable after creation. Manual client validation is next. The Vue.js 3
-`sbm-manager` Product consumer migration remains pending, while internal and
-critical platform operations continue using `sbm-api`.
+is immutable after creation. The next planned vertical slice is safe Product
+price generation/versioning with only gross price editable by the client. The
+Vue.js 3 `sbm-manager` Product consumer migration remains pending, while
+internal and critical platform operations continue using `sbm-api`.
 
 The migration will be vertical and incremental. The first capability is `Product`:
 
