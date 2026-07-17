@@ -4,11 +4,12 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
-from .models import Provider, ProviderType, ProviderGroup, Region, District, Bank, BankAccountType
+from .models import ProviderType, ProviderGroup, Region, District, Bank, BankAccountType
 from .serializers import (
-    ProviderSerializer, ProviderTypeSerializer, ProviderGroupSerializer,
+    ProviderTypeSerializer, ProviderGroupSerializer,
     RegionSerializer, DistrictSerializer, BankSerializer, BankAccountTypeSerializer
 )
+from .presentation.views import ProviderViewSet
 
 # Create your views here.
 
@@ -72,37 +73,3 @@ class BankAccountTypeViewSet(viewsets.ModelViewSet):
     search_fields = ['type', 'description']
     ordering_fields = ['type']
     ordering = ['type']
-
-
-class ProviderViewSet(viewsets.ModelViewSet):
-    queryset = Provider.objects.all()
-    serializer_class = ProviderSerializer
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['type', 'is_active', 'is_deleted', 'is_confirmed', 'dispatch_region', 'dispatch_district']
-    search_fields = ['provider', 'contact_name', 'company_name', 'contact_mail']
-    ordering_fields = ['provider', 'rating', 'created_at']
-    ordering = ['provider']
-
-    @action(detail=False, methods=['get'])
-    def active(self, request):
-        """Obtener solo proveedores activos"""
-        queryset = self.get_queryset().filter(is_active=True, is_deleted=False)
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
-
-    @action(detail=False, methods=['get'])
-    def confirmed(self, request):
-        """Obtener solo proveedores confirmados"""
-        queryset = self.get_queryset().filter(is_confirmed=True, is_deleted=False)
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
-
-    @action(detail=False, methods=['get'])
-    def by_type(self, request):
-        """Obtener proveedores por tipo"""
-        type_id = request.query_params.get('type_id')
-        if type_id:
-            queryset = self.get_queryset().filter(type_id=type_id, is_deleted=False)
-            serializer = self.get_serializer(queryset, many=True)
-            return Response(serializer.data)
-        return Response({'error': 'type_id parameter required'}, status=400)

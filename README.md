@@ -142,6 +142,7 @@ The physical database schema does not define API ownership by itself. Ownership 
 ## Hexagonal Modules
 
 - Product
+- Provider
 - Material
 - Service
 - Catalog

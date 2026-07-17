@@ -9,8 +9,8 @@ router.register(r'regions', views.RegionViewSet)
 router.register(r'districts', views.DistrictViewSet)
 router.register(r'banks', views.BankViewSet)
 router.register(r'bank-account-types', views.BankAccountTypeViewSet)
-router.register(r'providers', views.ProviderViewSet)
+router.register(r'providers', views.ProviderViewSet, basename='provider')
 
 urlpatterns = [
     path('', include(router.urls)),
-] 
+]

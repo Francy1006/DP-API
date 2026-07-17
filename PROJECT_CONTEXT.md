@@ -721,6 +721,53 @@ Current endpoints:
 
 Some referenced lookup tables may physically live in `sbm_business`, but client-facing provider operations belong to `dp-api`.
 
+The `Provider` resource uses the Product reference pattern for Hexagonal
+Architecture: REST controllers delegate to application use cases, use cases
+depend on the domain repository port, and Django ORM is the persistence
+adapter. Provider types, groups, regions, districts, banks, and bank account
+types remain in the existing layered architecture.
+
+The Provider vertical migration is implemented. The original selector failure
+was caused by a DRF serializer mismatch: the declared fields were named
+`district_name` and `region_name`, while the public field list expected
+`dispatch_district_name` and `dispatch_region_name`. This caused
+`GET /api/providers/` to return HTTP 500 before serializing results.
+
+The repaired list contract returns HTTP 200 with standard pagination:
+
+```text
+count
+next
+previous
+results
+```
+
+Selector consumers use these Provider fields:
+
+```text
+id
+code
+provider
+type
+type_name
+```
+
+The full Provider representation retains contact, company, banking, dispatch,
+status, audit, and version fields. List, detail, search, POST, PATCH, and DELETE
+were validated locally; write smoke tests were executed inside rolled-back
+transactions.
+
+PostgreSQL remains authoritative for Provider persistence. Relevant corrected
+mappings are:
+
+```text
+provider.code          → varchar(10)
+material.provider      → integer → provider.id
+service.provider       → integer → provider.id
+```
+
+No Django migration was generated or executed for these mapping corrections.
+
 ### 5.6 `pricing`
 
 Current purpose:
@@ -1764,7 +1811,8 @@ responsibilities into `dp-api`.
 
 - ⏳ Price ownership and relationships.
 - ⏳ Fiscal configuration boundary.
-- ⏳ Provider CRUD.
+- ✅ Provider hexagonal backend and `/api/providers/` selector contract.
+- ⏳ Validate the repaired Provider selector in `sbm-manager`.
 - ⏳ Shared geographic and banking lookup behavior.
 
 ### Phase 5 — Client operations
@@ -1817,35 +1865,39 @@ the existing REST contract and Flyway-managed database mapping.
 1. **Product (In Progress)** — establishes the reference structure and contains
    lifecycle, relationship, audit-log, PATCH, and logical-deletion rules that
    should not live in HTTP controllers.
-2. **Material** — combines units, packaging, suppliers, traceability, and
+2. **Provider (Implemented)** — contains supplier identity, contact, banking,
+   dispatch, classification, confirmation, and audit data while providing a
+   stable selector contract to client applications.
+3. **Material** — combines units, packaging, suppliers, traceability, and
    future inventory or production constraints that require rules independent
    of the REST and persistence layers.
-3. **Service** — can contain availability, costing, fulfillment, billing, and
+4. **Service** — can contain availability, costing, fulfillment, billing, and
    lifecycle rules that must remain stable across different delivery channels.
-4. **Catalog** — coordinates publication, visibility, menus, product grouping,
+5. **Catalog** — coordinates publication, visibility, menus, product grouping,
    franchise conditions, and channel-specific presentation rules.
-5. **Pricing** — contains fiscal calculations, price composition, effective
+6. **Pricing** — contains fiscal calculations, price composition, effective
    price selection, and regulatory rules that benefit from isolated domain
    tests and replaceable data sources.
-6. **Orders** — requires transactional workflows, state transitions,
+7. **Orders** — requires transactional workflows, state transitions,
    validations, idempotency, and coordination with pricing and inventory.
-7. **Inventory** — owns stock invariants, reservations, adjustments, and
+8. **Inventory** — owns stock invariants, reservations, adjustments, and
    concurrency-sensitive operations that must remain correct independently of
    the delivery mechanism.
-8. **Ticket** — requires lifecycle transitions, assignment, priority, SLA,
+9. **Ticket** — requires lifecycle transitions, assignment, priority, SLA,
    authorization, notification, and audit rules beyond basic CRUD behavior.
-9. **Franchise / Tenant Provisioning** — is a critical cross-system workflow
+10. **Franchise / Tenant Provisioning** — is a critical cross-system workflow
    with contractual, security, and provisioning rules. It is a hexagonal
    candidate in its responsible internal platform service (`sbm-api`); its
    inclusion here does not transfer ownership or expose it through `dp-api`.
-10. **AI Integration** — needs explicit ports for model providers and Tools,
+11. **AI Integration** — needs explicit ports for model providers and Tools,
    with approval, authorization, observability, and audit rules independent of
    a specific AI vendor.
-11. **Workflow Automation** — requires durable state transitions, retries,
+12. **Workflow Automation** — requires durable state transitions, retries,
    idempotency, scheduling, and adapters for external systems.
 
-`Product` remains the only authorized hexagonal migration at this stage. The
-other entries are future candidates, not active refactoring scope.
+`Product` remains the reference implementation. `Provider` is the second
+implemented vertical migration. The other entries are future candidates, not
+active refactoring scope.
 
 ---
 

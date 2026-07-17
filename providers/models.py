@@ -119,7 +119,7 @@ class Provider(models.Model):
     Modelo para proveedores
     """
     id = models.AutoField(primary_key=True)
-    code = models.CharField(max_length=36, unique=True, verbose_name="Código")
+    code = models.CharField(max_length=10, unique=True, verbose_name="Código")
     provider = models.CharField(max_length=50, unique=True, verbose_name="Proveedor")
     type = models.ForeignKey(ProviderType, on_delete=models.CASCADE, db_column='type')
     rating = models.IntegerField(default=0, verbose_name="Calificación")
