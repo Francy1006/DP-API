@@ -5,7 +5,6 @@ from typing import Any, Optional
 @dataclass(frozen=True)
 class CreateProductCommand:
     code: str
-    sku: str
     description: str
     obs: str
     package_unit: int
@@ -17,6 +16,7 @@ class CreateProductCommand:
     category: int
     package: int
     created_by: str
+    sku: Optional[str] = None
     url: Optional[str] = None
     is_active: bool = True
     is_confirmed: Optional[bool] = None

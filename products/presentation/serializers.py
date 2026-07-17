@@ -8,7 +8,7 @@ class ProductSerializer(serializers.Serializer):
 
     id = serializers.IntegerField(read_only=True)
     code = serializers.CharField(max_length=36)
-    sku = serializers.CharField(max_length=50)
+    sku = serializers.CharField(max_length=50, read_only=True)
     description = serializers.CharField()
     obs = serializers.CharField()
     package_unit = serializers.IntegerField()
@@ -81,6 +81,7 @@ class ProductCommandSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "sku",
             "is_deleted",
             "created_at",
             "updated_at",

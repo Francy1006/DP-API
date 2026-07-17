@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional
 
+from products.domain.exceptions import ImmutableProductField
+
 
 def _terminated_log(value: str) -> str:
     current = (value or "").strip()
@@ -15,7 +17,6 @@ class Product:
     """Product aggregate without Django or persistence dependencies."""
 
     code: str
-    sku: str
     description: str
     obs: str
     package_unit: int
@@ -27,6 +28,7 @@ class Product:
     category: int
     package: int
     created_by: str
+    sku: Optional[str] = None
     id: Optional[int] = None
     price_gross_amount: Optional[int] = None
     provider_name: Optional[str] = None
@@ -70,6 +72,11 @@ class Product:
     ) -> None:
         changed_values = []
         for field_name, new_value in changes.items():
+            if field_name in {"sku", "provider"}:
+                if getattr(self, field_name) != new_value:
+                    raise ImmutableProductField(field_name)
+                continue
+
             if field_name == "is_confirmed":
                 normalized_value = bool(new_value)
                 was_confirmed = self.is_confirmed is True

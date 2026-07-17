@@ -10,6 +10,7 @@ from products.application.commands import (
 )
 from products.application.use_cases import CreateProduct, DeleteProduct, UpdateProduct
 from products.domain.entities import Product
+from products.domain.exceptions import ImmutableProductField
 from products.presentation.serializers import (
     ProductCommandSerializer,
     ProductSerializer,
@@ -32,6 +33,7 @@ class FixedClock:
 class FakeProductRepository:
     def __init__(self, product=None):
         self.product = product
+        self.submitted_sku = None
 
     def get(self, product_id):
         return self.product
@@ -40,6 +42,9 @@ class FakeProductRepository:
         return [self.product] if self.product else []
 
     def create(self, product):
+        self.submitted_sku = product.sku
+        if product.sku is None:
+            product.sku = f"P-{product.provider:03d}-0001"
         product.id = 1
         self.product = product
         return product
@@ -123,6 +128,7 @@ class ProductContractTests(SimpleTestCase):
     def test_confirmation_audit_fields_are_read_only(self):
         fields = ProductCommandSerializer().fields
 
+        self.assertTrue(fields["sku"].read_only)
         self.assertTrue(fields["confirmed_at"].read_only)
         self.assertTrue(fields["confirmed_by"].read_only)
 
@@ -157,6 +163,8 @@ class ProductUseCaseTests(SimpleTestCase):
         result = CreateProduct(repository, FixedClock()).execute(command)
 
         self.assertEqual(result.id, 1)
+        self.assertEqual(result.sku, "P-001-0001")
+        self.assertIsNone(repository.submitted_sku)
         self.assertFalse(result.is_confirmed)
         self.assertIsNone(result.confirmed_at)
         self.assertIsNone(result.confirmed_by)
@@ -215,6 +223,35 @@ class ProductUseCaseTests(SimpleTestCase):
             f"obs='observaciones actualizada' (USER: {ACTOR});",
         )
         self.assertTrue(repository.product.log.endswith(";"))
+
+    def test_patch_cannot_change_provider(self):
+        repository = FakeProductRepository(product_entity())
+
+        with self.assertRaises(ImmutableProductField) as raised:
+            UpdateProduct(repository, FixedClock()).execute(
+                UpdateProductCommand(
+                    product_id=1,
+                    changes={"provider": 2},
+                    updated_by=ACTOR,
+                )
+            )
+
+        self.assertEqual(raised.exception.field_name, "provider")
+        self.assertEqual(repository.product.provider, 1)
+
+    def test_patch_can_repeat_same_provider_without_changing_it(self):
+        repository = FakeProductRepository(product_entity())
+
+        result = UpdateProduct(repository, FixedClock()).execute(
+            UpdateProductCommand(
+                product_id=1,
+                changes={"provider": 1},
+                updated_by=ACTOR,
+            )
+        )
+
+        self.assertEqual(result.provider, 1)
+        self.assertIn("PATCH: sin cambios", repository.product.log)
 
     def test_delete_is_soft_and_records_audit_log(self):
         repository = FakeProductRepository(product_entity())

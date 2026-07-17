@@ -274,13 +274,11 @@ Internal or critical platform operation
 → sbm-api
 ```
 
-The next concrete Product backend task is to correct SKU generation in
-`dp-api`. The existing implementation in the Product app of `sbm-api` will be
-provided by the user and must be inspected as the behavioral reference before
-making changes. This does not change the ownership boundary: Product remains a
-client operation owned by `dp-api`. The broader migration of the Product
-consumer in `sbm-manager` remains pending and must continue against the
-canonical `dp-api` contract.
+Product SKU generation was corrected in `dp-api` after inspecting the supplied
+`sbm-api/catalog` app and the live PostgreSQL trigger. Product remains a client
+operation owned by `dp-api`. The broader migration of the Product consumer in
+`sbm-manager` remains pending and must continue against the canonical `dp-api`
+contract.
 
 #### `products/models.py`
 
@@ -463,6 +461,14 @@ The Django mapping was aligned with those confirmed columns. The DBML documentat
   already marked confirmed but missing confirmation audit is repaired when the
   PATCH reaches the current `dp-api` Product endpoint.
 - Product confirmation audit fields cannot be overridden by request payloads.
+- Product SKU is server/database generated and read-only in the public command
+  contract. The live `ditaly_pasta.product_before_insert` trigger generates
+  `P-<provider-number>-<four-digit-sequence>`, for example `P-001-0009`.
+- The provider number comes from the suffix of `provider.code` (`PVP-001` →
+  `001`), not directly from an arbitrary frontend SKU value.
+- Product provider is immutable after creation. A PATCH that attempts to
+  change it returns HTTP 400; repeating the same provider remains accepted to
+  tolerate forms that resend unchanged fields.
 - Product HEAD list and detail: HTTP 200.
 - Product PUT and HTTP DELETE: HTTP 405.
 - No Django migration was created.
@@ -1233,12 +1239,12 @@ The following backend differences were resolved in `dp-api`:
 
 Remaining work for the Product vertical slice:
 
-- Inspect the Product app supplied from `sbm-api` and document its current SKU
-  generation algorithm, inputs, format, uniqueness rules, and concurrency
-  behavior.
-- Implement the canonical Product SKU generation rule in the hexagonal
-  `dp-api` Product flow without coupling the domain/application layers to
-  Django ORM or HTTP.
+- Manually validate Product creation without `sku` and provider immutability
+  from the real frontend/Postman workflow.
+- Review the existing PostgreSQL trigger's `MAX(sequence) + 1` strategy before
+  high-concurrency production use. The unique SKU constraint protects stored
+  uniqueness, but the trigger does not itself serialize concurrent inserts for
+  the same provider.
 - Redirect the `sbm-manager` Product consumer from `sbm-api` to `dp-api`.
 - Adapt frontend fields and actions to the canonical `dp-api` contract.
 - Add regression tests.
@@ -1309,7 +1315,7 @@ Current Product migration state:
 
 ```text
 dp-api Product backend contract → validated
-dp-api Product SKU generation    → next active task; SBM-API source pending
+dp-api Product SKU generation    → implemented; manual client validation next
 sbm-manager Product consumer     → pending migration work
 sbm-api Product endpoint         → retained until consumer migration passes
 ```
@@ -1847,8 +1853,8 @@ responsibilities into `dp-api`.
 - ✅ Validate the permitted Product operations: GET, POST, PATCH, HEAD, and logical delete.
 - ✅ Establish Product as the first Hexagonal Architecture reference implementation.
 - ✅ Add Product contract and application-use-case regression tests.
-- 🚧 Correct Product SKU generation using the existing `sbm-api` Product app
-  as the behavioral reference; source pending from the user.
+- ✅ Correct Product SKU generation using the existing `sbm-api` Product app
+  and live PostgreSQL trigger as behavioral references.
 - 🚧 Update `sbm-manager` consumer.
 - ⏳ Deprecate Product endpoint in `sbm-api`.
 
@@ -1958,51 +1964,40 @@ active refactoring scope.
 
 ### 21.1 Current exact objective
 
-Correct Product SKU generation in `dp-api`, using the existing Product app from
-`sbm-api` as the behavioral reference while preserving the hexagonal Product
-architecture and the current REST contract.
+Validate the corrected Product SKU generation and provider immutability through
+the real client workflow before continuing with another Product change.
 
 The next work must proceed in this exact order:
 
-1. Wait for the user to provide the Product app or relevant Product files from
-   `sbm-api`.
-2. Read the supplied source before modifying `dp-api`.
-3. Identify the exact SKU generation behavior, including:
-   - source fields and normalization;
-   - prefix, separators, padding, and sequence rules;
-   - database lookup or counter behavior;
-   - uniqueness and collision handling;
-   - behavior during create versus update;
-   - transaction and concurrency assumptions.
-4. Compare that behavior with the current `dp-api` Product entity, create use
-   case, repository port, Django persistence adapter, serializer, and database
-   constraints.
-5. Present the proposed implementation and affected files before applying the
-   change if the supplied logic exposes an ambiguity or contract decision.
-6. Implement SKU generation in the correct hexagonal layer. HTTP controllers
-   must only receive the request, use cases must coordinate the operation, and
-   Django ORM/database access must remain in the infrastructure adapter.
-7. Preserve the current Product API behavior unless the verified legacy SKU
-   contract explicitly requires an agreed request change.
-8. Add focused coverage for the generation rule, uniqueness/collisions, and
-   any relevant sequence boundaries.
-9. Run Product-specific tests and `python manage.py check` without creating or
-   executing Django migrations.
+1. Create a Product without including `sku` in the POST payload.
+2. Verify that the response contains the expected format
+   `P-<provider-number>-<four-digit-sequence>`.
+3. Attempt to PATCH the Product with a different provider and verify HTTP 400
+   with the original provider unchanged.
+4. Verify that ordinary PATCH operations and confirmation continue to work.
+5. Keep the PostgreSQL trigger and Flyway-owned schema unchanged during this
+   API correction.
 
 ### 21.2 Success criteria for the current vertical slice
 
-The Product SKU correction is complete only when:
+The Product SKU correction is technically implemented and locally validated:
 
 1. The existing `sbm-api` generation behavior has been inspected and
    documented from source, not guessed.
 2. `dp-api` generates the expected SKU through the Product create use case.
 3. The rule is isolated from the REST controller and Django model callbacks.
-4. SKU uniqueness and collision behavior are explicit and tested.
+4. PostgreSQL retains the unique SKU constraint. The concurrency limitation of
+   the trigger's `MAX + 1` strategy is documented for production hardening.
 5. Existing Product confirmation, audit log, PATCH, HEAD, and logical-delete
    behavior remains unchanged.
 6. Product regression tests and Django system checks pass.
 7. No Django migration or database alteration is introduced unless separately
    reviewed and authorized.
+
+Local validation produced 13 passing Product tests, a clean Django system
+check, `P-001-0009` from a rolled-back real create, and HTTP 400 from a
+rolled-back provider-change attempt. User/client validation is the remaining
+acceptance step.
 
 The `sbm-manager` Product consumer migration and eventual deprecation of the
 duplicate Product endpoint in `sbm-api` remain subsequent work; neither is
@@ -2089,11 +2084,11 @@ A client user may create products, modify prices, manage providers, branches, ca
 
 The current migration corrects Ditaly Pasta functionality that was implemented
 inside `sbm-api` due to time constraints. The first backend capability,
-Product, now has a validated canonical contract in `dp-api`. The immediate next
-task is to inspect the Product app that the user will provide from `sbm-api` and
-correct Product SKU generation in the hexagonal `dp-api` implementation. The
-Vue.js 3 `sbm-manager` Product consumer migration remains pending, while
-internal and critical platform operations continue using `sbm-api`.
+Product, now has a validated canonical contract in `dp-api`. Product SKU
+generation now delegates to the existing PostgreSQL trigger and the provider
+is immutable after creation. Manual client validation is next. The Vue.js 3
+`sbm-manager` Product consumer migration remains pending, while internal and
+critical platform operations continue using `sbm-api`.
 
 The migration will be vertical and incremental. The first capability is `Product`:
 

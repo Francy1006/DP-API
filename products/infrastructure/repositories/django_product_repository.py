@@ -86,9 +86,8 @@ class DjangoProductRepository:
 
     @transaction.atomic
     def create(self, product):
-        model = ProductModel.objects.create(
+        values = dict(
             code=product.code,
-            sku=product.sku,
             description=product.description,
             obs=product.obs,
             package_unit=product.package_unit,
@@ -111,6 +110,12 @@ class DjangoProductRepository:
             log=product.log,
             version=product.version,
         )
+        if product.sku:
+            values["sku"] = product.sku
+
+        # Omitting SKU activates ditaly_pasta.product_before_insert, the
+        # PostgreSQL source-of-truth generator (P-<provider>-<sequence>).
+        model = ProductModel.objects.create(**values)
         return self.get(model.pk)
 
     @transaction.atomic

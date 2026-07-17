@@ -9,7 +9,7 @@ from products.domain.entities import Product
 class ProductDTO:
     id: Optional[int]
     code: str
-    sku: str
+    sku: Optional[str]
     description: str
     obs: str
     package_unit: int

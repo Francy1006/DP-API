@@ -21,6 +21,7 @@ from products.application.use_cases import (
 from products.domain.exceptions import (
     AuditUserNotFound,
     AuditUserRequired,
+    ImmutableProductField,
     ProductNotFound,
 )
 from products.infrastructure.clock import DjangoClock
@@ -95,6 +96,10 @@ class ProductViewSet(
             raise ValidationError(
                 {error.field_name: "El usuario indicado no existe."}
             )
+        if isinstance(error, ImmutableProductField):
+            raise ValidationError(
+                {error.field_name: "Este campo no puede modificarse."}
+            )
         raise error
 
     def _get_product(self, product_id):
@@ -143,7 +148,6 @@ class ProductViewSet(
         values = _primitive_values(serializer.validated_data)
         command = CreateProductCommand(
             code=values["code"],
-            sku=values["sku"],
             description=values["description"],
             obs=values["obs"],
             package_unit=values["package_unit"],
@@ -164,7 +168,12 @@ class ProductViewSet(
             product = CreateProduct(self.get_repository(), self.get_clock()).execute(
                 command
             )
-        except (ProductNotFound, AuditUserRequired, AuditUserNotFound) as error:
+        except (
+            ProductNotFound,
+            AuditUserRequired,
+            AuditUserNotFound,
+            ImmutableProductField,
+        ) as error:
             self._raise_api_error(error)
         response_data = ProductSerializer(product).data
         return Response(
@@ -192,7 +201,12 @@ class ProductViewSet(
             product = UpdateProduct(self.get_repository(), self.get_clock()).execute(
                 command
             )
-        except (ProductNotFound, AuditUserRequired, AuditUserNotFound) as error:
+        except (
+            ProductNotFound,
+            AuditUserRequired,
+            AuditUserNotFound,
+            ImmutableProductField,
+        ) as error:
             self._raise_api_error(error)
         return Response(ProductSerializer(product).data)
 
