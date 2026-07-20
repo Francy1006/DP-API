@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from .models import (
     FiscalDirectiveType, FiscalDirective, FiscalFormula, 
-    PriceFiscalConfiguration, Price, FiscalConfigurationDetail
+    PriceFiscalConfiguration, PriceConfiguration, Price,
+    FiscalConfigurationDetail
 )
 
 class FiscalDirectiveTypeSerializer(serializers.ModelSerializer):
@@ -48,6 +49,34 @@ class PriceFiscalConfigurationSerializer(serializers.ModelSerializer):
             'updated_by', 'deleted_by'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'confirmed_at', 'deleted_at']
+
+
+class PriceConfigurationSerializer(serializers.ModelSerializer):
+    franchise_configuration_name = serializers.CharField(
+        source='franchise_configuration.configuration', read_only=True
+    )
+    variable_formula_name = serializers.CharField(
+        source='variable_formula.formula', read_only=True
+    )
+    record_type_name = serializers.CharField(
+        source='record_type.type', read_only=True
+    )
+
+    class Meta:
+        model = PriceConfiguration
+        fields = [
+            'id', 'code', 'price_configuration',
+            'franchise_configuration', 'franchise_configuration_name',
+            'variable_formula', 'variable_formula_name',
+            'record_type', 'record_type_name',
+            'is_deleted', 'is_confirmed', 'created_at', 'updated_at',
+            'confirmed_at', 'deleted_at', 'created_by', 'confirmed_by',
+            'updated_by', 'deleted_by',
+        ]
+        read_only_fields = [
+            'id', 'code', 'created_at', 'updated_at', 'confirmed_at',
+            'deleted_at',
+        ]
 
 
 class PriceSerializer(serializers.ModelSerializer):

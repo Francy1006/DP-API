@@ -6,11 +6,13 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from .models import (
     FiscalDirectiveType, FiscalDirective, FiscalFormula, 
-    PriceFiscalConfiguration, Price, FiscalConfigurationDetail
+    PriceFiscalConfiguration, PriceConfiguration, Price,
+    FiscalConfigurationDetail
 )
 from .serializers import (
     FiscalDirectiveTypeSerializer, FiscalDirectiveSerializer, FiscalFormulaSerializer,
-    PriceFiscalConfigurationSerializer, PriceSerializer, FiscalConfigurationDetailSerializer
+    PriceFiscalConfigurationSerializer, PriceConfigurationSerializer,
+    PriceSerializer, FiscalConfigurationDetailSerializer
 )
 
 # Create your views here.
@@ -94,6 +96,27 @@ class PriceFiscalConfigurationViewSet(viewsets.ModelViewSet):
         queryset = self.get_queryset().filter(is_confirmed=True, is_deleted=False)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
+
+class PriceConfigurationViewSet(viewsets.ModelViewSet):
+    queryset = PriceConfiguration.objects.select_related(
+        'franchise_configuration',
+        'variable_formula',
+        'record_type',
+        'created_by',
+        'confirmed_by',
+        'updated_by',
+        'deleted_by',
+    ).all()
+    serializer_class = PriceConfigurationSerializer
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = [
+        'franchise_configuration', 'variable_formula', 'record_type',
+        'is_deleted', 'is_confirmed',
+    ]
+    search_fields = ['code', 'price_configuration']
+    ordering_fields = ['id', 'price_configuration', 'created_at', 'updated_at']
+    ordering = ['price_configuration']
 
 
 class PriceViewSet(viewsets.ModelViewSet):

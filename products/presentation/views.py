@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import NotFound, ValidationError
+from rest_framework.exceptions import APIException, NotFound, ValidationError
 from rest_framework.response import Response
 
 from products.application.commands import (
@@ -26,12 +26,29 @@ from products.domain.exceptions import (
 )
 from products.infrastructure.clock import DjangoClock
 from products.infrastructure.repositories import DjangoProductRepository
+from pricing.domain.exceptions import (
+    InvalidBaseNetAmount,
+    PricingError,
+    ProductPriceConfigurationUnavailable,
+)
+from pricing.infrastructure.repositories import DjangoPriceRepository
+from pricing.infrastructure.transactions import DjangoTransactionManager
 from products.presentation.serializers import (
     DeletedProductSerializer,
     ProductCommandSerializer,
     ProductFilterSerializer,
     ProductSerializer,
 )
+
+
+class PriceVersionConflict(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_code = "price_version_conflict"
+    default_detail = {
+        "base_net_amount": [
+            "El precio vigente no puede versionarse de forma segura."
+        ]
+    }
 
 
 RELATION_VALUE_FIELDS = {
@@ -100,6 +117,20 @@ class ProductViewSet(
             raise ValidationError(
                 {error.field_name: "Este campo no puede modificarse."}
             )
+        if isinstance(error, InvalidBaseNetAmount):
+            raise ValidationError(
+                {"base_net_amount": "Debe ser un decimal mayor que 0."}
+            )
+        if isinstance(error, ProductPriceConfigurationUnavailable):
+            raise ValidationError(
+                {
+                    "price_configuration": (
+                        "La configuración no está disponible para precios de producto."
+                    )
+                }
+            )
+        if isinstance(error, PricingError):
+            raise PriceVersionConflict
         raise error
 
     def _get_product(self, product_id):
@@ -152,7 +183,8 @@ class ProductViewSet(
             obs=values["obs"],
             package_unit=values["package_unit"],
             min_package_purchase=values["min_package_purchase"],
-            price=values["price"],
+            base_net_amount=values["base_net_amount"],
+            price_configuration=values["price_configuration"],
             provider=values["provider"],
             type=values["type"],
             item_group=values["item_group"],
@@ -165,14 +197,18 @@ class ProductViewSet(
             updated_by=values.get("updated_by"),
         )
         try:
-            product = CreateProduct(self.get_repository(), self.get_clock()).execute(
-                command
-            )
+            product = CreateProduct(
+                repository=self.get_repository(),
+                price_repository=DjangoPriceRepository(),
+                transaction_manager=DjangoTransactionManager(),
+                clock=self.get_clock(),
+            ).execute(command)
         except (
             ProductNotFound,
             AuditUserRequired,
             AuditUserNotFound,
             ImmutableProductField,
+            PricingError,
         ) as error:
             self._raise_api_error(error)
         response_data = ProductSerializer(product).data
@@ -198,14 +234,18 @@ class ProductViewSet(
             updated_by=updated_by,
         )
         try:
-            product = UpdateProduct(self.get_repository(), self.get_clock()).execute(
-                command
-            )
+            product = UpdateProduct(
+                repository=self.get_repository(),
+                price_repository=DjangoPriceRepository(),
+                transaction_manager=DjangoTransactionManager(),
+                clock=self.get_clock(),
+            ).execute(command)
         except (
             ProductNotFound,
             AuditUserRequired,
             AuditUserNotFound,
             ImmutableProductField,
+            PricingError,
         ) as error:
             self._raise_api_error(error)
         return Response(ProductSerializer(product).data)

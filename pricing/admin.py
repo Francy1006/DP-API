@@ -4,6 +4,7 @@ from .models import (
     FiscalDirective,
     FiscalFormula,
     PriceFiscalConfiguration,
+    PriceConfiguration,
     Price,
     FiscalConfigurationDetail,
 )
@@ -96,6 +97,28 @@ class PriceFiscalConfigurationAdmin(admin.ModelAdmin):
             },
         ),
     )
+
+
+@admin.register(PriceConfiguration)
+class PriceConfigurationAdmin(admin.ModelAdmin):
+    list_display = [
+        "code",
+        "price_configuration",
+        "franchise_configuration",
+        "variable_formula",
+        "record_type",
+        "is_deleted",
+        "is_confirmed",
+        "created_at",
+    ]
+    list_filter = [
+        "record_type", "is_deleted", "is_confirmed", "created_at"
+    ]
+    search_fields = ["code", "price_configuration"]
+    ordering = ["price_configuration"]
+    readonly_fields = [
+        "id", "code", "created_at", "updated_at", "confirmed_at", "deleted_at"
+    ]
 
 
 @admin.register(Price)

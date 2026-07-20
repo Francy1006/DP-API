@@ -7,9 +7,10 @@ router.register(r'fiscal-directive-types', views.FiscalDirectiveTypeViewSet)
 router.register(r'fiscal-directives', views.FiscalDirectiveViewSet)
 router.register(r'fiscal-formulas', views.FiscalFormulaViewSet)
 router.register(r'price-fiscal-configurations', views.PriceFiscalConfigurationViewSet)
+router.register(r'price-configuration', views.PriceConfigurationViewSet)
 router.register(r'prices', views.PriceViewSet)
 router.register(r'fiscal-configuration-details', views.FiscalConfigurationDetailViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
-] 
+]

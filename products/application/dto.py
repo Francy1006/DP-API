@@ -1,5 +1,6 @@
 from dataclasses import asdict, dataclass
 from datetime import datetime
+from decimal import Decimal
 from typing import Optional
 
 from products.domain.entities import Product
@@ -14,8 +15,15 @@ class ProductDTO:
     obs: str
     package_unit: int
     min_package_purchase: int
-    price: str
-    price_gross_amount: Optional[int]
+    price: Optional[str]
+    base_net_amount: Optional[Decimal]
+    net_amount: Optional[Decimal]
+    gross_amount: Optional[Decimal]
+    iva_amount: Optional[Decimal]
+    aditional_tax_amount: Optional[Decimal]
+    retention_amount: Optional[Decimal]
+    price_configuration: Optional[str]
+    price_configuration_label: Optional[str]
     provider: int
     provider_name: Optional[str]
     type: int

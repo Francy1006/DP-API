@@ -1,5 +1,6 @@
 from django.db import models
 import uuid
+from decimal import Decimal
 from django.utils import timezone
 from users.models import User
 
@@ -244,6 +245,127 @@ class PriceFiscalConfiguration(models.Model):
         return self.fiscal_configuration
 
 
+class FranchiseConfigurationReference(models.Model):
+    """Referencia ORM mínima a la configuración de franquicia."""
+
+    id = models.AutoField(primary_key=True)
+    code = models.CharField(max_length=36, unique=True)
+    configuration = models.CharField(max_length=50)
+
+    class Meta:
+        db_table = '"ditaly_pasta"."franchise_configuration"'
+        managed = False
+
+    def __str__(self):
+        return self.configuration
+
+
+class VariableFormulaReference(models.Model):
+    """Referencia ORM mínima a una fórmula variable compartida."""
+
+    id = models.AutoField(primary_key=True)
+    code = models.CharField(max_length=36, unique=True, null=True, blank=True)
+    formula = models.CharField(max_length=50)
+
+    class Meta:
+        db_table = '"sbm_business"."variable_formula"'
+        managed = False
+
+    def __str__(self):
+        return self.formula
+
+
+class RecordTypeReference(models.Model):
+    """Referencia ORM mínima al tipo de registro compartido."""
+
+    id = models.AutoField(primary_key=True)
+    type = models.CharField(max_length=50, unique=True)
+    description = models.TextField()
+
+    class Meta:
+        db_table = '"sbm_business"."record_type"'
+        managed = False
+
+    def __str__(self):
+        return self.type
+
+
+class PriceConfiguration(models.Model):
+    id = models.AutoField(primary_key=True)
+    code = models.CharField(max_length=36, unique=True, null=True, blank=True)
+    price_configuration = models.CharField(max_length=50, unique=True)
+    franchise_configuration = models.ForeignKey(
+        FranchiseConfigurationReference,
+        to_field="code",
+        db_column="franchise_configuration",
+        on_delete=models.PROTECT,
+        related_name="price_configurations",
+    )
+    variable_formula = models.ForeignKey(
+        VariableFormulaReference,
+        to_field="code",
+        db_column="variable_formula",
+        on_delete=models.PROTECT,
+        related_name="price_configurations",
+    )
+    record_type = models.ForeignKey(
+        RecordTypeReference,
+        db_column="record_type",
+        on_delete=models.PROTECT,
+        related_name="price_configurations",
+    )
+    is_deleted = models.BooleanField(null=True, blank=True)
+    is_confirmed = models.BooleanField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now, null=True, blank=True)
+    updated_at = models.DateTimeField(null=True, blank=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        User,
+        db_column="created_by",
+        to_field="code",
+        on_delete=models.PROTECT,
+        related_name="price_configurations_created",
+    )
+    confirmed_by = models.ForeignKey(
+        User,
+        db_column="confirmed_by",
+        to_field="code",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="price_configurations_confirmed",
+    )
+    updated_by = models.ForeignKey(
+        User,
+        db_column="updated_by",
+        to_field="code",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="price_configurations_updated",
+    )
+    deleted_by = models.ForeignKey(
+        User,
+        db_column="deleted_by",
+        to_field="code",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="price_configurations_deleted",
+    )
+
+    class Meta:
+        db_table = '"ditaly_pasta"."price_configuration"'
+        managed = False
+        verbose_name = "Configuración de Precio"
+        verbose_name_plural = "Configuraciones de Precio"
+        ordering = ["price_configuration"]
+
+    def __str__(self):
+        return self.price_configuration
+
+
 class Price(models.Model):
     id = models.AutoField(primary_key=True)
 
@@ -255,33 +377,45 @@ class Price(models.Model):
         verbose_name="Código",
     )
 
-    base_net_amount = models.IntegerField(
-        default=0,
+    base_net_amount = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        default=Decimal("0.00"),
         verbose_name="Monto Neto Base",
     )
 
-    net_amount = models.IntegerField(
-        default=0,
+    net_amount = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        default=Decimal("0.00"),
         verbose_name="Monto Neto",
     )
 
-    gross_amount = models.IntegerField(
-        default=0,
+    gross_amount = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        default=Decimal("0.00"),
         verbose_name="Monto Bruto",
     )
 
-    iva_amount = models.IntegerField(
-        default=0,
+    iva_amount = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        default=Decimal("0.00"),
         verbose_name="Monto IVA",
     )
 
-    aditional_tax_amount = models.IntegerField(
-        default=0,
+    aditional_tax_amount = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        default=Decimal("0.00"),
         verbose_name="Monto Impuesto Adicional",
     )
 
-    retention_amount = models.IntegerField(
-        default=0,
+    retention_amount = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        default=Decimal("0.00"),
         verbose_name="Monto de Retención",
     )
 

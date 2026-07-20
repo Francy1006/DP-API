@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, Optional
 
 from products.domain.exceptions import ImmutableProductField
@@ -12,6 +13,12 @@ def _terminated_log(value: str) -> str:
     return current
 
 
+def _audit_value(value) -> str:
+    if isinstance(value, Decimal):
+        return format(value, "f")
+    return repr(value)
+
+
 @dataclass
 class Product:
     """Product aggregate without Django or persistence dependencies."""
@@ -21,7 +28,7 @@ class Product:
     obs: str
     package_unit: int
     min_package_purchase: int
-    price: str
+    price: Optional[str]
     provider: int
     type: int
     item_group: int
@@ -30,7 +37,14 @@ class Product:
     created_by: str
     sku: Optional[str] = None
     id: Optional[int] = None
-    price_gross_amount: Optional[int] = None
+    base_net_amount: Optional[Decimal] = None
+    net_amount: Optional[Decimal] = None
+    gross_amount: Optional[Decimal] = None
+    iva_amount: Optional[Decimal] = None
+    aditional_tax_amount: Optional[Decimal] = None
+    retention_amount: Optional[Decimal] = None
+    price_configuration: Optional[str] = None
+    price_configuration_label: Optional[str] = None
     provider_name: Optional[str] = None
     type_name: Optional[str] = None
     item_group_name: Optional[str] = None
@@ -69,10 +83,10 @@ class Product:
         changes: dict[str, Any],
         updated_by: str,
         updated_at: datetime,
-    ) -> None:
+    ) -> bool:
         changed_values = []
         for field_name, new_value in changes.items():
-            if field_name in {"sku", "provider"}:
+            if field_name in {"sku", "provider", "price"}:
                 if getattr(self, field_name) != new_value:
                     raise ImmutableProductField(field_name)
                 continue
@@ -106,7 +120,9 @@ class Product:
                 continue
 
             if getattr(self, field_name) != new_value:
-                changed_values.append(f"{field_name}={new_value!r}")
+                changed_values.append(
+                    f"{field_name}={_audit_value(new_value)}"
+                )
                 setattr(self, field_name, new_value)
 
         changes_log = ", ".join(changed_values) if changed_values else "sin cambios"
@@ -115,6 +131,20 @@ class Product:
         self.log = f"{current_log} {patch_log}".strip()
         self.updated_by = updated_by
         self.updated_at = updated_at
+        return bool(changed_values)
+
+    def increment_version(self) -> None:
+        self.version = (self.version or 0) + 1
+
+    def link_price(self, price_code, configuration_code, components) -> None:
+        self.price = price_code
+        self.price_configuration = configuration_code
+        self.base_net_amount = components.base_net_amount
+        self.net_amount = components.net_amount
+        self.gross_amount = components.gross_amount
+        self.iva_amount = components.iva_amount
+        self.aditional_tax_amount = components.aditional_tax_amount
+        self.retention_amount = components.retention_amount
 
     def soft_delete(
         self,

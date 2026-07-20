@@ -1,6 +1,7 @@
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import F, OuterRef, Q, Subquery
 
+from pricing.models import PriceConfiguration
 from products.domain.entities import Product as ProductEntity
 from products.domain.exceptions import ProductNotFound
 from products.models import Product as ProductModel
@@ -20,8 +21,15 @@ class DjangoProductRepository:
     )
 
     def _base_queryset(self):
-        return ProductModel.objects.select_related(*self.related_fields).filter(
-            Q(is_deleted=False) | Q(is_deleted__isnull=True)
+        configuration_label = PriceConfiguration.objects.filter(
+            code=OuterRef("price__price_configuration")
+        ).values("price_configuration")[:1]
+        return (
+            ProductModel.objects.select_related(*self.related_fields)
+            .annotate(
+                price_configuration_label=Subquery(configuration_label)
+            )
+            .filter(Q(is_deleted=False) | Q(is_deleted__isnull=True))
         )
 
     @staticmethod
@@ -35,7 +43,14 @@ class DjangoProductRepository:
             package_unit=model.package_unit,
             min_package_purchase=model.min_package_purchase,
             price=model.price_id,
-            price_gross_amount=model.price.gross_amount,
+            base_net_amount=model.price.base_net_amount,
+            net_amount=model.price.net_amount,
+            gross_amount=model.price.gross_amount,
+            iva_amount=model.price.iva_amount,
+            aditional_tax_amount=model.price.aditional_tax_amount,
+            retention_amount=model.price.retention_amount,
+            price_configuration=model.price.price_configuration,
+            price_configuration_label=model.price_configuration_label,
             provider=model.provider_id,
             provider_name=model.provider.provider,
             type=model.type_id,
@@ -65,6 +80,13 @@ class DjangoProductRepository:
     def get(self, product_id):
         try:
             model = self._base_queryset().get(pk=product_id)
+        except ProductModel.DoesNotExist as error:
+            raise ProductNotFound from error
+        return self._to_entity(model)
+
+    def get_for_update(self, product_id):
+        try:
+            model = self._base_queryset().select_for_update().get(pk=product_id)
         except ProductModel.DoesNotExist as error:
             raise ProductNotFound from error
         return self._to_entity(model)
@@ -135,7 +157,11 @@ class DjangoProductRepository:
         values = {}
         for field_name in changed_fields:
             key = f"{field_name}_id" if field_name in relation_fields else field_name
-            values[key] = getattr(product, field_name)
+            values[key] = (
+                F("version") + 1
+                if field_name == "version"
+                else getattr(product, field_name)
+            )
 
         updated = self._base_queryset().filter(pk=product.id).update(**values)
         if not updated:
@@ -158,6 +184,7 @@ class DjangoProductRepository:
         model = ProductModel.objects.select_related(*self.related_fields).get(
             pk=product.id
         )
+        model.price_configuration_label = product.price_configuration_label
         return self._to_entity(model)
 
     def user_exists(self, user_code):

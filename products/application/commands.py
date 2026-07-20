@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from decimal import Decimal
 from typing import Any, Optional
 
 
@@ -9,7 +10,8 @@ class CreateProductCommand:
     obs: str
     package_unit: int
     min_package_purchase: int
-    price: str
+    base_net_amount: Decimal
+    price_configuration: str
     provider: int
     type: int
     item_group: int

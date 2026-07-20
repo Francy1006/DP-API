@@ -7,6 +7,8 @@ from .entities import Product
 class ProductRepository(Protocol):
     def get(self, product_id: int) -> Product: ...
 
+    def get_for_update(self, product_id: int) -> Product: ...
+
     def list(
         self,
         filters: dict[str, object],
