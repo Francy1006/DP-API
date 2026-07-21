@@ -1,4 +1,6 @@
-from .django_price_repository import DjangoPriceRepository
+from .django_price_repository import (
+    DjangoMaterialPriceRepository,
+    DjangoPriceRepository,
+)
 
-__all__ = ["DjangoPriceRepository"]
-
+__all__ = ["DjangoMaterialPriceRepository", "DjangoPriceRepository"]

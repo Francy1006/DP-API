@@ -10,15 +10,20 @@ from pricing.domain.entities import (
 from pricing.domain.exceptions import (
     CurrentPriceNotFound,
     FiscalDirectiveUnavailable,
+    MaterialPriceConfigurationUnavailable,
     ProductPriceConfigurationUnavailable,
     UnsafeCurrentPrice,
 )
 from pricing.models import Price as PriceModel
+from products.models import Material as MaterialModel
 from products.models import Product as ProductModel
 
 
 class DjangoPriceRepository:
     """ORM/SQL adapter limited to the Product price-versioning slice."""
+
+    record_type = 1
+    configuration_exception = ProductPriceConfigurationUnavailable
 
     @staticmethod
     def _to_entity(model):
@@ -67,18 +72,18 @@ class DjangoPriceRepository:
                 INNER JOIN sbm_business.formula_type AS ft
                     ON ft.id = vf.formula_type
                 WHERE pc.code = %s
-                  AND pc.record_type = 1
+                  AND pc.record_type = %s
                   AND pc.is_confirmed IS TRUE
                   AND pc.is_deleted IS NOT TRUE
                   AND vf.is_confirmed IS TRUE
                   AND vf.is_deleted IS NOT TRUE
                   AND ft.type = 'PRICE'
                 """,
-                [configuration_code],
+                [configuration_code, self.record_type],
             )
             rows = cursor.fetchall()
         if len(rows) != 1:
-            raise ProductPriceConfigurationUnavailable
+            raise self.configuration_exception
         (
             code,
             name,
@@ -140,7 +145,7 @@ class DjangoPriceRepository:
             created_at=created_at,
             created_by_id=created_by,
             record_item_code=product_code,
-            price_record_type=1,
+            price_record_type=self.record_type,
         )
         return self._to_entity(model)
 
@@ -151,3 +156,17 @@ class DjangoPriceRepository:
         ).update(is_current=False)
         if updated != 1:
             raise UnsafeCurrentPrice
+
+
+class DjangoMaterialPriceRepository(DjangoPriceRepository):
+    """Price adapter constrained to record_type=MATERIAL (id 2)."""
+
+    record_type = 2
+    configuration_exception = MaterialPriceConfigurationUnavailable
+
+    def get_material_configuration(self, configuration_code):
+        return self.get_product_configuration(configuration_code)
+
+    def count_material_references(self, price_code):
+        # Material.price is intentionally scalar while legacy dangling UUIDs exist.
+        return MaterialModel.objects.filter(price=price_code).count()

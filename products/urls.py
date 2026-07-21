@@ -15,7 +15,7 @@ router.register(r'catalogs', views.CatalogViewSet)
 router.register(r'item-configurations', views.ItemConfigurationViewSet)
 router.register(r'item-configuration-details', views.ItemConfigurationDetailViewSet)
 router.register(r'products', views.ProductViewSet, basename='product')
-router.register(r'materials', views.MaterialViewSet)
+router.register(r'materials', views.MaterialViewSet, basename='material')
 router.register(r'services', views.ServiceViewSet)
 
 urlpatterns = [

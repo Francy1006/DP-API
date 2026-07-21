@@ -491,9 +491,8 @@ class Product(models.Model):
 
 
 class Material(models.Model):
-    """
-    Modelo para materiales
-    """
+    """Material operativo administrado por DP-API."""
+
     id = models.AutoField(primary_key=True)
     code = models.CharField(max_length=36, unique=True, verbose_name="Código")
     sku = models.CharField(max_length=50, verbose_name="SKU")
@@ -501,13 +500,40 @@ class Material(models.Model):
     obs = models.TextField(verbose_name="Observaciones")
     package_unit = models.IntegerField(verbose_name="Unidad de Paquete")
     min_package_purchase = models.IntegerField(verbose_name="Compra Mínima de Paquete")
+    # Kept scalar until Flyway repairs the three dangling legacy Price UUIDs.
+    # New writes always link a real pricing.Price code through the use case.
     price = models.CharField(max_length=36, verbose_name="Precio")
-    provider = models.ForeignKey('providers.Provider', on_delete=models.CASCADE, db_column='provider')
-    type = models.ForeignKey(ItemType, on_delete=models.CASCADE, db_column='type')
-    group = models.ForeignKey(ItemGroup, on_delete=models.CASCADE, db_column='group')
-    category = models.ForeignKey(ItemCategory, on_delete=models.CASCADE, db_column='category')
+    provider = models.ForeignKey(
+        'providers.Provider',
+        on_delete=models.PROTECT,
+        db_column='provider',
+        related_name='materials',
+    )
+    type = models.ForeignKey(
+        ItemType,
+        on_delete=models.PROTECT,
+        db_column='type',
+        related_name='materials',
+    )
+    item_group = models.ForeignKey(
+        ItemGroup,
+        on_delete=models.PROTECT,
+        db_column='item_group',
+        related_name='materials',
+    )
+    category = models.ForeignKey(
+        ItemCategory,
+        on_delete=models.PROTECT,
+        db_column='category',
+        related_name='materials',
+    )
     url = models.URLField(max_length=255, null=True, blank=True, verbose_name="URL")
-    package = models.ForeignKey(Package, on_delete=models.CASCADE, db_column='package')
+    package = models.ForeignKey(
+        Package,
+        on_delete=models.PROTECT,
+        db_column='package',
+        related_name='materials',
+    )
     is_active = models.BooleanField(default=True, verbose_name="Activo")
     is_deleted = models.BooleanField(null=True, blank=True, verbose_name="Eliminado")
     is_confirmed = models.BooleanField(null=True, blank=True, verbose_name="Confirmado")
@@ -524,9 +550,10 @@ class Material(models.Model):
 
     class Meta:
         db_table = 'material'
+        managed = False
         verbose_name = "Material"
         verbose_name_plural = "Materiales"
-        ordering = ['description']
+        ordering = ['-created_at']
 
     def __str__(self):
         return self.description

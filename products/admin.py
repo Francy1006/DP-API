@@ -327,7 +327,7 @@ class MaterialAdmin(admin.ModelAdmin):
         "description",
         "provider",
         "type",
-        "group",
+        "item_group",
         "category",
         "is_active",
         "is_deleted",
@@ -337,7 +337,7 @@ class MaterialAdmin(admin.ModelAdmin):
     list_filter = [
         "provider",
         "type",
-        "group",
+        "item_group",
         "category",
         "is_active",
         "is_deleted",
@@ -357,7 +357,7 @@ class MaterialAdmin(admin.ModelAdmin):
     ]
     fieldsets = (
         ("Información Básica", {"fields": ("code", "sku", "description", "obs")}),
-        ("Clasificación", {"fields": ("type", "group", "category")}),
+        ("Clasificación", {"fields": ("type", "item_group", "category")}),
         (
             "Proveedor y Precios",
             {"fields": ("provider", "price", "package_unit", "min_package_purchase")},

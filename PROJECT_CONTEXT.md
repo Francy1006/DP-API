@@ -1,6 +1,6 @@
 # PROJECT_CONTEXT.md
 
-> **Last updated:** 2026-07-17
+> **Last updated:** 2026-07-19
 >
 > **Purpose of this file**
 >
@@ -296,9 +296,13 @@ Flyway change. No Django migration is part of that implementation.
 ---
 
 
-### 3.7 Latest validated implementation progress — 2026-07-17
+### 3.7 Latest validated implementation progress — 2026-07-19
 
-The first backend portion of the `Product` vertical migration is now implemented and validated in `dp-api`.
+The `Product` vertical migration is implemented and accepted as the canonical
+reference capability in `dp-api`. Its backend contract and `sbm-manager`
+consumer have been validated together. Product is resolved; removal of any
+remaining duplicate `sbm-api` endpoint is a separate retirement task and does
+not reopen the Product implementation.
 
 The migration boundary remains:
 
@@ -313,9 +317,8 @@ Internal or critical platform operation
 
 Product SKU generation was corrected in `dp-api` after inspecting the supplied
 `sbm-api/catalog` app and the live PostgreSQL trigger. Product remains a client
-operation owned by `dp-api`. The broader migration of the Product consumer in
-`sbm-manager` remains pending and must continue against the canonical `dp-api`
-contract.
+operation owned by `dp-api`, and `sbm-manager` now consumes its canonical
+`dp-api` contract.
 
 #### `products/models.py`
 
@@ -324,7 +327,9 @@ contract.
 - `Product.price` was changed from a scalar field to a foreign key targeting `pricing.Price.code`.
 - Main domain relationships were changed to protective deletion behavior where appropriate.
 - The model remains unmanaged because Flyway owns the schema.
-- The legacy PostgreSQL column `gross_price` remains database-only. Existing rows contain `0`; the commercial value exposed by the API is `Price.gross_amount` through `price_gross_amount`.
+- The legacy PostgreSQL column `gross_price` remains database-only. Existing
+  rows contain `0`; the commercial value exposed by the API is
+  `Price.gross_amount` through `gross_amount`.
 
 #### `products/admin.py`
 
@@ -346,7 +351,12 @@ System check identified no issues (0 silenced).
 
 ```text
 price
-price_gross_amount
+base_net_amount
+net_amount
+gross_amount
+iva_amount
+aditional_tax_amount
+retention_amount
 item_group
 item_group_name
 price_configuration
@@ -519,13 +529,31 @@ The Django mapping was aligned with those confirmed columns. The DBML documentat
 - Product provider is immutable after creation. A PATCH that attempts to
   change it returns HTTP 400; repeating the same provider remains accepted to
   tolerate forms that resend unchanged fields.
+- Product creation generates and links a complete Price using a confirmed
+  `record_type=PRODUCT` price configuration.
+- Changing `base_net_amount` or `price_configuration` creates and links a new
+  Price version. Exclusively owned previous Prices become non-current; shared
+  legacy Prices remain untouched for their other consumers.
+- Product responses expose both the configuration UUID in
+  `price_configuration` and its business label in
+  `price_configuration_label`.
+- Product creation starts with `version=1`; every effective PATCH increments
+  it atomically once, while idempotent PATCH requests do not increment it.
+- The Product price-configuration selector is constrained to confirmed
+  `record_type=PRODUCT` configurations.
 - Product HEAD list and detail: HTTP 200.
 - Product PUT and HTTP DELETE: HTTP 405.
 - No Django migration was created.
 - PostgreSQL structure was not altered.
-- Product-specific automated tests: 11 passing.
+- Full automated suite after the final Product changes: 42 passing.
+- The Product flow was accepted through `sbm-manager` on 2026-07-19.
 
-Audit identity is not hardcoded. At present `created_by`, `updated_by`, and `deleted_by` are validated against `users.User.code` but are supplied by the client request. This is a known spoofing risk caused by the unresolved mapping between Django authentication users and business users. It belongs to the later authentication/security phase and must not displace the immediate Product frontend migration.
+Audit identity is not hardcoded. At present `created_by`, `updated_by`, and
+`deleted_by` are validated against `users.User.code` but are supplied by the
+client request. This is a known spoofing risk caused by the unresolved mapping
+between Django authentication users and business users. It belongs to the
+later authentication/security phase and does not reopen the resolved Product
+vertical migration.
 
 ## 4. Current architecture
 
@@ -796,7 +824,44 @@ Current endpoints:
 /api/services/
 ```
 
-This is the first migration focus because overlapping and newer product-domain implementations currently exist in `sbm-api`.
+Product is the completed reference capability. Material is the active vertical
+migration objective inside this app.
+
+#### 5.4.1 Material preflight — 2026-07-19
+
+Material must adopt the same validated structure and behavior as Product where
+the domains share a rule: hexagonal boundaries, server-controlled Price
+creation/versioning, audit handling, confirmation, logical deletion, atomic
+`version` increments, restricted HTTP methods, response labels, and focused
+contract/use-case tests. It must not copy Product field assumptions without
+checking the live Material schema and data.
+
+Read-only PostgreSQL inspection established:
+
+```text
+ditaly_pasta.material.item_group     → integer FK to item_group.id
+current Django Material.group        → stale mapping to column "group"
+ditaly_pasta.material.price          → char(36), NOT NULL
+physical FK material.price → price   → absent
+legacy gross_price                   → integer, existing rows contain 0
+Material record type                 → id 2 / MATERIAL
+confirmed configuration              → MATERIAL_NORMAL_IVA
+```
+
+The live `material_before_insert()` function generates `code` when missing and
+generates SKU as `M-<provider-number>-<four-digit-sequence>`. PostgreSQL
+currently registers two BEFORE INSERT triggers pointing to that same function;
+the function is effectively idempotent after the first trigger fills the
+values, but the duplicate trigger definition belongs to a separate
+Flyway/database review and must not be changed from `dp-api`.
+
+There are currently three Material rows. All three store Price UUIDs for which
+no row exists in `ditaly_pasta.price`, and no current Price has
+`price_record_type=2` or a Material `record_item_code`. This is legacy dangling
+data, not authorization for automatic cleanup. Before changing the Material
+model to a Price foreign key or using `select_related`, the implementation must
+choose and test an explicit compatibility strategy so existing Materials do
+not silently disappear from list/detail endpoints.
 
 ### 5.5 `providers`
 
@@ -901,6 +966,12 @@ The client may modify prices and permitted commercial configurations. Global fis
 
 #### Product price generation/versioning analysis — 2026-07-17
 
+This subsection preserves historical analysis. It is superseded by the final
+accepted Product contract documented in section 3.7: `base_net_amount` and a
+valid PRODUCT `price_configuration` are writable commands; derived Price
+amounts are read-only responses; changing either writable value versions the
+Price. References below to a future gross-only contract are not active work.
+
 Planning sources reviewed:
 
 - Complete `SBM-API.zip`, especially `catalog`, `price`, `calculation`, and
@@ -982,10 +1053,11 @@ paths inconsistently use `formula_template` or `formula_translate`. The direct
 `PriceViewSet` also permits broad CRUD and is not the safe contract for a
 client changing a Product price.
 
-##### Requested target behavior
+##### Historical requested target behavior — superseded
 
-For the next implementation, the client must edit only the Product's gross
-price. It must not submit or control:
+At the time of the analysis, a gross-only Product input was proposed. That
+proposal was not the final accepted contract. The historical proposal stated
+that the client would not submit or control:
 
 ```text
 price code
@@ -1075,10 +1147,11 @@ a new Product-owned Price without marking the shared row non-current. An
 exclusively owned valid Product Price is still deactivated normally. No data
 cleanup is performed by this compatibility behavior.
 
-##### Architectural scope for the next chat
+##### Historical architectural scope — resolved
 
-Implement only the Product-price creation/versioning vertical slice. Do not
-refactor all pricing, fiscal, catalog, material, or service modules at once.
+This Product-price slice has been implemented and resolved. The boundaries are
+retained below as historical rationale and regression constraints, not as the
+current objective.
 
 Recommended boundaries:
 
@@ -1114,7 +1187,7 @@ Required coverage:
 - Existing SKU, immutable-provider, confirmation, soft-delete, HEAD, and
   disabled PUT/DELETE behavior remains unchanged.
 
-Open decisions to resolve before implementation:
+Historical open decisions (resolved by the accepted Product contract):
 
 1. Confirm `price_gross_amount` as the writable request field name.
 2. Confirm whether gross price is mandatory on Product create or whether the
@@ -1521,19 +1594,19 @@ The following backend differences were resolved in `dp-api`:
 - Read, create, partial update, HEAD, and logical-delete behavior.
 - Product audit-log formatting and API concealment.
 
-Remaining work for the Product vertical slice:
+Product resolution state:
 
-- Manually validate Product creation without `sku` and provider immutability
-  from the real frontend/Postman workflow.
-- Review the existing PostgreSQL trigger's `MAX(sequence) + 1` strategy before
-  high-concurrency production use. The unique SKU constraint protects stored
-  uniqueness, but the trigger does not itself serialize concurrent inserts for
-  the same provider.
-- Redirect the `sbm-manager` Product consumer from `sbm-api` to `dp-api`.
-- Adapt frontend fields and actions to the canonical `dp-api` contract.
-- Add regression tests.
-- Resolve authenticated business-user attribution in the later security phase.
-- Deprecate the equivalent `sbm-api` Product endpoint only after frontend validation.
+- Product creation without client-supplied SKU and Provider immutability were
+  validated through the real integrated flow.
+- `sbm-manager` consumes the canonical `dp-api` Product contract, including
+  response labels, price-configuration filtering, and logical deletion.
+- Regression coverage includes lifecycle, Price versioning, shared legacy
+  Price protection, confirmation, audit, and atomic `version` increments.
+- The PostgreSQL trigger's `MAX(sequence) + 1` concurrency strategy remains a
+  production-hardening concern, not unfinished Product behavior.
+- Authenticated business-user attribution remains a platform security task.
+- The equivalent `sbm-api` endpoint may be deprecated after the remaining
+  consumer audit; Product behavior itself is resolved.
 
 ### 9.6 Safe migration sequence
 
@@ -1598,10 +1671,19 @@ Any screen currently calling `sbm-api` for a Ditaly Pasta client operation must 
 Current Product migration state:
 
 ```text
-dp-api Product backend contract → validated
-dp-api Product SKU generation    → implemented; manual client validation next
-sbm-manager Product consumer     → pending migration work
-sbm-api Product endpoint         → retained until consumer migration passes
+dp-api Product backend contract → completed and validated
+dp-api Product lifecycle/Price  → completed and validated
+sbm-manager Product consumer    → migrated and accepted
+sbm-api Product endpoint        → retirement pending consumer audit
+```
+
+Current Material migration state:
+
+```text
+live schema/data preflight       → completed
+dp-api Material vertical slice  → implemented and backend-validated
+sbm-manager Material consumer   → current next objective
+legacy dangling Material prices → compatible read/explicit repair implemented
 ```
 
 ### 10.3 No direct client access to internal API
@@ -1971,7 +2053,8 @@ Future AI Tools must:
 ### High priority
 
 1. Resolve the `dp-api` versus `sbm-api` domain overlap.
-2. Complete the first vertical migration with `Product`.
+2. Complete the active Material vertical migration using resolved Product as
+   the reference implementation.
 3. Clarify the canonical database schema and Flyway migration source.
 4. Resolve the two-user-system architecture.
 5. Align token endpoint with accepted authentication classes.
@@ -2139,12 +2222,21 @@ responsibilities into `dp-api`.
 - ✅ Add Product contract and application-use-case regression tests.
 - ✅ Correct Product SKU generation using the existing `sbm-api` Product app
   and live PostgreSQL trigger as behavioral references.
-- 🚧 Update `sbm-manager` consumer.
-- ⏳ Deprecate Product endpoint in `sbm-api`.
+- ✅ Implement safe Product Price creation/versioning for amount and
+  configuration changes.
+- ✅ Implement Product response labels, confirmation audit, logical deletion,
+  and atomic entity-version increments.
+- ✅ Update and validate the `sbm-manager` Product consumer.
+- ✅ Accept Product as resolved and use it as the reference vertical slice.
+- ⏳ Retire the duplicate Product endpoint in `sbm-api` after the remaining
+  consumer audit; this is cleanup, not unfinished Product behavior.
 
 ### Phase 3 — Remaining catalog domain
 
-- ⏳ Material.
+- ✅ Material backend: hexagonal CRUD, Price creation/versioning, labels,
+  lifecycle, audit, entity versioning, and legacy compatibility implemented.
+- 🚧 Material: migrate and validate the `sbm-manager` consumer against the
+  stable backend contract.
 - ⏳ Service.
 - ⏳ Catalog.
 - ⏳ Item configurations.
@@ -2205,15 +2297,16 @@ Hexagonal migrations are incremental and vertical. A candidate is migrated
 only when its scope is explicitly authorized, and each migration must preserve
 the existing REST contract and Flyway-managed database mapping.
 
-1. **Product (In Progress)** — establishes the reference structure and contains
+1. **Product (Implemented / Resolved)** — establishes the reference structure and contains
    lifecycle, relationship, audit-log, PATCH, and logical-deletion rules that
    should not live in HTTP controllers.
 2. **Provider (Implemented)** — contains supplier identity, contact, banking,
    dispatch, classification, confirmation, and audit data while providing a
    stable selector contract to client applications.
-3. **Material** — combines units, packaging, suppliers, traceability, and
-   future inventory or production constraints that require rules independent
-   of the REST and persistence layers.
+3. **Material (Backend Implemented / Frontend Pending)** — combines units,
+   packaging, suppliers, traceability, and future inventory or production
+   constraints through a hexagonal backend; its `sbm-manager` consumer remains
+   to be migrated and accepted.
 4. **Service** — can contain availability, costing, fulfillment, billing, and
    lifecycle rules that must remain stable across different delivery channels.
 5. **Catalog** — coordinates publication, visibility, menus, product grouping,
@@ -2238,9 +2331,10 @@ the existing REST contract and Flyway-managed database mapping.
 12. **Workflow Automation** — requires durable state transitions, retries,
    idempotency, scheduling, and adapters for external systems.
 
-`Product` remains the reference implementation. `Provider` is the second
-implemented vertical migration. The other entries are future candidates, not
-active refactoring scope.
+`Product` remains the completed reference implementation. `Provider` and the
+`dp-api` Material backend are implemented. The active Material scope is now
+the `sbm-manager` consumer migration and integrated acceptance; the other
+entries remain future candidates.
 
 ---
 
@@ -2248,73 +2342,93 @@ active refactoring scope.
 
 ### 21.1 Current exact objective
 
-In a new chat, implement the Product price-generation/versioning slice so the
-client modifies only `price_gross_amount` and the backend safely generates all
-Price internals.
+Migrate and validate the `sbm-manager` Material consumer against the completed
+`dp-api` Material backend. Product is complete and must receive only regression
+fixes required to protect its established contract; it is not the active
+refactoring target.
+
+The backend work completed on 2026-07-19 established the following:
+
+1. Material uses domain entities and repository ports, application commands
+   and use cases, Django adapters, and a thin DRF presentation layer.
+2. The unmanaged mapping uses `item_group`, Provider by integer `id`, and a
+   scalar Price UUID. The scalar mapping deliberately tolerates the three live
+   rows whose Price UUID does not resolve.
+3. GET, POST, PATCH, HEAD, OPTIONS, and explicit POST logical deletion match
+   Product; PUT and physical DELETE remain disabled.
+4. Create and pricing PATCH accept `base_net_amount` and
+   `price_configuration`. They calculate and link `price_record_type=2` Prices
+   using only confirmed `record_type=2` configurations.
+5. A pricing PATCH versions Price atomically; exclusive owned Prices are made
+   non-current, while shared, missing, or inconsistently owned legacy Prices
+   are never deactivated.
+6. A legacy dangling Price is returned as its stored UUID with nullable Price
+   components/configuration. Its first pricing PATCH must supply both canonical
+   pricing inputs and creates a valid replacement without mutating legacy data.
+7. Database triggers remain the source of generated Material code and SKU.
+   No Django migration, PostgreSQL mutation, or data cleanup was performed.
+8. Focused Material coverage brought the complete suite to 53 passing tests;
+   `python manage.py check` passed. Rolled-back live transactions also verified
+   Material creation and legacy Price repair against PostgreSQL.
 
 The next work must proceed in this exact order:
 
-1. Read this complete context before modifying files.
-2. Reinspect current Product and pricing code; do not rely only on the old
-   `sbm-api` implementation.
-3. Review the Product price analysis in section 5.6 and resolve its six open
-   decisions with the user before implementation when they affect the public
-   contract or existing data.
-4. Present the implementation plan and exact file list before applying changes.
-5. Implement only the Product-price vertical slice using hexagonal boundaries.
-6. Preserve price history: never overwrite the current Price amounts in place.
-7. Use `Decimal` and an explicit rounding policy; do not copy any unrestricted
-   `eval()` logic from `sbm-api`.
-8. Protect shared legacy Price references before transitioning `is_current`.
-9. Add focused domain, use-case, repository, and HTTP contract tests.
-10. Run Product/pricing-specific tests and `python manage.py check`.
-11. Do not run `makemigrations` or `migrate`, and do not alter PostgreSQL
-    without separate review and authorization.
-12. Git operations remain manual and are not authorized for Codex.
+1. Read this complete context and the `sbm-manager` repository instructions.
+2. Audit all Material API clients, services, stores/composables, views,
+   components, routes, and environment configuration before editing.
+3. Point Material operations to `/api/materials/` in `dp-api` and preserve the
+   accepted methods and explicit `/api/materials/{id}/delete/` POST action.
+4. Use `item_group`, display labels from the response, and direct canonical
+   `base_net_amount` / `price_configuration` command fields. Do not submit
+   computed Price internals.
+5. Filter Material price-configuration selectors to
+   `record_type=2&is_confirmed=true` and submit the configuration UUID `code`.
+6. Validate create, ordinary PATCH, price/configuration PATCH, legacy repair,
+   logical deletion, and list/detail rendering through the integrated UI.
+7. Do not run `makemigrations` or `migrate`, do not alter PostgreSQL, and do
+   not perform Git operations unless separately authorized.
 
 ### 21.2 Success criteria for the current vertical slice
 
-The Product SKU correction is implemented and was accepted before this
-planning phase:
+Product is resolved. Its accepted behavior includes server-generated SKU,
+hexagonal use cases, relational response labels, safe Price creation and
+versioning for amount/configuration changes, logical deletion, confirmation
+audit, immutable Provider, and atomic Product `version` increments. The full
+suite had 42 passing tests after the final Product contract changes, and the
+user accepted the integrated frontend flow before committing it.
 
-1. The existing `sbm-api` generation behavior has been inspected and
-   documented from source, not guessed.
-2. `dp-api` generates the expected SKU through the Product create use case.
-3. The rule is isolated from the REST controller and Django model callbacks.
-4. PostgreSQL retains the unique SKU constraint. The concurrency limitation of
-   the trigger's `MAX + 1` strategy is documented for production hardening.
-5. Existing Product confirmation, audit log, PATCH, HEAD, and logical-delete
-   behavior remains unchanged.
-6. Product regression tests and Django system checks pass.
-7. No Django migration or database alteration is introduced unless separately
-   reviewed and authorized.
+The Material vertical slice is backend-complete and succeeds end to end when:
 
-Local validation produced 13 passing Product tests, a clean Django system
-check, `P-001-0009` from a rolled-back real create, and HTTP 400 from a
-rolled-back provider-change attempt.
-
-The next slice succeeds only when:
-
-1. Product create can generate and link its own Price from the agreed gross
-   input contract.
-2. Product price PATCH versions instead of overwriting Price history.
-3. Only gross price is client-editable; derived/internal Price fields are
-   backend-controlled.
-4. The exact gross value is preserved while net and IVA are deterministically
-   derived under the confirmed Product configuration.
-5. Shared legacy Price references cannot be corrupted.
-6. Existing Product behavior and regression tests continue passing.
-7. No unauthorized schema, data-cleanup, or Git operation occurs.
-
-The `sbm-manager` Product consumer migration and eventual deprecation of the
-duplicate Product endpoint in `sbm-api` remain subsequent work; neither is
-implicitly completed by the SKU correction.
+1. List and detail retain all legitimate visible Materials, including an
+   explicitly agreed response for legacy rows with dangling Price UUIDs.
+2. Material create obtains database-generated `code` and SKU and creates one
+   complete current Price owned by that Material.
+3. Material PATCH versions Price when `base_net_amount` or a valid confirmed
+   MATERIAL `price_configuration` changes; repeating persisted values is
+   idempotent.
+4. Responses expose the Price UUID, all Price components, configuration UUID
+   and label, `item_group` and its label, plus existing Provider/type/category/
+   package labels without exposing the internal audit log.
+5. Confirmation, logical deletion, immutable Provider, audit timestamps/users,
+   and atomic `version` increments match the accepted Product semantics.
+6. Shared, missing, or inconsistently owned legacy Price references cannot be
+   deactivated or corrupted for another consumer.
+7. The `sbm-manager` Material screen uses `dp-api`, submits relationship IDs or
+   UUID codes correctly, and filters price configurations to
+   `record_type=2&is_confirmed=true`.
+8. Product and Provider regression behavior remains unchanged; all automated
+   tests and Django system checks pass.
+9. No Django migration, PostgreSQL mutation, unapproved data cleanup, or
+   unauthorized Git operation is introduced.
 
 ### 21.3 Codex and Cursor workflow
 
 Cursor remains the primary editor and visual review environment. Codex may be used through the Cursor extension or CLI for repository-wide audits and coordinated multi-file changes.
 
-Codex must read the `sbm-manager` project context and repository instructions before working there. Its initial task in that repository should be an audit without modifications covering Product-related:
+Codex must read the `sbm-manager` project context and repository instructions
+before working there. After the Material backend contract is stable, its
+initial task in that repository should be an audit without modifications
+covering Material-related:
 
 ```text
 API clients
@@ -2328,8 +2442,8 @@ environment configuration
 It must search the full `sbm-manager` repository for:
 
 ```text
-products
-product
+materials
+material
 sbm-api
 baseURL
 group
@@ -2337,12 +2451,17 @@ item_group
 group_name
 item_group_name
 price_description
-price_gross_amount
+base_net_amount
+price_configuration
+price_configuration_label
 PUT
 DELETE
 ```
 
-It must distinguish shared/internal `sbm-api` consumers from Ditaly Pasta Product consumers. It must not apply frontend changes until the audit identifies the exact Product integration points and the user authorizes the migration edit.
+It must distinguish shared/internal `sbm-api` consumers from Ditaly Pasta
+Material consumers. It must not apply frontend changes until the audit
+identifies the exact Material integration points and the user authorizes the
+migration edit.
 
 ### 21.4 Local IDE environment
 
@@ -2390,15 +2509,19 @@ Platform operation → sbm-api
 A client user may create products, modify prices, manage providers, branches, catalogs, and tickets. A client user may not create `sbm_business.franchise`, activate uncontracted modules, or provision platform resources.
 
 The current migration corrects Ditaly Pasta functionality that was implemented
-inside `sbm-api` due to time constraints. The first backend capability,
-Product, now has a validated canonical contract in `dp-api`. Product SKU
-generation now delegates to the existing PostgreSQL trigger and the provider
-is immutable after creation. The next planned vertical slice is safe Product
-price generation/versioning with only gross price editable by the client. The
-Vue.js 3 `sbm-manager` Product consumer migration remains pending, while
-internal and critical platform operations continue using `sbm-api`.
+inside `sbm-api` due to time constraints. Product is now the completed and
+accepted canonical reference in `dp-api`: its database-generated SKU,
+hexagonal lifecycle, Price creation/versioning, response labels, confirmation,
+logical deletion, audit, and entity-version behavior are integrated with
+`sbm-manager`. The Material backend now applies that pattern through a
+hexagonal CRUD and safe Price lifecycle. Its compatibility contract preserves
+three legacy rows whose stored Price UUIDs do not exist and supports explicit
+repair through a pricing PATCH. Migrating and accepting the `sbm-manager`
+Material consumer is the active next step. Internal and critical platform
+operations continue using `sbm-api`.
 
-The migration will be vertical and incremental. The first capability is `Product`:
+The migration remains vertical and incremental. Product supplies the accepted
+capability template now being applied selectively to Material:
 
 ```text
 model
@@ -2412,6 +2535,9 @@ model
 → AI Tool
 ```
 
-The Product backend mapping, serializers, permitted HTTP operations, logical deletion, and audit-log behavior are established in `dp-api`. The duplicate Product endpoint in `sbm-api` must remain available until `sbm-manager` has migrated, frontend regression tests pass, and all remaining consumers are confirmed.
+The Product implementation is resolved. Its duplicate endpoint in `sbm-api`
+may be retired only after all remaining consumers are audited. That retirement
+is separate from the active Material implementation and must not trigger a
+Product rewrite.
 
 The long-term target is a production-grade, configurable ERP API where client users can operate independently and AI assists them through audited, permission-aware REST Tools without bypassing domain rules.

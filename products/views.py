@@ -16,7 +16,6 @@ from .models import (
     Catalog,
     ItemConfiguration,
     ItemConfigurationDetail,
-    Material,
     Service,
 )
 from .serializers import (
@@ -31,9 +30,9 @@ from .serializers import (
     CatalogSerializer,
     ItemConfigurationSerializer,
     ItemConfigurationDetailSerializer,
-    MaterialSerializer,
     ServiceSerializer,
 )
+from .presentation.material_views import MaterialViewSet
 from .presentation.views import ProductViewSet
 
 # Create your views here.
@@ -234,31 +233,6 @@ class ItemConfigurationDetailViewSet(viewsets.ModelViewSet):
     search_fields = ["code", "detail", "id_item"]
     ordering_fields = ["code", "detail"]
     ordering = ["code"]
-
-
-class MaterialViewSet(viewsets.ModelViewSet):
-    queryset = Material.objects.all()
-    serializer_class = MaterialSerializer
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = [
-        "provider",
-        "type",
-        "group",
-        "category",
-        "is_active",
-        "is_deleted",
-        "is_confirmed",
-    ]
-    search_fields = ["code", "sku", "description"]
-    ordering_fields = ["description", "created_at"]
-    ordering = ["description"]
-
-    @action(detail=False, methods=["get"])
-    def active(self, request):
-        """Obtener solo materiales activos"""
-        active_materials = self.queryset.filter(is_active=True)
-        serializer = self.get_serializer(active_materials, many=True)
-        return Response(serializer.data)
 
 
 class ServiceViewSet(viewsets.ModelViewSet):

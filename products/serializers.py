@@ -11,7 +11,6 @@ from .models import (
     Catalog,
     ItemConfiguration,
     ItemConfigurationDetail,
-    Material,
     Service,
 )
 from .presentation.serializers import ProductSerializer
@@ -238,62 +237,6 @@ class ItemConfigurationDetailSerializer(serializers.ModelSerializer):
             "deleted_by",
         ]
         read_only_fields = ["created_at", "updated_at", "confirmed_at", "deleted_at"]
-
-
-class MaterialSerializer(serializers.ModelSerializer):
-    type_name = serializers.CharField(source="type.type", read_only=True)
-    group_name = serializers.CharField(source="group.group_name", read_only=True)
-    category_name = serializers.CharField(source="category.category", read_only=True)
-    provider_name = serializers.CharField(source="provider.provider", read_only=True)
-    package_description = serializers.CharField(
-        source="package.description", read_only=True
-    )
-
-    class Meta:
-        model = Material
-        fields = [
-            "id",
-            "code",
-            "sku",
-            "description",
-            "obs",
-            "package_unit",
-            "min_package_purchase",
-            "price",
-            "provider",
-            "provider_name",
-            "type",
-            "type_name",
-            "group",
-            "group_name",
-            "category",
-            "category_name",
-            "url",
-            "package",
-            "package_description",
-            "is_active",
-            "is_deleted",
-            "is_confirmed",
-            "created_at",
-            "updated_at",
-            "confirmed_at",
-            "deleted_at",
-            "created_by",
-            "confirmed_by",
-            "updated_by",
-            "deleted_by",
-            "log",
-            "version",
-        ]
-        read_only_fields = [
-            "id",
-            "created_at",
-            "updated_at",
-            "confirmed_at",
-            "deleted_at",
-            "log",
-            "version",
-        ]
 
 
 class ServiceSerializer(serializers.ModelSerializer):
