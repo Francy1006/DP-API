@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from django.test import SimpleTestCase
-from django.urls import reverse
 
 from products.application.commands import (
     CreateProductCommand,
@@ -11,14 +10,9 @@ from products.application.commands import (
     UpdateProductCommand,
 )
 from products.application.use_cases import CreateProduct, DeleteProduct, UpdateProduct
-from products.domain.entities import Product
 from products.domain.exceptions import ImmutableProductField
-from products.presentation.serializers import (
-    ProductCommandSerializer,
-    ProductSerializer,
-)
-from products.presentation.views import ProductViewSet
 from pricing.domain.entities import Price, ProductPriceConfiguration
+from products.tests.factories import build_product
 
 
 ACTOR = "5fbf2886-4ad0-11f0-8ce6-0242ac120002"
@@ -128,113 +122,7 @@ def create_product_use_case(repository):
 
 
 def product_entity():
-    return Product(
-        id=1,
-        code="3facdae4-c44e-475c-9911-d11b5fdf9980",
-        sku="PRODUCTO-TEST",
-        description="PRODUCTO DE VALIDACIÓN API",
-        obs="REGISTRO TEMPORAL",
-        package_unit=1,
-        min_package_purchase=1,
-        price="bf397d95-c18c-4620-88c9-af621f553951",
-        provider=1,
-        type=1,
-        item_group=6,
-        category=8,
-        package=1,
-        created_by=ACTOR,
-        base_net_amount=Decimal("16980"),
-        net_amount=Decimal("16980"),
-        gross_amount=Decimal("20206.20"),
-        iva_amount=Decimal("3226.20"),
-        aditional_tax_amount=Decimal("0"),
-        retention_amount=Decimal("0"),
-        price_configuration=CONFIGURATION,
-        price_configuration_label="PRODUCT_NORMAL_IVA",
-        log="init;",
-    )
-
-
-class ProductContractTests(SimpleTestCase):
-    expected_fields = [
-        "id",
-        "code",
-        "sku",
-        "description",
-        "obs",
-        "package_unit",
-        "min_package_purchase",
-        "price",
-        "base_net_amount",
-        "net_amount",
-        "gross_amount",
-        "iva_amount",
-        "aditional_tax_amount",
-        "retention_amount",
-        "price_configuration",
-        "price_configuration_label",
-        "provider",
-        "provider_name",
-        "type",
-        "type_name",
-        "item_group",
-        "item_group_name",
-        "category",
-        "category_name",
-        "url",
-        "package",
-        "package_description",
-        "is_active",
-        "is_deleted",
-        "is_confirmed",
-        "created_at",
-        "updated_at",
-        "confirmed_at",
-        "deleted_at",
-        "created_by",
-        "confirmed_by",
-        "updated_by",
-        "deleted_by",
-        "version",
-    ]
-
-    def test_public_fields_and_methods_remain_unchanged(self):
-        self.assertEqual(list(ProductSerializer().fields), self.expected_fields)
-        self.assertNotIn("log", ProductSerializer().fields)
-        self.assertTrue(
-            ProductSerializer().fields["price_configuration_label"].read_only
-        )
-        self.assertEqual(
-            ProductViewSet.http_method_names,
-            ["get", "post", "patch", "head", "options"],
-        )
-
-    def test_product_response_contains_price_configuration_label(self):
-        response = ProductSerializer(product_entity()).data
-
-        self.assertEqual(response["price_configuration"], CONFIGURATION)
-        self.assertEqual(
-            response["price_configuration_label"],
-            "PRODUCT_NORMAL_IVA",
-        )
-
-    def test_confirmation_audit_fields_are_read_only(self):
-        fields = ProductCommandSerializer().fields
-
-        self.assertTrue(fields["sku"].read_only)
-        self.assertTrue(fields["price"].read_only)
-        self.assertTrue(fields["confirmed_at"].read_only)
-        self.assertTrue(fields["confirmed_by"].read_only)
-        self.assertFalse(fields["base_net_amount"].read_only)
-        self.assertFalse(fields["price_configuration"].read_only)
-
-    def test_routes_remain_unchanged(self):
-        self.assertEqual(reverse("product-list"), "/api/products/")
-        self.assertEqual(reverse("product-detail", args=[1]), "/api/products/1/")
-        self.assertEqual(
-            reverse("product-delete", args=[1]), "/api/products/1/delete/"
-        )
-        self.assertEqual(reverse("product-active"), "/api/products/active/")
+    return build_product()
 
 
 class ProductUseCaseTests(SimpleTestCase):

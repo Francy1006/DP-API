@@ -4,21 +4,11 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from django.test import SimpleTestCase
-from rest_framework import serializers
 
 from pricing.domain.entities import Price, ProductPriceConfiguration
-from pricing.domain.exceptions import (
-    ProductPriceConfigurationUnavailable,
-    UnsafeCurrentPrice,
-)
 from products.application.commands import CreateProductCommand, UpdateProductCommand
 from products.application.use_cases import CreateProduct, UpdateProduct
 from products.domain.entities import Product
-from products.presentation.serializers import (
-    ProductCommandSerializer,
-    ProductSerializer,
-)
-from products.presentation.views import PriceVersionConflict, ProductViewSet
 
 
 ACTOR = "5fbf2886-4ad0-11f0-8ce6-0242ac120002"
@@ -388,91 +378,3 @@ class ProductPricePatchUseCaseTests(SimpleTestCase):
             ).execute(command)
 
         self.assertEqual(prices.created, [])
-
-
-class ProductPriceContractTests(SimpleTestCase):
-    def test_product_response_contains_all_amounts_without_legacy_alias(self):
-        fields = ProductSerializer().fields
-
-        self.assertNotIn("price_gross_amount", fields)
-        for field_name in (
-            "base_net_amount",
-            "net_amount",
-            "gross_amount",
-            "iva_amount",
-            "aditional_tax_amount",
-            "retention_amount",
-            "price_configuration",
-            "price_configuration_label",
-        ):
-            self.assertIn(field_name, fields)
-
-    def test_base_accepts_two_decimals_and_configuration_is_writable(self):
-        serializer = ProductCommandSerializer(
-            data={
-                "base_net_amount": "20000.25",
-                "price_configuration": CONFIGURATION_CODE,
-            },
-            partial=True,
-        )
-
-        self.assertTrue(serializer.is_valid(), serializer.errors)
-        self.assertEqual(
-            serializer.validated_data["base_net_amount"],
-            Decimal("20000.25"),
-        )
-        self.assertEqual(
-            serializer.validated_data["price_configuration"],
-            CONFIGURATION_CODE,
-        )
-
-    def test_rejects_invalid_base_amounts(self):
-        for invalid in (None, "invalid", 0, -1, "10.001"):
-            with self.subTest(value=invalid):
-                serializer = ProductCommandSerializer(
-                    data={"base_net_amount": invalid},
-                    partial=True,
-                )
-                self.assertFalse(serializer.is_valid())
-                self.assertIn("base_net_amount", serializer.errors)
-
-    def test_rejects_direct_price_and_derived_amount_changes(self):
-        for field_name in (
-            "price",
-            "net_amount",
-            "gross_amount",
-            "iva_amount",
-            "aditional_tax_amount",
-            "retention_amount",
-            "record_item_code",
-            "price_record_type",
-            "is_current",
-        ):
-            with self.subTest(field=field_name):
-                serializer = ProductCommandSerializer(
-                    data={field_name: "forged"},
-                    partial=True,
-                )
-                self.assertFalse(serializer.is_valid())
-                self.assertIn(field_name, serializer.errors)
-
-    def test_product_post_requires_base_and_price_configuration(self):
-        serializer = ProductCommandSerializer(data={})
-
-        self.assertFalse(serializer.is_valid())
-        self.assertIn("base_net_amount", serializer.errors)
-        self.assertIn("price_configuration", serializer.errors)
-
-    def test_pricing_conflicts_map_to_http_409(self):
-        with self.assertRaises(PriceVersionConflict) as raised:
-            ProductViewSet._raise_api_error(UnsafeCurrentPrice())
-
-        self.assertEqual(raised.exception.status_code, 409)
-
-    def test_unavailable_product_configuration_maps_to_its_request_field(self):
-        with self.assertRaises(serializers.ValidationError) as raised:
-            ProductViewSet._raise_api_error(
-                ProductPriceConfigurationUnavailable()
-            )
-
-        self.assertIn("price_configuration", raised.exception.detail)

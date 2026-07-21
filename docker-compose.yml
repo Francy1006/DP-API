@@ -19,6 +19,8 @@ services:
       - ./business:/usr/src/app/business
       - ./templates:/usr/src/app/templates
       - ./manage.py:/usr/src/app/manage.py
+      - ./pytest.ini:/usr/src/app/pytest.ini:ro
+      - ./.coveragerc:/usr/src/app/.coveragerc:ro
     networks:
       - sbm-network
     environment:

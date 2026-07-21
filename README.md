@@ -304,6 +304,124 @@ ditaly_pasta,sbm_business,public
 
 Do not generate or apply Django migrations for the business apps without first validating the database ownership strategy.
 
+## QA and code quality
+
+Docker is the official QA runtime. The Product QA flow combines automated tests,
+coverage generation and SonarQube static analysis without running Django
+migrations or modifying the PostgreSQL schema.
+
+### QA scripts
+
+The repository provides three executable scripts under `scripts/`:
+
+```text
+scripts/coverage.sh
+scripts/sonar-scan.sh
+scripts/qa-check.sh
+```
+
+Grant execution permission when cloning the repository or creating the scripts:
+
+```bash
+chmod +x scripts/coverage.sh
+chmod +x scripts/sonar-scan.sh
+chmod +x scripts/qa-check.sh
+```
+
+### Generate tests and coverage
+
+```bash
+./scripts/coverage.sh
+```
+
+This script:
+
+1. loads the configured Compose environment file;
+2. executes the Product pytest suite inside the `api` service;
+3. measures line and branch coverage with `pytest-cov`;
+4. generates `coverage.xml` inside `dp-core`;
+5. copies `coverage.xml` to the repository root.
+
+Coverage measures which application lines and decision branches were executed by
+the tests. SonarQube reads `coverage.xml`; it does not execute pytest itself.
+Always regenerate coverage before a new SonarQube analysis to avoid reporting
+stale results.
+
+### Run SonarQube analysis
+
+The local SonarQube server must be running and the environment file must contain:
+
+```text
+SONAR_HOST_URL=http://host.docker.internal:9000
+SONAR_TOKEN=<project-analysis-token>
+```
+
+Do not commit the token or any environment file containing secrets.
+
+Run the scanner:
+
+```bash
+./scripts/sonar-scan.sh
+```
+
+The scanner reads `sonar-project.properties`, analyzes the configured Product
+sources, imports `coverage.xml`, and sends the report to the local SonarQube
+server. It reports reliability, maintainability, security findings, coverage,
+duplications and the Quality Gate result.
+
+### Run the complete QA flow
+
+```bash
+./scripts/qa-check.sh
+```
+
+Execution order:
+
+```text
+pytest + coverage.xml
+→ SonarScanner
+→ SonarQube Quality Gate
+```
+
+The script stops immediately if tests or coverage generation fail, so SonarQube
+never receives a report built from a failing test run.
+
+### Direct commands
+
+Build the current dependencies:
+
+```bash
+docker compose --env-file .env.dev build api
+```
+
+Run the complete suite or only Product:
+
+```bash
+docker compose --env-file .env.dev run --rm --no-deps --entrypoint pytest api
+docker compose --env-file .env.dev run --rm --no-deps --entrypoint pytest api products/tests/
+```
+
+Latest validated baseline:
+
+```text
+Product tests                    54 passed
+Complete suite                   71 passed
+Django system check              0 issues
+Coverage including branches      73.64%
+Line coverage                    78.44%
+Branch coverage                  33.19%
+SonarQube Product coverage       67.9%
+SonarQube reliability rating     B (2 issues)
+SonarQube maintainability rating A (21 issues)
+SonarQube security rating        A (0 issues)
+SonarQube duplications           12.2%
+Quality Gate                     Passed
+```
+
+The pytest and SonarQube percentages use different calculations. Pytest reports
+coverage for the Python package and separates line and branch coverage;
+SonarQube combines executable lines and conditions according to its own metric.
+
 ## AI integration
 
 Planned flow:

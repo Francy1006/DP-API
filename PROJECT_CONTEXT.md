@@ -1,6 +1,6 @@
 # PROJECT_CONTEXT.md
 
-> **Last updated:** 2026-07-19
+> **Last updated:** 2026-07-21
 >
 > **Purpose of this file**
 >
@@ -621,9 +621,13 @@ DP-API/
 ├── users/
 ├── templates/
 │   └── home.html
-├── TECHNICAL_DOCUMENTATION.md
-├── command.md
 ├── db.sqlite3
+├── scripts/
+│   ├── coverage.sh
+│   ├── sonar-scan.sh
+│   └── qa-check.sh
+├── sonar-project.properties
+├── coverage.xml
 ├── docker-compose.yml
 └── manage.py
 ```
@@ -1971,40 +1975,637 @@ Purpose:
 
 ## 15. Testing
 
-### 15.1 Current state
+### 15.1 Current validated state
 
-Every app contains a `tests.py` file, but no meaningful automated test suite was confirmed during inspection.
+`dp-api` has a formal, module-local QA foundation for Product and retains the
+existing Material, Pricing, and Provider regression tests.
 
-Dependencies include:
+Latest validated suite state:
 
-- `pytest`
-- `pytest-django`
-- `coverage`
+```text
+54 Product tests
+71 passing tests in the complete suite
+Product package coverage: 73.64% including branches
+Product package line coverage: 78.44%
+Product package branch coverage: 33.19%
+```
 
-### 15.2 Required test categories
+The Product suite covers domain/use-case behavior, serializer and ViewSet
+contracts, API routing through DRF `APIClient`, pagination, filters, creation,
+PATCH, Price versioning, immutable Provider behavior, disabled PUT/DELETE,
+HEAD, logical deletion, audit handling, and previously fixed regressions.
 
-1. Model mapping tests.
-2. Serializer validation tests.
-3. ViewSet permission tests.
-4. CRUD API tests.
-5. Tenant isolation tests.
-6. Cross-schema relationship tests.
-7. Regression tests against migrated `sbm-api` behavior.
-8. AI Tool contract tests after integration.
+`coverage.xml` is generated reproducibly at the repository root. SonarQube
+Community Build is now configured locally, imports the report successfully, and
+analyzes the Product scope through the repository QA scripts.
 
-### 15.3 Migration acceptance tests
+Existing testing-related dependencies confirmed in the project context include:
 
-For each migrated resource:
+- `pytest`;
+- `pytest-django`;
+- `pytest-cov`;
+- `coverage`.
 
-- List works.
-- Retrieve works.
-- Create works when permitted.
-- Update works when permitted.
-- Delete behavior is correct.
-- Invalid foreign keys fail safely.
-- A client user cannot cross tenant boundaries.
-- `sbm-manager` continues to work.
-- Old `sbm-api` endpoint can be deprecated safely.
+The unused legacy `coreapi` dependency was removed. This also removed its
+`pkg_resources` deprecation warning from pytest execution.
+
+The transversal SBM Suite QA standard recommends:
+
+- `pytest` as the primary runner;
+- `pytest-django` for Django integration;
+- `pytest-cov` for coverage;
+- Factory Boy and Faker for reusable test data;
+- `unittest.mock` for isolated mocks;
+- deterministic, isolated tests;
+- explicit success and failure cases;
+- module-level regression protection;
+- coverage reports prepared for later SonarQube analysis.
+
+### 15.2 Immediate QA objective
+
+The first standardized QA structure for the `products` Django app is complete,
+using Product as the reference capability.
+
+All Product tests must live under:
+
+```text
+products/tests/
+```
+
+The repository must not introduce a root-level `tests/` hierarchy for this
+initial phase.
+
+Final implemented structure:
+
+```text
+products/
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py
+│   ├── factories.py
+│   ├── test_models.py
+│   ├── test_price_policy.py
+│   ├── test_serializers.py
+│   ├── test_use_cases.py
+│   ├── test_views.py
+│   ├── test_api.py
+│   └── test_regression.py
+```
+
+`test_price_policy.py` preserves the existing safe Decimal formula-engine tests
+that previously lived in `pricing/test_product_price_policy.py`. No root-level
+`tests/` directory was introduced.
+
+### 15.3 Scope of this QA slice
+
+This completed QA slice was restricted to Product.
+
+Completed work:
+
+1. Audited and preserved all 36 existing Product-related tests.
+2. Reorganized them under `products/tests/` by responsibility.
+3. Added 18 focused tests, bringing Product to 54 tests.
+4. Configured `pytest.ini`, `pytest-cov`, `.coveragerc`, reusable fixtures, and
+   deterministic builders.
+5. Mounted pytest and coverage configuration into the Docker runtime.
+6. Generated terminal and Cobertura XML reports.
+7. Preserved all Product behavior and avoided unrelated implementation changes.
+
+Restrictions respected:
+
+- rewrite the Product implementation;
+- reopen accepted Product architecture decisions;
+- modify the public Product contract;
+- run or create Django migrations;
+- modify PostgreSQL, DBML, Flyway, triggers, constraints, or seed data;
+- introduce Testcontainers yet;
+- configure SonarQube yet;
+- configure CI/CD pipelines yet;
+- migrate tests for every Django app;
+- modify `sbm-manager`;
+- remove the duplicate Product endpoint from `sbm-api`;
+- perform Git operations unless separately authorized.
+
+### 15.4 Product behaviors that must remain protected
+
+The Product suite must continue validating the accepted behavior documented in
+this context, including at minimum:
+
+#### Read contract
+
+- Product list returns HTTP 200.
+- Product detail returns HTTP 200 for visible products.
+- Standard pagination remains available.
+- Response fields use the accepted canonical names.
+- `item_group` replaces stale `group`.
+- relationship labels remain exposed.
+- internal `log` remains hidden.
+- logically deleted Products remain excluded from normal queries.
+
+#### Create contract
+
+- Product creation returns HTTP 201.
+- SKU is generated by PostgreSQL and is read-only to clients.
+- Provider is required according to the active contract.
+- a complete current Price is created and linked.
+- only confirmed Product price configurations are accepted.
+- Product starts with `version=1`.
+- confirmation audit is server-controlled.
+- client attempts to control confirmation audit fields fail safely.
+- Product audit log starts with the accepted `INIT` format and ends in `;`.
+
+#### Update contract
+
+- PATCH returns HTTP 200 for valid partial updates.
+- PUT returns HTTP 405.
+- HTTP DELETE returns HTTP 405.
+- Provider is immutable after creation.
+- resending the same Provider remains tolerated.
+- effective Product changes increment `version` exactly once.
+- idempotent PATCH requests do not increment `version`.
+- confirmation and unconfirmation update audit fields correctly.
+- `base_net_amount` or `price_configuration` changes create and link a new
+  Price version.
+- idempotent pricing PATCH does not create another Price.
+- an exclusively owned prior Price becomes non-current.
+- shared or inconsistently owned legacy Prices are not corrupted.
+- transaction failure leaves the Product and previous Price state unchanged.
+
+#### Logical deletion contract
+
+Method:
+
+```text
+POST
+```
+
+Path:
+
+```text
+/api/products/{id}/delete/
+```
+
+Expected behavior:
+
+- Product remains physically stored;
+- `is_active=False`;
+- `is_deleted=True`;
+- deletion audit fields are populated;
+- deletion log uses the accepted format and ends in `;`;
+- Product disappears from normal list and detail access.
+
+#### Technical contract
+
+- `python manage.py check` continues passing.
+- all existing Product regression tests continue passing.
+- no Django migration is generated.
+- no PostgreSQL structure or data is mutated outside normal rolled-back test
+  transactions.
+- tests are deterministic and repeatable.
+- tests do not depend on manually prepared production-like records.
+- secrets and real credentials are never embedded in tests.
+
+### 15.5 Recommended test responsibilities
+
+#### `products/tests/conftest.py`
+
+Use for Product-specific reusable pytest fixtures only.
+
+It may provide:
+
+- API client;
+- authenticated Django user where required;
+- business user records;
+- Provider;
+- ItemGroup;
+- ItemType;
+- ItemCategory;
+- Package;
+- Product price configuration;
+- current Price;
+- Product;
+- helpers for accepted request payloads.
+
+Do not create a global root `conftest.py` in this phase unless repository
+inspection proves it is already present and shared safely.
+
+#### `products/tests/factories.py`
+
+Use for reusable Factory Boy factories if Factory Boy is introduced.
+
+Factories must:
+
+- create only the minimum required records;
+- respect unmanaged model mappings;
+- avoid triggering unauthorized schema changes;
+- keep generated values deterministic where behavior depends on exact fields;
+- distinguish Django authentication users from business users.
+
+If introducing Factory Boy would expand scope or dependency management
+unnecessarily, fixtures may be used first and Factory Boy left as a documented
+next improvement.
+
+#### `products/tests/test_models.py`
+
+Cover mapping and low-level Product invariants that can be tested without
+duplicating database-owned trigger behavior.
+
+Examples:
+
+- mapped field names;
+- relationship behavior;
+- unmanaged model status where relevant;
+- canonical field access;
+- logical visibility helpers if implemented at model or manager level.
+
+Do not attempt to unit-test PostgreSQL trigger internals as pure Python logic.
+
+#### `products/tests/test_serializers.py`
+
+Cover request and response contract validation.
+
+Examples:
+
+- accepted writable fields;
+- read-only fields;
+- rejected confirmation audit fields;
+- canonical `item_group` naming;
+- price configuration validation;
+- invalid relationship identifiers;
+- response labels;
+- concealed internal log field.
+
+#### `products/tests/test_use_cases.py`
+
+Cover application and domain behavior independently where the current
+hexagonal implementation exposes use cases or policies.
+
+Examples:
+
+- Product creation orchestration;
+- Product PATCH behavior;
+- Provider immutability;
+- Product version increments;
+- Price versioning;
+- idempotency;
+- shared legacy Price protection;
+- confirmation transitions;
+- rollback behavior.
+
+Mocks must be used only where they improve isolation. Integration-sensitive
+behavior must still be covered with real Django ORM tests.
+
+#### `products/tests/test_views.py`
+
+Cover DRF ViewSet/controller concerns.
+
+Examples:
+
+- permitted methods;
+- disabled PUT and physical DELETE;
+- filters;
+- queryset visibility;
+- logical-delete action;
+- HTTP status mapping;
+- validation error responses.
+
+#### `products/tests/test_api.py`
+
+Cover Product API flows through DRF's API client.
+
+Examples:
+
+- list;
+- retrieve;
+- create;
+- ordinary PATCH;
+- price PATCH;
+- confirmation;
+- unconfirmation;
+- logical deletion;
+- HEAD;
+- invalid foreign keys;
+- invalid price configuration;
+- protected read-only fields.
+
+#### `products/tests/test_regression.py`
+
+Protect previously fixed defects and integration-sensitive Product behavior.
+
+Examples:
+
+- stale `group` names do not reappear;
+- stale Price fields are not queried;
+- shared Price rows are not deactivated incorrectly;
+- SKU remains server/database generated;
+- Product response labels remain stable;
+- Product audit formatting remains stable;
+- atomic `version` increments remain stable.
+
+### 15.6 Test naming convention
+
+Use:
+
+```text
+test_<behavior>_<condition>_<expected_result>
+```
+
+Examples:
+
+```text
+test_create_product_with_valid_data_returns_201
+test_create_product_with_client_supplied_sku_ignores_or_rejects_value
+test_patch_product_with_changed_provider_returns_400
+test_patch_product_with_same_provider_returns_200
+test_patch_product_with_same_values_does_not_increment_version
+test_patch_product_price_creates_new_price_version
+test_delete_product_logically_hides_product_from_list
+test_put_product_returns_405
+test_http_delete_product_returns_405
+```
+
+Test names must describe observable behavior, not implementation details.
+
+### 15.7 QA execution and coverage
+
+Docker remains the official runtime. The current operational QA interface is
+provided by scripts under `scripts/`:
+
+```text
+scripts/coverage.sh
+scripts/sonar-scan.sh
+scripts/qa-check.sh
+```
+
+Grant execution permission when required:
+
+```bash
+chmod +x scripts/coverage.sh
+chmod +x scripts/sonar-scan.sh
+chmod +x scripts/qa-check.sh
+```
+
+Generate a current Product test and coverage report:
+
+```bash
+./scripts/coverage.sh
+```
+
+The coverage script executes the Product pytest suite inside the existing
+Compose `api` service, generates Cobertura XML inside `dp-core`, and copies the
+artifact to:
+
+```text
+DP-API/coverage.xml
+```
+
+Coverage purpose:
+
+```text
+pytest executes tests
+→ pytest-cov records executed lines and branches
+→ coverage.xml stores the machine-readable result
+→ SonarScanner imports coverage.xml
+→ SonarQube displays coverage and applies the Quality Gate
+```
+
+SonarScanner does not run pytest. `coverage.xml` must therefore be regenerated
+before analysis whenever application code or tests change.
+
+Direct validated test commands remain available:
+
+```bash
+docker compose --env-file .env.dev run --rm --no-deps   --entrypoint pytest api products/tests/
+
+docker compose --env-file .env.dev run --rm --no-deps   --entrypoint pytest api
+
+docker compose --env-file .env.dev run --rm --no-deps   --entrypoint python api manage.py check
+```
+
+Validated pytest results on 2026-07-21:
+
+```text
+Product tests                    54 passed
+Complete suite                   71 passed
+Django system check              0 issues
+Coverage including branches      73.64%
+Line coverage                    78.44%
+Branch coverage                  33.19%
+Coverage artifact                coverage.xml
+```
+
+Only test files are omitted by `.coveragerc`. Application modules are not
+hidden. The lowest Product-specific result remains the Django ORM repository
+adapter at 27.85%. The preferred 80% package target remains a future
+improvement; the initial 70% pytest-cov target is satisfied.
+
+### 15.8 SonarQube integration
+
+SonarQube Community Build is running locally in an independent Docker Compose
+stack with its own PostgreSQL database. It does not use or modify the DP-API
+business database.
+
+The local project is configured as:
+
+```text
+Display name: DP-API
+Project key:  DP-API
+Branch:       main
+```
+
+Authentication uses a project analysis token loaded from the local environment:
+
+```text
+SONAR_HOST_URL=http://host.docker.internal:9000
+SONAR_TOKEN=<project-analysis-token>
+```
+
+The token and environment files must never be committed. The token grants
+analysis access to the current SonarQube project; it is not a Django or
+PostgreSQL credential.
+
+Repository scanner configuration is stored in:
+
+```text
+sonar-project.properties
+```
+
+Current effective scope:
+
+```text
+sonar.sources=products
+sonar.tests=products/tests
+sonar.python.version=3.11
+sonar.python.coverage.reportPaths=coverage.xml
+```
+
+The scanner runs in a disposable container and mounts the repository at
+`/usr/src/app` because the generated Cobertura report references the same
+container path. Its persistent plugin cache is stored under `.sonar/cache`, and
+`.sonar/` must remain ignored by Git.
+
+Run only SonarScanner:
+
+```bash
+./scripts/sonar-scan.sh
+```
+
+Run the complete QA sequence:
+
+```bash
+./scripts/qa-check.sh
+```
+
+The combined script executes:
+
+```text
+coverage.sh
+→ tests pass and coverage.xml is refreshed
+→ sonar-scan.sh
+→ analysis uploaded to SonarQube
+```
+
+`set -e` stops the flow if pytest, coverage generation, copying the report, or
+SonarScanner fails.
+
+Latest validated SonarQube state on 2026-07-21:
+
+```text
+Analyzed scope                   products
+Indexed files                   52
+SonarQube coverage              67.9%
+Reliability rating              B
+Reliability issues              2
+Maintainability rating          A
+Maintainability issues          21
+Security rating                 A
+Security issues                 0
+Security hotspots               0
+Duplicated lines                12.2%
+Quality Gate                    Passed
+```
+
+The SonarQube coverage percentage is not expected to equal the pytest-cov total
+exactly. Pytest-cov reports line and branch percentages for the Python package;
+SonarQube calculates coverage from executable lines and conditions using its own
+combined metric.
+
+The current Quality Gate passes, so SonarQube would not block a merge while the
+pipeline is configured to honor this gate. Passing does not mean automatic
+production deployment; CI/CD, approvals and deployment rules remain separate.
+
+Remaining non-blocking scanner warnings:
+
+- ARM64 Mac executes the available scanner image through AMD64 emulation;
+- uncommitted or newly created test files may lack SCM blame information;
+- Community Build has limited advanced security analysis.
+
+Immediate quality work should prioritize the two Reliability issues, then the
+12.2% duplication, followed by the maintainability findings and the preferred
+80% coverage target.
+
+### 15.9 Definition of done for this QA slice
+
+The Product QA reorganization completed with the following verified state:
+
+1. Product tests are under `products/tests/`.
+2. Existing coverage was preserved and expanded.
+3. Product behavior and public contracts were unchanged.
+4. Product and complete suites pass.
+5. `python manage.py check` passes.
+6. Coverage and `coverage.xml` are reproducible.
+7. No migration, database schema change, or persistent-data mutation occurred.
+8. The repository is ready for a separately authorized SonarQube phase.
+
+### 15.10 Codex execution rules for this task
+
+Before modifying files, Codex must:
+
+1. read this complete `PROJECT_CONTEXT.md`;
+2. inspect repository instructions and `git status`;
+3. preserve every existing user change;
+4. inventory current Product tests and pytest configuration;
+5. identify whether tests currently live in `products/tests.py`,
+   `products/tests/`, or another location;
+6. identify the exact Docker command used to execute tests;
+7. identify existing coverage configuration;
+8. report the proposed file moves and additions before implementing them.
+
+During implementation, Codex must:
+
+- change only files required for Product QA standardization;
+- preserve the accepted Product implementation;
+- avoid speculative refactors;
+- keep tests focused and deterministic;
+- prefer reusable fixtures over copied setup;
+- avoid excessive mocking;
+- never expose secrets;
+- never run migrations;
+- never mutate PostgreSQL structure;
+- never perform Git operations without authorization;
+- validate one step at a time.
+
+After implementation, Codex must report:
+
+- files created;
+- files moved;
+- files modified;
+- exact test command executed;
+- focused Product result;
+- complete suite result;
+- Django system-check result;
+- coverage result;
+- generated artifacts;
+- any remaining gap before SonarQube.
+
+### 15.11 Product QA implementation record — 2026-07-21
+
+Created:
+
+- `pytest.ini`;
+- `.coveragerc`;
+- `products/tests/__init__.py`;
+- `products/tests/conftest.py`;
+- `products/tests/factories.py`;
+- `products/tests/test_models.py`;
+- `products/tests/test_price_policy.py`;
+- `products/tests/test_serializers.py`;
+- `products/tests/test_use_cases.py`;
+- `products/tests/test_views.py`;
+- `products/tests/test_api.py`;
+- `products/tests/test_regression.py`.
+
+Moved and reorganized without losing tests:
+
+```text
+products/test_product_hexagonal.py
+pricing/test_product_price_patch.py
+pricing/test_product_price_policy.py
+→ products/tests/
+```
+
+The empty placeholder `products/tests.py` was removed because it conflicts with
+the new package structure. `core/requirements.txt` gained `pytest-cov` and
+removed unused `coreapi`; `docker-compose.yml` now mounts pytest and coverage
+configuration read-only. `README.md` gained only the minimal operational test
+commands required for developers.
+
+Important decisions and limitations:
+
+- Factory Boy and Faker were not added; deterministic builders and fixtures
+  cover the current need without extra dependencies.
+- API tests use DRF `APIClient` with in-memory ports. They validate routing,
+  HTTP orchestration, serialization, and domain interaction without touching
+  persistent data.
+- Real ORM, PostgreSQL-trigger, and transaction integration tests remain a gap.
+  Because Product and Price mappings are unmanaged, those tests require a
+  dedicated database initialized by the real Flyway schema. The development
+  database must not be used as a test substitute.
+- Coverage omits only test files. No application module is hidden.
+- No Product implementation, public contract, migration, Flyway artifact,
+  PostgreSQL structure, or persistent row was changed.
+- SonarQube is configured locally and imports Product coverage successfully.
+- CI/CD integration remains intentionally unconfigured.
 
 ---
 
@@ -2259,7 +2860,20 @@ responsibilities into `dp-api`.
 - ⏳ Clients.
 - ⏳ Orders and remaining operational workflows.
 
-### Phase 6 — Security and tenancy
+### Phase 6 — QA foundation and code quality
+
+- ✅ Standardize Product tests under `products/tests/`.
+- ✅ Preserve and reorganize existing Product regression coverage.
+- ✅ Configure reproducible Product-focused pytest execution.
+- ✅ Generate `coverage.xml` with pytest coverage tooling.
+- ✅ Establish the 73.64% Product-package coverage baseline.
+- ✅ Document test commands and structure.
+- ✅ Configure local SonarQube after Product QA validation.
+- ✅ Validate the initial local Quality Gate (`Passed`).
+- ⏳ Tighten Quality Gate thresholds and connect them to CI/CD merge blocking.
+- ⏳ Extend the same pattern incrementally to Material and later modules.
+
+### Phase 7 — Security and tenancy
 
 - ⏳ Authentication architecture.
 - ⏳ Resolve custom user versus Django user.
@@ -2268,7 +2882,7 @@ responsibilities into `dp-api`.
 - ⏳ Contracted-module validation.
 - ⏳ Audit logging.
 
-### Phase 7 — Production hardening
+### Phase 8 — Production hardening
 
 - ⏳ Production settings.
 - ⏳ Secure CORS.
@@ -2280,7 +2894,7 @@ responsibilities into `dp-api`.
 - ⏳ Automated test suite.
 - ⏳ Production deployment.
 
-### Phase 8 — AI integration
+### Phase 9 — AI integration
 
 - ⏳ Read-only Product Tool.
 - ⏳ Read-only Price Tool.
@@ -2342,136 +2956,143 @@ entries remain future candidates.
 
 ### 21.1 Current exact objective
 
-Migrate and validate the `sbm-manager` Material consumer against the completed
-`dp-api` Material backend. Product is complete and must receive only regression
-fixes required to protect its established contract; it is not the active
-refactoring target.
+The Product QA foundation and local SonarQube integration are complete and
+validated. The next QA objective is to review and resolve the current SonarQube
+findings before introducing CI/CD enforcement.
 
-The backend work completed on 2026-07-19 established the following:
+Current priorities are:
 
-1. Material uses domain entities and repository ports, application commands
-   and use cases, Django adapters, and a thin DRF presentation layer.
-2. The unmanaged mapping uses `item_group`, Provider by integer `id`, and a
-   scalar Price UUID. The scalar mapping deliberately tolerates the three live
-   rows whose Price UUID does not resolve.
-3. GET, POST, PATCH, HEAD, OPTIONS, and explicit POST logical deletion match
-   Product; PUT and physical DELETE remain disabled.
-4. Create and pricing PATCH accept `base_net_amount` and
-   `price_configuration`. They calculate and link `price_record_type=2` Prices
-   using only confirmed `record_type=2` configurations.
-5. A pricing PATCH versions Price atomically; exclusive owned Prices are made
-   non-current, while shared, missing, or inconsistently owned legacy Prices
-   are never deactivated.
-6. A legacy dangling Price is returned as its stored UUID with nullable Price
-   components/configuration. Its first pricing PATCH must supply both canonical
-   pricing inputs and creates a valid replacement without mutating legacy data.
-7. Database triggers remain the source of generated Material code and SKU.
-   No Django migration, PostgreSQL mutation, or data cleanup was performed.
-8. Focused Material coverage brought the complete suite to 53 passing tests;
-   `python manage.py check` passed. Rolled-back live transactions also verified
-   Material creation and legacy Price repair against PostgreSQL.
+1. inspect and resolve the 2 Reliability issues;
+2. reduce duplicated lines from the current 12.2%;
+3. review the 21 Maintainability issues;
+4. raise coverage toward the preferred 80% target;
+5. define stricter New Code Quality Gate conditions;
+6. integrate the validated QA flow into CI/CD only after the local baseline is
+   accepted.
 
-The next work must proceed in this exact order:
+The immediate technical debt within testing remains real ORM coverage for
+unmanaged Product/Price tables. That requires a dedicated Flyway-initialized
+test database and must not be approximated by using the persistent development
+database.
 
-1. Read this complete context and the `sbm-manager` repository instructions.
-2. Audit all Material API clients, services, stores/composables, views,
-   components, routes, and environment configuration before editing.
-3. Point Material operations to `/api/materials/` in `dp-api` and preserve the
-   accepted methods and explicit `/api/materials/{id}/delete/` POST action.
-4. Use `item_group`, display labels from the response, and direct canonical
-   `base_net_amount` / `price_configuration` command fields. Do not submit
-   computed Price internals.
-5. Filter Material price-configuration selectors to
-   `record_type=2&is_confirmed=true` and submit the configuration UUID `code`.
-6. Validate create, ordinary PATCH, price/configuration PATCH, legacy repair,
-   logical deletion, and list/detail rendering through the integrated UI.
-7. Do not run `makemigrations` or `migrate`, do not alter PostgreSQL, and do
-   not perform Git operations unless separately authorized.
+### 21.2 Required structure
 
-### 21.2 Success criteria for the current vertical slice
-
-Product is resolved. Its accepted behavior includes server-generated SKU,
-hexagonal use cases, relational response labels, safe Price creation and
-versioning for amount/configuration changes, logical deletion, confirmation
-audit, immutable Provider, and atomic Product `version` increments. The full
-suite had 42 passing tests after the final Product contract changes, and the
-user accepted the integrated frontend flow before committing it.
-
-The Material vertical slice is backend-complete and succeeds end to end when:
-
-1. List and detail retain all legitimate visible Materials, including an
-   explicitly agreed response for legacy rows with dangling Price UUIDs.
-2. Material create obtains database-generated `code` and SKU and creates one
-   complete current Price owned by that Material.
-3. Material PATCH versions Price when `base_net_amount` or a valid confirmed
-   MATERIAL `price_configuration` changes; repeating persisted values is
-   idempotent.
-4. Responses expose the Price UUID, all Price components, configuration UUID
-   and label, `item_group` and its label, plus existing Provider/type/category/
-   package labels without exposing the internal audit log.
-5. Confirmation, logical deletion, immutable Provider, audit timestamps/users,
-   and atomic `version` increments match the accepted Product semantics.
-6. Shared, missing, or inconsistently owned legacy Price references cannot be
-   deactivated or corrupted for another consumer.
-7. The `sbm-manager` Material screen uses `dp-api`, submits relationship IDs or
-   UUID codes correctly, and filters price configurations to
-   `record_type=2&is_confirmed=true`.
-8. Product and Provider regression behavior remains unchanged; all automated
-   tests and Django system checks pass.
-9. No Django migration, PostgreSQL mutation, unapproved data cleanup, or
-   unauthorized Git operation is introduced.
-
-### 21.3 Codex and Cursor workflow
-
-Cursor remains the primary editor and visual review environment. Codex may be used through the Cursor extension or CLI for repository-wide audits and coordinated multi-file changes.
-
-Codex must read the `sbm-manager` project context and repository instructions
-before working there. After the Material backend contract is stable, its
-initial task in that repository should be an audit without modifications
-covering Material-related:
+Implemented structure:
 
 ```text
-API clients
-services
-stores/composables
-views/components
-routes
-environment configuration
+products/
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py
+│   ├── factories.py
+│   ├── test_models.py
+│   ├── test_price_policy.py
+│   ├── test_serializers.py
+│   ├── test_use_cases.py
+│   ├── test_views.py
+│   ├── test_api.py
+│   └── test_regression.py
 ```
 
-It must search the full `sbm-manager` repository for:
+No repository-level `tests/` directory was created.
+
+### 21.3 Required validation sequence
+
+Latest validated results:
 
 ```text
-materials
-material
-sbm-api
-baseURL
-group
-item_group
-group_name
-item_group_name
-price_description
-base_net_amount
-price_configuration
-price_configuration_label
-PUT
-DELETE
+Product-focused pytest suite  → 54 passed
+Complete dp-api pytest suite  → 71 passed
+Django system check           → 0 issues
+Coverage including branches   → 73.64%
+Line coverage                 → 78.44%
+Branch coverage               → 33.19%
+XML coverage                  → coverage.xml at repository root
 ```
 
-It must distinguish shared/internal `sbm-api` consumers from Ditaly Pasta
-Material consumers. It must not apply frontend changes until the audit
-identifies the exact Material integration points and the user authorizes the
-migration edit.
+The initial 70% threshold is met. The preferred 80% package target remains
+pending, principally because the unmanaged ORM repository lacks safe database
+integration coverage and Material code is included in the `products` package.
 
-### 21.4 Local IDE environment
+### 21.4 SonarQube current state and next QA phase
 
-A local virtual environment was created at:
+Completed:
+
+1. local SonarQube Community Build and PostgreSQL stack;
+2. local `DP-API` project and project analysis token;
+3. `sonar-project.properties` configuration;
+4. Product-only source and test scope;
+5. Python 3.11 analyzer configuration;
+6. successful `coverage.xml` ingestion;
+7. persistent local scanner cache;
+8. `coverage.sh`, `sonar-scan.sh`, and `qa-check.sh` workflow;
+9. initial analysis and passing Quality Gate.
+
+The next separately authorized phase may:
+
+1. inspect Reliability findings;
+2. correct genuine bugs without changing accepted contracts;
+3. reduce duplication;
+4. evaluate an initial stricter Quality Gate for New Code;
+5. connect the scripts to CI/CD and block merges when the Quality Gate fails.
+
+### 21.5 Non-negotiable restrictions
+
+- No Django migrations.
+- No PostgreSQL structural changes.
+- No DBML or Flyway changes.
+- No Product contract redesign.
+- No Material implementation work.
+- No `sbm-manager` changes.
+- No CI/CD pipeline implementation without separate authorization.
+- No Git operations unless separately authorized.
+- No secret exposure.
+- No deletion of passing tests without an equivalent replacement.
+
+### 21.6 Completed QA criteria
+
+Completed state:
+
+1. Product tests live under `products/tests/`.
+2. Product-focused and complete suites pass.
+3. Django system checks pass.
+4. Coverage reports and `coverage.xml` are generated.
+5. Coverage and gaps are documented.
+6. No accepted Product behavior changed.
+7. No migration or persistent database mutation occurred.
+8. SonarQube imports Product coverage successfully.
+9. The local Quality Gate passes.
+10. CI/CD enforcement remains a separate authorized phase.
+
+### 21.7 Codex and Cursor workflow
+
+Cursor remains the editor and visual review environment. Codex may perform the
+repository-wide audit and coordinated test reorganization.
+
+Codex must begin with an audit and must not modify files until it has identified:
+
+```text
+existing Product tests
+pytest configuration
+coverage configuration
+Docker test command
+shared fixtures
+Product use cases and adapters
+current changed files
+```
+
+The user validates each major step before Codex proceeds.
+
+### 21.8 Local IDE environment
+
+A local virtual environment exists at:
 
 ```text
 DP-API/.venv
 ```
 
-It is used only for Cursor/Pylance import resolution and autocomplete. Docker remains the official runtime.
+It is used only for Cursor/Pylance import resolution and autocomplete. Docker
+remains the official runtime.
 
 Dependencies are installed from:
 
@@ -2485,7 +3106,7 @@ Recommended Cursor interpreter:
 ${workspaceFolder}/.venv/bin/python
 ```
 
-### 21.5 Interaction rule
+### 21.9 Interaction rule
 
 When the user responds only with:
 
@@ -2493,7 +3114,9 @@ When the user responds only with:
 ok
 ```
 
-it means the previous validation produced exactly the expected result. Continue directly to the next step without requesting the output again.
+it means the previous validation produced exactly the expected result. Continue
+directly to the next step without requesting the output again.
+
 
 ## 22. Executive summary
 
@@ -2539,5 +3162,15 @@ The Product implementation is resolved. Its duplicate endpoint in `sbm-api`
 may be retired only after all remaining consumers are audited. That retirement
 is separate from the active Material implementation and must not trigger a
 Product rewrite.
+
+The Product QA foundation and local SonarQube integration are now operational.
+Product tests are standardized under `products/tests/`; `coverage.sh` regenerates
+pytest and Cobertura results; `sonar-scan.sh` performs static analysis; and
+`qa-check.sh` executes both stages in order. The latest local Quality Gate passes
+with 67.9% SonarQube coverage, Reliability B with 2 issues, Maintainability A
+with 21 issues, Security A with no detected issues, and 12.2% duplicated lines.
+The next QA work is to resolve the Reliability findings, reduce duplication,
+raise coverage and only then introduce CI/CD enforcement. Database changes and
+unrelated module refactors remain outside this QA scope.
 
 The long-term target is a production-grade, configurable ERP API where client users can operate independently and AI assists them through audited, permission-aware REST Tools without bypassing domain rules.
