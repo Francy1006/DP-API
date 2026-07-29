@@ -141,30 +141,30 @@ class DjangoMaterialRepository:
 
     @transaction.atomic
     def create(self, material):
-        values = dict(
-            code=material.code,
-            description=material.description,
-            obs=material.obs,
-            package_unit=material.package_unit,
-            min_package_purchase=material.min_package_purchase,
-            price=material.price,
-            provider_id=material.provider,
-            type_id=material.type,
-            item_group_id=material.item_group,
-            category_id=material.category,
-            package_id=material.package,
-            url=material.url,
-            is_active=material.is_active,
-            is_deleted=material.is_deleted,
-            is_confirmed=material.is_confirmed,
-            created_at=material.created_at,
-            confirmed_at=material.confirmed_at,
-            created_by_id=material.created_by,
-            confirmed_by_id=material.confirmed_by,
-            updated_by_id=material.updated_by,
-            log=material.log,
-            version=material.version,
-        )
+        values = {
+            "code": material.code,
+            "description": material.description,
+            "obs": material.obs,
+            "package_unit": material.package_unit,
+            "min_package_purchase": material.min_package_purchase,
+            "price": material.price,
+            "provider_id": material.provider,
+            "type_id": material.type,
+            "item_group_id": material.item_group,
+            "category_id": material.category,
+            "package_id": material.package,
+            "url": material.url,
+            "is_active": material.is_active,
+            "is_deleted": material.is_deleted,
+            "is_confirmed": material.is_confirmed,
+            "created_at": material.created_at,
+            "confirmed_at": material.confirmed_at,
+            "created_by_id": material.created_by,
+            "confirmed_by_id": material.confirmed_by,
+            "updated_by_id": material.updated_by,
+            "log": material.log,
+            "version": material.version,
+        }
         if material.sku:
             values["sku"] = material.sku
 

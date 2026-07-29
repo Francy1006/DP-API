@@ -16,6 +16,9 @@ from .models import (
 from .presentation.serializers import ProductSerializer
 
 
+_TYPE_NAME_SOURCE = "type.type"
+
+
 class MenuSerializer(serializers.ModelSerializer):
     class Meta:
         model = Menu
@@ -116,7 +119,7 @@ class CatalogSerializer(serializers.ModelSerializer):
     menu_name = serializers.CharField(source="menu.menu", read_only=True)
     group_name = serializers.CharField(source="group.group_name", read_only=True)
     category_name = serializers.CharField(source="category.category", read_only=True)
-    type_name = serializers.CharField(source="type.type", read_only=True)
+    type_name = serializers.CharField(source=_TYPE_NAME_SOURCE, read_only=True)
 
     class Meta:
         model = Catalog
@@ -210,7 +213,7 @@ class ItemConfigurationSerializer(serializers.ModelSerializer):
 
 
 class ItemConfigurationDetailSerializer(serializers.ModelSerializer):
-    type_name = serializers.CharField(source="type.type", read_only=True)
+    type_name = serializers.CharField(source=_TYPE_NAME_SOURCE, read_only=True)
     configuration_name = serializers.CharField(
         source="configuration.configuration", read_only=True
     )
@@ -240,7 +243,7 @@ class ItemConfigurationDetailSerializer(serializers.ModelSerializer):
 
 
 class ServiceSerializer(serializers.ModelSerializer):
-    type_name = serializers.CharField(source="type.type", read_only=True)
+    type_name = serializers.CharField(source=_TYPE_NAME_SOURCE, read_only=True)
     group_name = serializers.CharField(source="group.group_name", read_only=True)
     category_name = serializers.CharField(source="category.category", read_only=True)
     provider_name = serializers.CharField(source="provider.provider", read_only=True)

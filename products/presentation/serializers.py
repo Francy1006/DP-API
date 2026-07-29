@@ -121,10 +121,10 @@ class ProductCommandSerializer(serializers.ModelSerializer):
         forbidden = self.protected_price_fields.intersection(data)
         if forbidden:
             raise serializers.ValidationError(
-                {
-                    field_name: "Este campo de precio no puede modificarse."
-                    for field_name in sorted(forbidden)
-                }
+                dict.fromkeys(
+                    sorted(forbidden),
+                    "Este campo de precio no puede modificarse.",
+                )
             )
         return super().to_internal_value(data)
 

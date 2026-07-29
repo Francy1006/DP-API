@@ -16,6 +16,11 @@ from .models import (
     Service,
 )
 
+FIELDSET_AUDIT = "Auditoría"
+FIELDSET_BASIC_INFO = "Información Básica"
+FIELDSET_CLASSIFICATION = "Clasificación"
+FIELDSET_PROVIDER_PRICES = "Proveedor y Precios"
+
 
 @admin.register(Menu)
 class MenuAdmin(admin.ModelAdmin):
@@ -106,7 +111,7 @@ class PackageAdmin(admin.ModelAdmin):
         ),
         ("Estado", {"fields": ("is_deleted", "is_confirmed")}),
         (
-            "Auditoría",
+            FIELDSET_AUDIT,
             {
                 "fields": ("created_at", "updated_at", "confirmed_at", "deleted_at"),
                 "classes": ("collapse",),
@@ -154,11 +159,11 @@ class CatalogAdmin(admin.ModelAdmin):
     ]
     fieldsets = (
         (
-            "Información Básica",
+            FIELDSET_BASIC_INFO,
             {"fields": ("code", "sku", "name", "description", "obs")},
         ),
         (
-            "Clasificación",
+            FIELDSET_CLASSIFICATION,
             {"fields": ("menu", "group", "category", "type", "restriction")},
         ),
         (
@@ -187,7 +192,7 @@ class CatalogAdmin(admin.ModelAdmin):
         ("Configuración", {"fields": ("configuration", "is_visible")}),
         ("Estado", {"fields": ("is_deleted", "is_confirmed")}),
         (
-            "Auditoría",
+            FIELDSET_AUDIT,
             {
                 "fields": (
                     "created_at",
@@ -287,10 +292,10 @@ class ProductAdmin(admin.ModelAdmin):
     ]
 
     fieldsets = (
-        ("Información Básica", {"fields": ("code", "sku", "description", "obs")}),
-        ("Clasificación", {"fields": ("type", "item_group", "category")}),
+        (FIELDSET_BASIC_INFO, {"fields": ("code", "sku", "description", "obs")}),
+        (FIELDSET_CLASSIFICATION, {"fields": ("type", "item_group", "category")}),
         (
-            "Proveedor y Precios",
+            FIELDSET_PROVIDER_PRICES,
             {
                 "fields": (
                     "provider",
@@ -303,7 +308,7 @@ class ProductAdmin(admin.ModelAdmin):
         ("Paquete y URL", {"fields": ("package", "url")}),
         ("Estado", {"fields": ("is_active", "is_deleted", "is_confirmed")}),
         (
-            "Auditoría",
+            FIELDSET_AUDIT,
             {
                 "fields": (
                     "created_at",
@@ -356,16 +361,16 @@ class MaterialAdmin(admin.ModelAdmin):
         "version",
     ]
     fieldsets = (
-        ("Información Básica", {"fields": ("code", "sku", "description", "obs")}),
-        ("Clasificación", {"fields": ("type", "item_group", "category")}),
+        (FIELDSET_BASIC_INFO, {"fields": ("code", "sku", "description", "obs")}),
+        (FIELDSET_CLASSIFICATION, {"fields": ("type", "item_group", "category")}),
         (
-            "Proveedor y Precios",
+            FIELDSET_PROVIDER_PRICES,
             {"fields": ("provider", "price", "package_unit", "min_package_purchase")},
         ),
         ("Paquete y URL", {"fields": ("package", "url")}),
         ("Estado", {"fields": ("is_active", "is_deleted", "is_confirmed")}),
         (
-            "Auditoría",
+            FIELDSET_AUDIT,
             {
                 "fields": (
                     "created_at",
@@ -418,16 +423,16 @@ class ServiceAdmin(admin.ModelAdmin):
         "version",
     ]
     fieldsets = (
-        ("Información Básica", {"fields": ("code", "sku", "description", "obs")}),
-        ("Clasificación", {"fields": ("type", "group", "category")}),
+        (FIELDSET_BASIC_INFO, {"fields": ("code", "sku", "description", "obs")}),
+        (FIELDSET_CLASSIFICATION, {"fields": ("type", "group", "category")}),
         (
-            "Proveedor y Precios",
+            FIELDSET_PROVIDER_PRICES,
             {"fields": ("provider", "price", "package_unit", "min_package_purchase")},
         ),
         ("URL", {"fields": ("url",)}),
         ("Estado", {"fields": ("is_active", "is_deleted", "is_confirmed")}),
         (
-            "Auditoría",
+            FIELDSET_AUDIT,
             {
                 "fields": (
                     "created_at",

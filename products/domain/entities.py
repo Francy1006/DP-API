@@ -6,6 +6,9 @@ from typing import Any, Optional
 from products.domain.exceptions import ImmutableProductField
 
 
+IMMUTABLE_PATCH_FIELDS = frozenset({"sku", "provider", "price"})
+
+
 def _terminated_log(value: str) -> str:
     current = (value or "").strip()
     if current and not current.endswith(";"):
@@ -66,17 +69,19 @@ class Product:
 
     def initialize_audit(self, created_at: datetime, timestamp: str) -> None:
         self.created_at = created_at
+
         if self.is_confirmed:
             self.confirmed_at = created_at
             self.confirmed_by = self.created_by
             self.log = (
                 f"INIT: {timestamp} (USER: {self.created_by}) (confirmed);"
             )
-        else:
-            self.is_confirmed = False
-            self.confirmed_at = None
-            self.confirmed_by = None
-            self.log = f"INIT: {timestamp} (USER: {self.created_by});"
+            return
+
+        self.is_confirmed = False
+        self.confirmed_at = None
+        self.confirmed_by = None
+        self.log = f"INIT: {timestamp} (USER: {self.created_by});"
 
     def apply_patch(
         self,
@@ -85,58 +90,134 @@ class Product:
         updated_at: datetime,
     ) -> bool:
         changed_values = []
+
         for field_name, new_value in changes.items():
-            if field_name in {"sku", "provider", "price"}:
-                if getattr(self, field_name) != new_value:
-                    raise ImmutableProductField(field_name)
+            if field_name in IMMUTABLE_PATCH_FIELDS:
+                self._validate_immutable_field(field_name, new_value)
                 continue
 
             if field_name == "is_confirmed":
-                normalized_value = bool(new_value)
-                was_confirmed = self.is_confirmed is True
-                audit_incomplete = normalized_value and (
-                    self.confirmed_at is None or self.confirmed_by is None
+                confirmation_changed = self._apply_confirmation_patch(
+                    new_value,
+                    updated_by,
+                    updated_at,
                 )
-                stale_audit = not normalized_value and (
-                    self.confirmed_at is not None or self.confirmed_by is not None
-                )
-                if (
-                    self.is_confirmed != normalized_value
-                    or audit_incomplete
-                    or stale_audit
-                ):
+                if confirmation_changed:
                     changed_values.append(
-                        f"is_confirmed={normalized_value!r}"
+                        f"is_confirmed={bool(new_value)!r}"
                     )
-
-                self.is_confirmed = normalized_value
-                if normalized_value:
-                    if not was_confirmed or audit_incomplete:
-                        self.confirmed_at = updated_at
-                        self.confirmed_by = updated_by
-                else:
-                    self.confirmed_at = None
-                    self.confirmed_by = None
                 continue
 
-            if getattr(self, field_name) != new_value:
+            if self._apply_regular_patch(field_name, new_value):
                 changed_values.append(
                     f"{field_name}={_audit_value(new_value)}"
                 )
-                setattr(self, field_name, new_value)
 
-        changes_log = ", ".join(changed_values) if changed_values else "sin cambios"
+        self._register_patch_audit(
+            changed_values,
+            updated_by,
+            updated_at,
+        )
+
+        return bool(changed_values)
+
+    def _validate_immutable_field(
+        self,
+        field_name: str,
+        new_value: Any,
+    ) -> None:
+        if getattr(self, field_name) != new_value:
+            raise ImmutableProductField(field_name)
+
+    def _apply_confirmation_patch(
+        self,
+        new_value: Any,
+        updated_by: str,
+        updated_at: datetime,
+    ) -> bool:
+        normalized_value = bool(new_value)
+        was_confirmed = self.is_confirmed is True
+
+        audit_incomplete = normalized_value and (
+            self.confirmed_at is None or self.confirmed_by is None
+        )
+        stale_audit = not normalized_value and (
+            self.confirmed_at is not None or self.confirmed_by is not None
+        )
+
+        confirmation_changed = (
+            self.is_confirmed != normalized_value
+            or audit_incomplete
+            or stale_audit
+        )
+
+        self.is_confirmed = normalized_value
+
+        if normalized_value:
+            self._confirm(
+                was_confirmed,
+                audit_incomplete,
+                updated_by,
+                updated_at,
+            )
+        else:
+            self._clear_confirmation_audit()
+
+        return confirmation_changed
+
+    def _confirm(
+        self,
+        was_confirmed: bool,
+        audit_incomplete: bool,
+        updated_by: str,
+        updated_at: datetime,
+    ) -> None:
+        if not was_confirmed or audit_incomplete:
+            self.confirmed_at = updated_at
+            self.confirmed_by = updated_by
+
+    def _clear_confirmation_audit(self) -> None:
+        self.confirmed_at = None
+        self.confirmed_by = None
+
+    def _apply_regular_patch(
+        self,
+        field_name: str,
+        new_value: Any,
+    ) -> bool:
+        if getattr(self, field_name) == new_value:
+            return False
+
+        setattr(self, field_name, new_value)
+        return True
+
+    def _register_patch_audit(
+        self,
+        changed_values: list[str],
+        updated_by: str,
+        updated_at: datetime,
+    ) -> None:
+        changes_log = (
+            ", ".join(changed_values)
+            if changed_values
+            else "sin cambios"
+        )
         patch_log = f"PATCH: {changes_log} (USER: {updated_by});"
         current_log = _terminated_log(self.log)
+
         self.log = f"{current_log} {patch_log}".strip()
         self.updated_by = updated_by
         self.updated_at = updated_at
-        return bool(changed_values)
 
     def increment_version(self) -> None:
         self.version = (self.version or 0) + 1
 
-    def link_price(self, price_code, configuration_code, components) -> None:
+    def link_price(
+        self,
+        price_code,
+        configuration_code,
+        components,
+    ) -> None:
         self.price = price_code
         self.price_configuration = configuration_code
         self.base_net_amount = components.base_net_amount
@@ -154,6 +235,7 @@ class Product:
     ) -> None:
         delete_log = f"DELETE: {timestamp} (USER: {deleted_by});"
         current_log = _terminated_log(self.log)
+
         self.log = f"{current_log} {delete_log}".strip()
         self.is_active = False
         self.is_deleted = True

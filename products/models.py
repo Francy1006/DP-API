@@ -4,13 +4,26 @@ from django.utils import timezone
 from users.models import User
 from documentation.models import Instruction
 
+
+_DESCRIPTION_VERBOSE_NAME = "Descripción"
+_CREATED_AT_VERBOSE_NAME = "Fecha de Creación"
+_UPDATED_AT_VERBOSE_NAME = "Fecha de Actualización"
+_CONFIRMED_AT_VERBOSE_NAME = "Fecha de Confirmación"
+_DELETED_AT_VERBOSE_NAME = "Fecha de Eliminación"
+_CODE_VERBOSE_NAME = "Código"
+_LOG_DEFAULT = "init;"
+_VERSION_VERBOSE_NAME = "Versión"
+VERBOSE_NAME_PACKAGE_UNIT = "Unidad de Paquete"
+VERBOSE_NAME_MIN_PACKAGE_PURCHASE = "Compra Mínima de Paquete"
+
+
 class Menu(models.Model):
     """
     Modelo para menús del sistema
     """
     id = models.AutoField(primary_key=True)
     menu = models.CharField(max_length=50, verbose_name="Menú")
-    description = models.TextField(verbose_name="Descripción")
+    description = models.TextField(verbose_name=_DESCRIPTION_VERBOSE_NAME)
     franchise_only = models.BooleanField(default=False, verbose_name="Solo Franquicia")
 
     class Meta:
@@ -29,7 +42,7 @@ class ItemCategory(models.Model):
     """
     id = models.AutoField(primary_key=True)
     category = models.CharField(max_length=50, verbose_name="Categoría")
-    description = models.TextField(verbose_name="Descripción")
+    description = models.TextField(verbose_name=_DESCRIPTION_VERBOSE_NAME)
     catalog_render = models.BooleanField(
         default=True, 
         verbose_name="Renderizar en Catálogo"
@@ -51,7 +64,7 @@ class ItemType(models.Model):
     """
     id = models.AutoField(primary_key=True)
     type = models.CharField(max_length=50, verbose_name="Tipo")
-    description = models.TextField(verbose_name="Descripción")
+    description = models.TextField(verbose_name=_DESCRIPTION_VERBOSE_NAME)
 
     class Meta:
         db_table = 'item_type'
@@ -69,7 +82,7 @@ class ItemGroup(models.Model):
     """
     id = models.AutoField(primary_key=True)
     group_name = models.CharField(max_length=50, verbose_name="Nombre del Grupo")
-    description = models.TextField(verbose_name="Descripción")
+    description = models.TextField(verbose_name=_DESCRIPTION_VERBOSE_NAME)
     catalog_render = models.BooleanField(
         default=True, 
         verbose_name="Renderizar en Catálogo"
@@ -91,7 +104,7 @@ class PackageType(models.Model):
     """
     id = models.AutoField(primary_key=True)
     type = models.CharField(max_length=50, verbose_name="Tipo")
-    description = models.TextField(verbose_name="Descripción")
+    description = models.TextField(verbose_name=_DESCRIPTION_VERBOSE_NAME)
 
     class Meta:
         db_table = 'package_type'
@@ -109,7 +122,7 @@ class TransportType(models.Model):
     """
     id = models.AutoField(primary_key=True)
     type = models.CharField(max_length=50, verbose_name="Tipo")
-    description = models.TextField(verbose_name="Descripción")
+    description = models.TextField(verbose_name=_DESCRIPTION_VERBOSE_NAME)
 
     class Meta:
         db_table = 'transport_type'
@@ -127,7 +140,7 @@ class MeasureUnit(models.Model):
     """
     id = models.AutoField(primary_key=True)
     measure_unit = models.CharField(max_length=50, verbose_name="Unidad de Medida")
-    description = models.TextField(verbose_name="Descripción")
+    description = models.TextField(verbose_name=_DESCRIPTION_VERBOSE_NAME)
 
     class Meta:
         db_table = 'measure_unit'
@@ -144,7 +157,7 @@ class Package(models.Model):
     Modelo para paquetes
     """
     id = models.AutoField(primary_key=True)
-    description = models.TextField(verbose_name="Descripción")
+    description = models.TextField(verbose_name=_DESCRIPTION_VERBOSE_NAME)
     package_type = models.ForeignKey(PackageType, on_delete=models.CASCADE, db_column='package_type')
     transport_type = models.ForeignKey(TransportType, on_delete=models.CASCADE, db_column='transport_type')
     size = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Tamaño")
@@ -155,10 +168,10 @@ class Package(models.Model):
     transport_instructions = models.ForeignKey(Instruction, on_delete=models.CASCADE, db_column='transport_instructions', related_name='transport_packages')
     is_deleted = models.BooleanField(null=True, blank=True, verbose_name="Eliminado")
     is_confirmed = models.BooleanField(null=True, blank=True, verbose_name="Confirmado")
-    created_at = models.DateTimeField(default=timezone.now, verbose_name="Fecha de Creación")
-    updated_at = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de Actualización")
-    confirmed_at = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de Confirmación")
-    deleted_at = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de Eliminación")
+    created_at = models.DateTimeField(default=timezone.now, verbose_name=_CREATED_AT_VERBOSE_NAME)
+    updated_at = models.DateTimeField(null=True, blank=True, verbose_name=_UPDATED_AT_VERBOSE_NAME)
+    confirmed_at = models.DateTimeField(null=True, blank=True, verbose_name=_CONFIRMED_AT_VERBOSE_NAME)
+    deleted_at = models.DateTimeField(null=True, blank=True, verbose_name=_DELETED_AT_VERBOSE_NAME)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, db_column='created_by', to_field='code', related_name='packages_created')
     confirmed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='confirmed_by', to_field='code', related_name='packages_confirmed')
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='updated_by', to_field='code', related_name='packages_updated')
@@ -184,7 +197,7 @@ class Catalog(models.Model):
     Modelo para catálogo de productos
     """
     id = models.AutoField(primary_key=True)
-    code = models.CharField(max_length=36, unique=True, null=True, blank=True, verbose_name="Código")
+    code = models.CharField(max_length=36, unique=True, null=True, blank=True, verbose_name=_CODE_VERBOSE_NAME)
     sku = models.CharField(max_length=50, verbose_name="SKU")
     menu = models.ForeignKey(Menu, on_delete=models.CASCADE, db_column='menu')
     group = models.ForeignKey(ItemGroup, on_delete=models.CASCADE, db_column='item_group')
@@ -192,7 +205,7 @@ class Catalog(models.Model):
     type = models.ForeignKey(ItemType, on_delete=models.CASCADE, db_column='type')
     restriction = models.CharField(max_length=36, verbose_name="Restricción")
     name = models.CharField(max_length=50, verbose_name="Nombre")
-    description = models.TextField(verbose_name="Descripción")
+    description = models.TextField(verbose_name=_DESCRIPTION_VERBOSE_NAME)
     obs = models.CharField(max_length=255, null=True, blank=True, verbose_name="Observaciones")
     chef_recommendation = models.BooleanField(default=False, verbose_name="Recomendación del Chef")
     usage_instructions = models.ForeignKey(Instruction, on_delete=models.CASCADE, db_column='usage_instructions')
@@ -207,16 +220,16 @@ class Catalog(models.Model):
     is_visible = models.BooleanField(default=True, verbose_name="Visible")
     is_deleted = models.BooleanField(null=True, blank=True, verbose_name="Eliminado")
     is_confirmed = models.BooleanField(null=True, blank=True, verbose_name="Confirmado")
-    created_at = models.DateTimeField(default=timezone.now, verbose_name="Fecha de Creación")
-    updated_at = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de Actualización")
-    confirmed_at = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de Confirmación")
-    deleted_at = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de Eliminación")
+    created_at = models.DateTimeField(default=timezone.now, verbose_name=_CREATED_AT_VERBOSE_NAME)
+    updated_at = models.DateTimeField(null=True, blank=True, verbose_name=_UPDATED_AT_VERBOSE_NAME)
+    confirmed_at = models.DateTimeField(null=True, blank=True, verbose_name=_CONFIRMED_AT_VERBOSE_NAME)
+    deleted_at = models.DateTimeField(null=True, blank=True, verbose_name=_DELETED_AT_VERBOSE_NAME)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, db_column='created_by', to_field='code', related_name='catalogs_created')
     confirmed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='confirmed_by', to_field='code', related_name='catalogs_confirmed')
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='updated_by', to_field='code', related_name='catalogs_updated')
     deleted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='deleted_by', to_field='code', related_name='catalogs_deleted')
-    log = models.TextField(default="init;", verbose_name="Log")
-    version = models.IntegerField(default=1, verbose_name="Versión")
+    log = models.TextField(default=_LOG_DEFAULT, verbose_name="Log")
+    version = models.IntegerField(default=1, verbose_name=_VERSION_VERBOSE_NAME)
 
     class Meta:
         db_table = 'catalog'
@@ -238,22 +251,22 @@ class ItemConfiguration(models.Model):
     Modelo para configuraciones de items
     """
     id = models.AutoField(primary_key=True)
-    code = models.CharField(max_length=36, unique=True, verbose_name="Código")
+    code = models.CharField(max_length=36, unique=True, verbose_name=_CODE_VERBOSE_NAME)
     configuration = models.CharField(max_length=50, verbose_name="Configuración")
-    description = models.TextField(verbose_name="Descripción")
+    description = models.TextField(verbose_name=_DESCRIPTION_VERBOSE_NAME)
     package = models.ForeignKey(Package, on_delete=models.CASCADE, db_column='package')
     is_deleted = models.BooleanField(null=True, blank=True, verbose_name="Eliminado")
     is_confirmed = models.BooleanField(null=True, blank=True, verbose_name="Confirmado")
-    created_at = models.DateTimeField(default=timezone.now, verbose_name="Fecha de Creación")
-    updated_at = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de Actualización")
-    confirmed_at = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de Confirmación")
-    deleted_at = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de Eliminación")
+    created_at = models.DateTimeField(default=timezone.now, verbose_name=_CREATED_AT_VERBOSE_NAME)
+    updated_at = models.DateTimeField(null=True, blank=True, verbose_name=_UPDATED_AT_VERBOSE_NAME)
+    confirmed_at = models.DateTimeField(null=True, blank=True, verbose_name=_CONFIRMED_AT_VERBOSE_NAME)
+    deleted_at = models.DateTimeField(null=True, blank=True, verbose_name=_DELETED_AT_VERBOSE_NAME)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, db_column='created_by', to_field='code', related_name='item_configurations_created')
     confirmed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='confirmed_by', to_field='code', related_name='item_configurations_confirmed')
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='updated_by', to_field='code', related_name='item_configurations_updated')
     deleted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='deleted_by', to_field='code', related_name='item_configurations_deleted')
-    log = models.TextField(default="init;", verbose_name="Log")
-    version = models.IntegerField(default=1, verbose_name="Versión")
+    log = models.TextField(default=_LOG_DEFAULT, verbose_name="Log")
+    version = models.IntegerField(default=1, verbose_name=_VERSION_VERBOSE_NAME)
 
     class Meta:
         db_table = 'item_configuration'
@@ -269,17 +282,17 @@ class ItemConfigurationDetail(models.Model):
     """
     Modelo para detalles de configuración de items
     """
-    code = models.CharField(max_length=36, verbose_name="Código")
+    code = models.CharField(max_length=36, verbose_name=_CODE_VERBOSE_NAME)
     detail = models.CharField(max_length=50, verbose_name="Detalle")
     type = models.ForeignKey(ItemType, on_delete=models.CASCADE, db_column='type')
     configuration = models.ForeignKey(ItemConfiguration, on_delete=models.CASCADE, db_column='configuration', to_field='code')
     id_item = models.CharField(max_length=36, verbose_name="ID del Item")
     is_deleted = models.BooleanField(null=True, blank=True, verbose_name="Eliminado")
     is_confirmed = models.BooleanField(null=True, blank=True, verbose_name="Confirmado")
-    created_at = models.DateTimeField(default=timezone.now, verbose_name="Fecha de Creación")
-    updated_at = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de Actualización")
-    confirmed_at = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de Confirmación")
-    deleted_at = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de Eliminación")
+    created_at = models.DateTimeField(default=timezone.now, verbose_name=_CREATED_AT_VERBOSE_NAME)
+    updated_at = models.DateTimeField(null=True, blank=True, verbose_name=_UPDATED_AT_VERBOSE_NAME)
+    confirmed_at = models.DateTimeField(null=True, blank=True, verbose_name=_CONFIRMED_AT_VERBOSE_NAME)
+    deleted_at = models.DateTimeField(null=True, blank=True, verbose_name=_DELETED_AT_VERBOSE_NAME)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, db_column='created_by', to_field='code', related_name='item_configuration_details_created')
     confirmed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='confirmed_by', to_field='code', related_name='item_configuration_details_confirmed')
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='updated_by', to_field='code', related_name='item_configuration_details_updated')
@@ -306,7 +319,7 @@ class Product(models.Model):
     code = models.CharField(
         max_length=36,
         unique=True,
-        verbose_name="Código",
+        verbose_name=_CODE_VERBOSE_NAME,
     )
 
     sku = models.CharField(
@@ -316,7 +329,7 @@ class Product(models.Model):
     )
 
     description = models.TextField(
-        verbose_name="Descripción",
+        verbose_name=_DESCRIPTION_VERBOSE_NAME,
     )
 
     obs = models.TextField(
@@ -324,11 +337,11 @@ class Product(models.Model):
     )
 
     package_unit = models.IntegerField(
-        verbose_name="Unidad de Paquete",
+        verbose_name=VERBOSE_NAME_PACKAGE_UNIT,
     )
 
     min_package_purchase = models.IntegerField(
-        verbose_name="Compra Mínima de Paquete",
+        verbose_name=VERBOSE_NAME_MIN_PACKAGE_PURCHASE,
     )
 
     price = models.ForeignKey(
@@ -406,25 +419,25 @@ class Product(models.Model):
 
     created_at = models.DateTimeField(
         default=timezone.now,
-        verbose_name="Fecha de Creación",
+        verbose_name=_CREATED_AT_VERBOSE_NAME,
     )
 
     updated_at = models.DateTimeField(
         null=True,
         blank=True,
-        verbose_name="Fecha de Actualización",
+        verbose_name=_UPDATED_AT_VERBOSE_NAME,
     )
 
     confirmed_at = models.DateTimeField(
         null=True,
         blank=True,
-        verbose_name="Fecha de Confirmación",
+        verbose_name=_CONFIRMED_AT_VERBOSE_NAME,
     )
 
     deleted_at = models.DateTimeField(
         null=True,
         blank=True,
-        verbose_name="Fecha de Eliminación",
+        verbose_name=_DELETED_AT_VERBOSE_NAME,
     )
 
     created_by = models.ForeignKey(
@@ -470,13 +483,13 @@ class Product(models.Model):
     )
 
     log = models.TextField(
-        default="init;",
+        default=_LOG_DEFAULT,
         verbose_name="Log",
     )
 
     version = models.IntegerField(
         default=1,
-        verbose_name="Versión",
+        verbose_name=_VERSION_VERBOSE_NAME,
     )
 
     class Meta:
@@ -494,12 +507,14 @@ class Material(models.Model):
     """Material operativo administrado por DP-API."""
 
     id = models.AutoField(primary_key=True)
-    code = models.CharField(max_length=36, unique=True, verbose_name="Código")
+    code = models.CharField(max_length=36, unique=True, verbose_name=_CODE_VERBOSE_NAME)
     sku = models.CharField(max_length=50, verbose_name="SKU")
-    description = models.TextField(verbose_name="Descripción")
+    description = models.TextField(verbose_name=_DESCRIPTION_VERBOSE_NAME)
     obs = models.TextField(verbose_name="Observaciones")
-    package_unit = models.IntegerField(verbose_name="Unidad de Paquete")
-    min_package_purchase = models.IntegerField(verbose_name="Compra Mínima de Paquete")
+    package_unit = models.IntegerField(verbose_name=VERBOSE_NAME_PACKAGE_UNIT)
+    min_package_purchase = models.IntegerField(
+        verbose_name=VERBOSE_NAME_MIN_PACKAGE_PURCHASE
+    )
     # Kept scalar until Flyway repairs the three dangling legacy Price UUIDs.
     # New writes always link a real pricing.Price code through the use case.
     price = models.CharField(max_length=36, verbose_name="Precio")
@@ -537,16 +552,16 @@ class Material(models.Model):
     is_active = models.BooleanField(default=True, verbose_name="Activo")
     is_deleted = models.BooleanField(null=True, blank=True, verbose_name="Eliminado")
     is_confirmed = models.BooleanField(null=True, blank=True, verbose_name="Confirmado")
-    created_at = models.DateTimeField(default=timezone.now, verbose_name="Fecha de Creación")
-    updated_at = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de Actualización")
-    confirmed_at = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de Confirmación")
-    deleted_at = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de Eliminación")
+    created_at = models.DateTimeField(default=timezone.now, verbose_name=_CREATED_AT_VERBOSE_NAME)
+    updated_at = models.DateTimeField(null=True, blank=True, verbose_name=_UPDATED_AT_VERBOSE_NAME)
+    confirmed_at = models.DateTimeField(null=True, blank=True, verbose_name=_CONFIRMED_AT_VERBOSE_NAME)
+    deleted_at = models.DateTimeField(null=True, blank=True, verbose_name=_DELETED_AT_VERBOSE_NAME)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, db_column='created_by', to_field='code', related_name='materials_created')
     confirmed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='confirmed_by', to_field='code', related_name='materials_confirmed')
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='updated_by', to_field='code', related_name='materials_updated')
     deleted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='deleted_by', to_field='code', related_name='materials_deleted')
-    log = models.TextField(default="init;", verbose_name="Log")
-    version = models.IntegerField(default=1, verbose_name="Versión")
+    log = models.TextField(default=_LOG_DEFAULT, verbose_name="Log")
+    version = models.IntegerField(default=1, verbose_name=_VERSION_VERBOSE_NAME)
 
     class Meta:
         db_table = 'material'
@@ -564,12 +579,14 @@ class Service(models.Model):
     Modelo para servicios
     """
     id = models.AutoField(primary_key=True)
-    code = models.CharField(max_length=36, unique=True, verbose_name="Código")
+    code = models.CharField(max_length=36, unique=True, verbose_name=_CODE_VERBOSE_NAME)
     sku = models.CharField(max_length=50, verbose_name="SKU")
-    description = models.TextField(verbose_name="Descripción")
+    description = models.TextField(verbose_name=_DESCRIPTION_VERBOSE_NAME)
     obs = models.TextField(verbose_name="Observaciones")
-    package_unit = models.IntegerField(verbose_name="Unidad de Paquete")
-    min_package_purchase = models.IntegerField(verbose_name="Compra Mínima de Paquete")
+    package_unit = models.IntegerField(verbose_name=VERBOSE_NAME_PACKAGE_UNIT)
+    min_package_purchase = models.IntegerField(
+        verbose_name=VERBOSE_NAME_MIN_PACKAGE_PURCHASE
+    )
     price = models.CharField(max_length=36, verbose_name="Precio")
     provider = models.ForeignKey('providers.Provider', on_delete=models.CASCADE, db_column='provider')
     type = models.ForeignKey(ItemType, on_delete=models.CASCADE, db_column='type')
@@ -579,16 +596,16 @@ class Service(models.Model):
     is_active = models.BooleanField(default=True, verbose_name="Activo")
     is_deleted = models.BooleanField(null=True, blank=True, verbose_name="Eliminado")
     is_confirmed = models.BooleanField(null=True, blank=True, verbose_name="Confirmado")
-    created_at = models.DateTimeField(default=timezone.now, verbose_name="Fecha de Creación")
-    updated_at = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de Actualización")
-    confirmed_at = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de Confirmación")
-    deleted_at = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de Eliminación")
+    created_at = models.DateTimeField(default=timezone.now, verbose_name=_CREATED_AT_VERBOSE_NAME)
+    updated_at = models.DateTimeField(null=True, blank=True, verbose_name=_UPDATED_AT_VERBOSE_NAME)
+    confirmed_at = models.DateTimeField(null=True, blank=True, verbose_name=_CONFIRMED_AT_VERBOSE_NAME)
+    deleted_at = models.DateTimeField(null=True, blank=True, verbose_name=_DELETED_AT_VERBOSE_NAME)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, db_column='created_by', to_field='code', related_name='services_created')
     confirmed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='confirmed_by', to_field='code', related_name='services_confirmed')
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='updated_by', to_field='code', related_name='services_updated')
     deleted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='deleted_by', to_field='code', related_name='services_deleted')
-    log = models.TextField(default="init;", verbose_name="Log")
-    version = models.IntegerField(default=1, verbose_name="Versión")
+    log = models.TextField(default=_LOG_DEFAULT, verbose_name="Log")
+    version = models.IntegerField(default=1, verbose_name=_VERSION_VERBOSE_NAME)
 
     class Meta:
         db_table = 'service'

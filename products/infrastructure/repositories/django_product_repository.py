@@ -108,30 +108,30 @@ class DjangoProductRepository:
 
     @transaction.atomic
     def create(self, product):
-        values = dict(
-            code=product.code,
-            description=product.description,
-            obs=product.obs,
-            package_unit=product.package_unit,
-            min_package_purchase=product.min_package_purchase,
-            price_id=product.price,
-            provider_id=product.provider,
-            type_id=product.type,
-            item_group_id=product.item_group,
-            category_id=product.category,
-            package_id=product.package,
-            url=product.url,
-            is_active=product.is_active,
-            is_deleted=product.is_deleted,
-            is_confirmed=product.is_confirmed,
-            created_at=product.created_at,
-            confirmed_at=product.confirmed_at,
-            created_by_id=product.created_by,
-            confirmed_by_id=product.confirmed_by,
-            updated_by_id=product.updated_by,
-            log=product.log,
-            version=product.version,
-        )
+        values = {
+            "code": product.code,
+            "description": product.description,
+            "obs": product.obs,
+            "package_unit": product.package_unit,
+            "min_package_purchase": product.min_package_purchase,
+            "price_id": product.price,
+            "provider_id": product.provider,
+            "type_id": product.type,
+            "item_group_id": product.item_group,
+            "category_id": product.category,
+            "package_id": product.package,
+            "url": product.url,
+            "is_active": product.is_active,
+            "is_deleted": product.is_deleted,
+            "is_confirmed": product.is_confirmed,
+            "created_at": product.created_at,
+            "confirmed_at": product.confirmed_at,
+            "created_by_id": product.created_by,
+            "confirmed_by_id": product.confirmed_by,
+            "updated_by_id": product.updated_by,
+            "log": product.log,
+            "version": product.version,
+        }
         if product.sku:
             values["sku"] = product.sku
 
