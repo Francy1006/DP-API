@@ -3,17 +3,6 @@ branch = True
 relative_files = True
 source =
     products
-omit =
-    products/application/material_commands.py
-    products/application/material_dto.py
-    products/application/use_cases/material/*
-    products/domain/material_entities.py
-    products/domain/material_exceptions.py
-    products/domain/material_repositories.py
-    products/infrastructure/repositories/django_material_repository.py
-    products/presentation/material_serializers.py
-    products/presentation/material_views.py
-    products/test_material_hexagonal.py
 
 [report]
 omit =

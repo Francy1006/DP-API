@@ -3,9 +3,9 @@ from django.db.models import F, Q
 
 from pricing.models import Price as PriceModel
 from pricing.models import PriceConfiguration
-from products.domain.material_entities import Material as MaterialEntity
-from products.domain.material_exceptions import MaterialNotFound
-from products.models import Material as MaterialModel
+from material.domain.entities import Material as MaterialEntity
+from material.domain.exceptions import MaterialNotFound
+from material.models import Material as MaterialModel
 from users.models import User
 
 

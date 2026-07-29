@@ -41,6 +41,7 @@ urlpatterns = [
     path('api/', include('users.urls')),
     path('api/', include('authz.urls')),
     path('api/', include('products.urls')),
+    path('api/', include('material.urls')),
     path('api/', include('providers.urls')),
     path('api/', include('pricing.urls')),
     path('api/', include('documentation.urls')),

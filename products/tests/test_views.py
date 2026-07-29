@@ -2,8 +2,10 @@ from django.test import SimpleTestCase
 from django.urls import reverse
 from rest_framework import serializers
 
-from pricing.domain.exceptions import (
+from products.domain.exceptions import (
     ProductPriceConfigurationUnavailable,
+)
+from pricing.domain.exceptions import (
     UnsafeCurrentPrice,
 )
 from products.presentation.views import PriceVersionConflict, ProductViewSet

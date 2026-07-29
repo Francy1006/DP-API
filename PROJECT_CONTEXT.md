@@ -186,12 +186,18 @@ Implemented Django apps:
 2. `authz`
 3. `documentation`
 4. `products`
-5. `providers`
-6. `pricing`
-7. `sales`
-8. `ticket`
-9. `branches`
-10. `business`
+5. `material`
+6. `providers`
+7. `pricing`
+8. `sales`
+9. `ticket`
+10. `branches`
+11. `business`
+
+The dedicated `service` app is the next authorized implementation objective. It
+does not yet count as implemented until its database mapping, hexagonal vertical,
+routing, admin registration, focused validation, and project documentation have
+been completed.
 
 ### 3.4 Current platform components
 
@@ -505,6 +511,14 @@ The Django mapping was aligned with those confirmed columns. The DBML documentat
 
 `pricing/admin.py`, `pricing/serializers.py`, and `pricing/views.py` were synchronized with the final `Price` mapping. Stale Price references such as `record_type`, `price_fiscal_configuration`, and `is_active` were removed from the Price flow. References to `price_fiscal_configuration` that remain in `FiscalConfigurationDetail` are valid and belong to that separate model.
 
+After the Material app extraction, `pricing` retains only transversal pricing
+components: `Price`, `PriceComponents`, `PriceConfiguration`, the safe
+`VariableFormulaPriceEngine`, transaction contracts/adapters, generic pricing
+errors, and the Django models/API for pricing-owned resources. Product-specific
+price orchestration, ports, exceptions, and ORM adapters live under `products`;
+their Material equivalents live under `material`. The Product and Material
+Price repositories are independent and do not share a repository base class.
+
 #### Current validation state
 
 - Django system checks: passing.
@@ -615,8 +629,10 @@ DP-API/
 ├── documentation/
 ├── pricing/
 ├── products/
+├── material/
 ├── providers/
 ├── sales/
+├── service/                 # next authorized app; create during active objective
 ├── ticket/
 ├── users/
 ├── templates/
@@ -672,9 +688,11 @@ users
 authz
 documentation
 products
+material
 providers
 pricing
 sales
+service
 ticket
 branches
 business
@@ -789,8 +807,9 @@ Current purpose:
 - Catalogs.
 - Item configurations.
 - Products.
-- Materials.
-- Services.
+
+Material is no longer owned by the `products` Django app. It has its own
+dedicated `material` app and must be fully removed from `products`.
 
 Current models:
 
@@ -806,8 +825,6 @@ Current models:
 - `ItemConfiguration`
 - `ItemConfigurationDetail`
 - `Product`
-- `Material`
-- `Service`
 
 Current endpoints:
 
@@ -824,12 +841,18 @@ Current endpoints:
 /api/item-configurations/
 /api/item-configuration-details/
 /api/products/
-/api/materials/
-/api/services/
 ```
 
-Product is the completed reference capability. Material is the active vertical
-migration objective inside this app.
+Product is the completed reference capability for the `products` app.
+
+Service must not remain inside `products`. The next authorized objective is to
+create a dedicated `service` Django app and move or rebuild the complete Service
+vertical there after validating the current database source of truth.
+
+Material is a separate vertical with its own Django app. Every
+Material-specific model, serializer, view, route, use case, repository, domain
+entity, test, import, export, admin registration, and QA path was removed from
+`products`. The dedicated `material` app is the only canonical implementation.
 
 #### 5.4.1 Material preflight — 2026-07-19
 
@@ -867,7 +890,125 @@ model to a Price foreign key or using `select_related`, the implementation must
 choose and test an explicit compatibility strategy so existing Materials do
 not silently disappear from list/detail endpoints.
 
-### 5.5 `providers`
+### 5.5 `material`
+
+Current purpose:
+
+- Own the complete Material vertical independently from `products`.
+- Expose Material models, domain rules, use cases, repositories, serializers,
+  views, routes, admin registration, and tests from the dedicated app.
+- Preserve the already validated Material backend behavior and public contract
+  while removing duplicated or stale Material code from `products`.
+
+Implemented ownership:
+
+```text
+products/*
+X→ Material-specific implementation
+
+material/*
+→ canonical Material implementation
+```
+
+Required extraction scope includes, at minimum:
+
+- Material model declarations and admin registration;
+- Material serializers and ViewSets;
+- Material URL/router registration;
+- Material command and DTO modules;
+- Material application use cases;
+- Material domain entities, exceptions, and repository ports;
+- Material Django repository adapters;
+- Material tests and fixtures;
+- package exports and imports that expose Material through `products`;
+- SonarQube and coverage exclusions or paths that still assume Material lives
+  under `products`.
+
+The extraction preserved the existing REST contract, including
+`/api/materials/`, route names, lifecycle validation, audit, confirmation,
+logical deletion, entity versioning, Price versioning, and compatibility with
+legacy dangling Price UUIDs. PostgreSQL and Flyway remain authoritative; no
+Django migration, schema change, DBML change, or Flyway change was performed.
+
+Material continues using `products.ItemType`, `products.ItemGroup`,
+`products.ItemCategory`, and `products.Package` as approved shared lookups.
+Material-specific price calculation, repository ports, errors, and ORM adapters
+live under `material`; its Price repository is independent and does not inherit
+from the Product repository.
+
+Changing the Django app label from `products.Material` to
+`material.Material` can affect existing `django_content_type` and auth
+permission records. This repository does not repair that metadata through
+Django migrations or direct database writes. Non-superuser admin permissions
+must be reviewed separately by an authorized database/runtime process.
+
+### 5.6 `service` — next authorized implementation
+
+Target purpose:
+
+- Own the complete Service vertical independently from `products`.
+- Preserve Hexagonal Architecture for Service business rules.
+- Expose the canonical Service model mapping, admin registration, REST contract,
+  application use cases, domain entities and policies, repository ports, Django
+  ORM adapters, routes, and focused tests from the dedicated `service` app.
+- Remove any Service-specific implementation, export, registration, or route
+  that remains under `products` only after the canonical replacement exists.
+
+Required architecture:
+
+```text
+REST adapter / controller
+→ application use case
+→ Service domain entity or policy
+→ Service repository port
+→ Django ORM repository adapter
+→ Flyway-owned PostgreSQL schema
+```
+
+Database precondition:
+
+The Service implementation must not begin from stale Django models, historical
+DBML, memory, or assumptions. Before proposing files or code, Codex must request
+and inspect the current database source of truth, including the latest available:
+
+```text
+SBM-DB project or current database repository
+Flyway scripts affecting Service and its dependencies
+current DBML
+read-only PostgreSQL schema inspection when available
+relevant triggers, functions, constraints, indexes, and seed/reference data
+```
+
+Codex must compare at minimum:
+
+```text
+current PostgreSQL service table
+↔ current Flyway definitions
+↔ current DBML
+↔ existing DP-API Service code
+↔ corresponding SBM-API Service implementation, when present
+```
+
+If the updated database material is not available, Codex must stop and request
+it. It must not create the Service model, serializer, use cases, repository, or
+public contract from an unverified schema.
+
+Implementation restrictions:
+
+- no Django migrations;
+- no `makemigrations` or `migrate`;
+- no PostgreSQL mutation;
+- no DBML or Flyway modification;
+- no Product or Material contract changes;
+- no shared Product/Material/Service aggregate or repository created only to
+  reduce duplication;
+- no `./scripts/qa-check.sh` during development;
+- no final Service QA context in this implementation phase.
+
+The future Service QA context is a separate phase and will be created only after
+the Service implementation is complete and manually reviewed.
+
+### 5.7 `providers`
 
 Current purpose:
 
@@ -937,7 +1078,7 @@ service.provider       → integer → provider.id
 
 No Django migration was generated or executed for these mapping corrections.
 
-### 5.6 `pricing`
+### 5.8 `pricing`
 
 Current purpose:
 
@@ -1203,7 +1344,7 @@ Historical open decisions (resolved by the accepted Product contract):
 6. Confirm whether a newly generated Price inherits Product confirmation state
    or remains under the current Price confirmation convention.
 
-### 5.7 `ticket`
+### 5.9 `ticket`
 
 Current purpose:
 
@@ -1221,7 +1362,7 @@ Current endpoint:
 
 Tickets initiated by a client user belong to the client-facing API. Internal SBM workflow or escalation may later interact through `sbm-api` or automation, but the client request begins in `dp-api`.
 
-### 5.8 `branches`
+### 5.10 `branches`
 
 Current purpose:
 
@@ -1255,7 +1396,7 @@ Current endpoints:
 /api/agreement-details/
 ```
 
-### 5.9 `business`
+### 5.11 `business`
 
 Current purpose:
 
@@ -1273,7 +1414,7 @@ Current endpoint:
 
 This app is small and its long-term boundary should be reassessed as the domain model becomes clearer.
 
-### 5.10 `sales`
+### 5.12 `sales`
 
 Current status:
 
@@ -1935,6 +2076,106 @@ Every refactor or feature should be evaluated against:
 
 Do not expand the project indefinitely with technologies that do not improve those goals.
 
+### 13.6 Django app ownership and Codex management rules
+
+Every business capability must live in its own canonical Django app. Codex must
+not place a domain inside another app merely because both use related lookup
+tables, share database schemas, or currently coexist in legacy files.
+
+Canonical ownership for the currently authorized domains:
+
+```text
+Product  → products app
+Material → material app
+Service  → service app
+Catalog  → catalog app
+Ticket   → ticket app
+```
+
+This ownership applies to the complete vertical slice of each capability:
+
+```text
+model mapping
+→ admin registration
+→ REST serializer
+→ ViewSet/controller
+→ URL/router registration
+→ application commands and DTOs
+→ application use cases
+→ domain entities, exceptions, policies, and repository ports
+→ Django ORM repository adapters
+→ tests, fixtures, and factories
+→ package exports and imports
+→ SonarQube and coverage configuration
+```
+
+Codex rules:
+
+1. Treat each app as the only canonical owner of its domain.
+2. Do not create or preserve duplicate implementations in another app.
+3. Do not import a domain implementation from another business app as a
+   permanent compatibility shortcut.
+4. Shared code is allowed only for genuine cross-domain infrastructure or stable
+   shared value objects. It must not contain Product-, Material-, Service-,
+   Catalog-, or Ticket-specific business rules.
+5. Do not create a common base aggregate, shared use case, shared serializer, or
+   shared repository merely to reduce duplication metrics.
+6. Cross-domain references must use explicit contracts, identifiers, ports, or
+   approved shared lookup models rather than copying implementation code.
+7. Before moving or deleting code, identify:
+   - the canonical target app;
+   - every import and consumer;
+   - URL/router registrations;
+   - admin registrations;
+   - serializer and ViewSet dependencies;
+   - tests and fixtures;
+   - settings or `INSTALLED_APPS` dependencies;
+   - SonarQube and coverage paths.
+8. Preserve the existing public REST contract unless a separate contract change
+   is explicitly authorized.
+9. Preserve Hexagonal Architecture for business-critical verticals. The
+   canonical flow is:
+
+```text
+REST adapter
+→ application use case
+→ domain entity/policy and repository port
+→ Django ORM repository adapter
+→ Flyway-owned PostgreSQL schema
+```
+
+10. Django models remain unmanaged mappings when the physical table is owned by
+    Flyway.
+11. Never run `makemigrations` or `migrate` for these domain tables.
+12. Never modify PostgreSQL, DBML, Flyway, triggers, constraints, or seed data
+    unless a separate database scope is explicitly authorized.
+13. Work one step at a time and stop after the requested implementation report.
+14. During the development phase, do not run `./scripts/qa-check.sh`.
+15. The user will execute the final QA workflow manually after reviewing the
+    completed implementation.
+16. A domain-specific QA context will be created in a later phase. Do not design,
+    expand, or document that QA phase during the current implementation task.
+17. Before creating or extracting `service`, request the current database project
+    and verify PostgreSQL, Flyway, DBML, triggers, constraints, indexes, and
+    existing API implementations. Stop if the current database source is not
+    available.
+18. Do not infer the Service contract from Product or Material merely because the
+    entities have similar lifecycle or Price behavior.
+19. `README.md` is maintained as final-state project documentation. It must read
+    as the project is complete, while this `PROJECT_CONTEXT.md` remains the
+    factual source for implementation status, pending work, risks, and history.
+20. Keep the existing README presentation style, but ensure it includes complete
+    project purpose, architecture, module ownership, setup, environment
+    configuration, startup, usage, URLs, database ownership, QA commands, and
+    security guidance.
+21. During active implementation, update README descriptions to the intended
+    completed architecture only when the corresponding target has been explicitly
+    approved. Never place historical incident logs or unfinished reasoning in the
+    README.
+
+Only the five ownership mappings listed above are authorized in this phase.
+Ownership rules for additional apps will be defined separately.
+
 ---
 
 ## 14. Repository visual identity
@@ -2439,21 +2680,14 @@ sonar.python.version=3.11
 sonar.python.coverage.reportPaths=coverage.xml
 ```
 
-The active SonarQube and coverage compliance scope is exclusively the Product
-vertical. Files that belong only to Material are excluded from both tools:
+The Product QA phase is complete. Material-specific files no longer exist
+under `products`, and the obsolete path-specific Material exclusions were
+removed from SonarQube and coverage configuration.
 
-```text
-products/application/material_commands.py
-products/application/material_dto.py
-products/application/use_cases/material/**
-products/domain/material_entities.py
-products/domain/material_exceptions.py
-products/domain/material_repositories.py
-products/infrastructure/repositories/django_material_repository.py
-products/presentation/material_serializers.py
-products/presentation/material_views.py
-products/test_material_hexagonal.py
-```
+The dedicated `material` app will receive its own SonarQube and coverage scope
+in a separately authorized phase. Product analysis remains limited to
+`sonar.sources=products` and coverage source `products`; it does not hide
+residual Material code because none remains there.
 
 Shared files that execute or register Product behavior remain analyzed,
 including `products/models.py`, `products/admin.py`, `products/urls.py`,
@@ -2856,13 +3090,16 @@ responsibilities into `dp-api`.
 - ⏳ Retire the duplicate Product endpoint in `sbm-api` after the remaining
   consumer audit; this is cleanup, not unfinished Product behavior.
 
-### Phase 3 — Remaining catalog domain
+### Phase 3 — Material app separation and remaining catalog domain
 
-- ✅ Material backend: hexagonal CRUD, Price creation/versioning, labels,
-  lifecycle, audit, entity versioning, and legacy compatibility implemented.
-- 🚧 Material: migrate and validate the `sbm-manager` consumer against the
-  stable backend contract.
-- ⏳ Service.
+- ✅ Dedicated Material backend exists.
+- ✅ Remove all Material-specific code, routes, imports, tests, and QA references
+  from `products`.
+- ✅ Validate the dedicated `material` app as the only canonical Material owner.
+- ⏳ Migrate and validate the `sbm-manager` consumer against the stable Material
+  app contract.
+- 🚧 Create the dedicated `service` app after obtaining and validating the
+  updated database source of truth.
 - ⏳ Catalog.
 - ⏳ Item configurations.
 - ⏳ Packages and supporting lookup data.
@@ -2947,8 +3184,10 @@ the existing REST contract and Flyway-managed database mapping.
    packaging, suppliers, traceability, and future inventory or production
    constraints through a hexagonal backend; its `sbm-manager` consumer remains
    to be migrated and accepted.
-4. **Service** — can contain availability, costing, fulfillment, billing, and
-   lifecycle rules that must remain stable across different delivery channels.
+4. **Service (Next Authorized Objective)** — create a dedicated `service` app
+   with a verified unmanaged ORM mapping and complete hexagonal vertical. The
+   implementation must begin only after the current database project, Flyway,
+   DBML, and live read-only schema have been inspected.
 5. **Catalog** — coordinates publication, visibility, menus, product grouping,
    franchise conditions, and channel-specific presentation rules.
 6. **Pricing** — contains fiscal calculations, price composition, effective
@@ -2980,263 +3219,151 @@ entries remain future candidates.
 
 ## 21. Immediate next step
 
-### 21.1 Current exact objective
+### 21.1 Current exact objective — create the dedicated Service app
 
-The Product-only QA and SonarQube compliance phase is complete and accepted.
+Material separation is complete. The next authorized objective is to create the
+dedicated `service` Django app and make it the only canonical owner of the
+Service vertical.
 
-Product and Material remain separate domain elements backed by separate tables.
-They are not linked and must not be merged into a shared implementation merely
-because both currently live inside the `products` Django package.
-
-Final Product result validated on 2026-07-29:
+Canonical ownership:
 
 ```text
-Product-focused tests             54 passed
-Complete dp-api suite             71 passed
-Django system check               0 issues
-pytest-cov combined coverage      88%
-pytest-cov line coverage          90.73%
-pytest-cov branch coverage        61.40%
-SonarQube overall coverage        88.4%
-SonarQube New Code coverage       98.2%
-Overall duplicated lines          2.7%
-New Code duplicated lines         0.65147%
-Security open issues              0
-Reliability open issues           0
-Maintainability open issues       0
-Accepted issues                   1
-Quality Gate                      Passed
+Product  → products app
+Material → material app
+Service  → service app
+Catalog  → catalog app
+Ticket   → ticket app
 ```
 
-The accepted issue is `python:S6553` on `Catalog.obs`. The field remains
-`CharField(max_length=255, null=True, blank=True)` because it maps a nullable
-column owned by the independent Flyway/PostgreSQL database project. Removing
-`null=True` would desynchronize the ORM and could change the Catalog REST
-contract. It is accepted as a valid design exception, never marked as a false
-positive.
-
-The Product implementation is now frozen as the QA reference vertical. Any
-future Product change must preserve this baseline or explicitly update it with
-new tests and analysis.
-
-Material, Service, and other domains remain outside this completed Product QA
-scope. The next domain may begin only through a new, separately authorized
-phase. No Product/Material base class or other cross-domain abstraction may be
-introduced solely to reduce duplication.
-
-
-### 21.2 Required structure
-
-Implemented structure:
+The `service` app must preserve Hexagonal Architecture:
 
 ```text
-products/
-├── tests/
-│   ├── __init__.py
-│   ├── conftest.py
-│   ├── factories.py
-│   ├── test_models.py
-│   ├── test_price_policy.py
-│   ├── test_serializers.py
-│   ├── test_use_cases.py
-│   ├── test_views.py
-│   ├── test_api.py
-│   └── test_regression.py
+REST adapter
+→ application use case
+→ Service domain entity/policy
+→ repository port
+→ Django ORM repository adapter
+→ Flyway-owned PostgreSQL schema
 ```
 
-No repository-level `tests/` directory was created.
+### 21.2 Mandatory database request before implementation
 
-### 21.3 Required validation sequence
+Codex must not assume that the existing Service model, DBML, Flyway history, or
+the corresponding `sbm-api` implementation is current.
 
-Latest validated results:
+Before modifying files, Codex must explicitly request the latest database
+material from the user:
+
+1. current `SBM-DB` repository or equivalent database project;
+2. current DBML;
+3. all Flyway scripts affecting `service`, `price`, Provider, lookup tables,
+   audit users, and any related configuration;
+4. current trigger and function definitions;
+5. current constraints, indexes, defaults, nullable rules, and foreign keys;
+6. read-only access or exported inspection of the live PostgreSQL schema when
+   available.
+
+Codex must compare:
 
 ```text
-Product-focused pytest suite  → 54 passed
-Complete dp-api pytest suite  → 71 passed
-Django system check           → 0 issues
-pytest-cov combined coverage  → 88%
-Line coverage                 → 90.73%
-Branch coverage               → 61.40%
-SonarQube overall coverage    → 88.4%
-Duplicated lines              → 2.7%
-Open issues                   → 0
-Accepted issues               → 1
-Quality Gate                  → Passed
-XML coverage                  → coverage.xml at repository root
+live PostgreSQL
+↔ Flyway
+↔ DBML
+↔ existing DP-API Service implementation
+↔ existing SBM-API Service implementation
 ```
 
-The Product QA baseline is accepted. Real ORM, trigger, and transaction
-integration coverage remains a separate improvement that requires a dedicated
-Flyway-initialized test database; the persistent development database must not
-be used as a substitute.
+If the current database source is missing, incomplete, contradictory, or stale,
+Codex must stop and request clarification. It must not generate the Service
+model or API contract from assumptions.
 
-### 21.4 SonarQube current state and next QA phase
+### 21.3 Required Service vertical
 
-Completed:
-
-1. local SonarQube Community Build and PostgreSQL stack;
-2. local `DP-API` project and project analysis token;
-3. `sonar-project.properties` configuration;
-4. Product-focused source and test execution;
-5. Python analyzer configuration;
-6. successful `coverage.xml` ingestion;
-7. persistent local scanner cache;
-8. `coverage.sh`, `sonar-scan.sh`, and `qa-check.sh` workflow;
-9. Product reliability findings reduced to zero;
-10. Product maintainability findings reduced incrementally without changing the
-    accepted public contract.
-
-Latest QA incident:
-
-- Product-focused pytest continued passing with 54 tests.
-- Product complexity and duplicated-literal findings were corrected.
-- A premature Material complexity refactor introduced additional uncovered new
-  lines and duplicated structure.
-- The Quality Gate then failed because new-code coverage fell to 61.6% and
-  new-code duplication rose to 15.84%.
-- This failure does not authorize merging Product and Material into one shared
-  abstraction. The correct response is to restore Product-only scope and defer
-  Material compliance work.
-
-Final validation after restoring the Product-only scope on 2026-07-29:
+After database validation and separate user approval, the implementation must
+cover the complete vertical:
 
 ```text
-Product-focused tests             54 passed
-Complete dp-api suite             71 passed
-Django system check               0 issues
-pytest-cov combined coverage      88%
-pytest-cov line coverage          90.73%
-pytest-cov branch coverage        61.40%
-SonarQube overall coverage        88.4%
-SonarQube New Code coverage       98.2%
-Overall duplicated lines          2.7%
-New Code duplicated lines         0.65147%
-Open SonarQube issues             1 accepted-design candidate
-New Code issues                   0
-Quality Gate                      Passed
+service/
+├── admin.py
+├── apps.py
+├── models.py
+├── urls.py
+├── application/
+│   ├── commands.py
+│   ├── dto.py
+│   └── use_cases/
+├── domain/
+│   ├── entities.py
+│   ├── exceptions.py
+│   ├── policies.py
+│   └── repositories.py
+├── infrastructure/
+│   └── repositories/
+├── presentation/
+│   ├── serializers.py
+│   └── views.py
+└── tests/                    # focused implementation tests only in this phase
 ```
 
-The duplicated-literal findings in the shared `products/models.py` file were
-resolved with module constants without changing their values or runtime
-behavior.
+The exact files may be adjusted after repository inspection, but the ownership
+and dependency direction must remain hexagonal.
 
-The only remaining finding is `python:S6553` on `Catalog.obs`. The Django field
-is `CharField(max_length=255, null=True, blank=True)`, matching the nullable
-`ditaly_pasta.catalog.obs varchar(255)` column owned by Flyway and confirmed in
-the live PostgreSQL schema. Removing `null=True` would intentionally
-desynchronize the ORM mapping and could change the Catalog REST contract.
-Therefore, the approved disposition is `Accepted`, never `False Positive`, with
-the following justification:
+The extraction or creation must also update:
 
-```text
-The Django model maps an externally managed PostgreSQL column. The column is
-nullable in the Flyway-owned schema. Removing null=True would intentionally
-desynchronize the ORM mapping and could change the REST contract. Database
-migrations and schema changes are outside the responsibility of this repository.
-```
+- `INSTALLED_APPS`;
+- Docker volume mounts when the current Compose strategy requires them;
+- root and app routers;
+- admin registration;
+- imports and package exports;
+- references still pointing to Service under `products`;
+- README final-state documentation.
 
-The repository's project-analysis token does not have SonarQube's `Administer
-Issues` permission, so the `Accepted` transition must be completed with an
-authorized administrative account. No source exclusion or schema change may be
-used as a substitute.
-
-The Product QA phase is closed and the baseline is accepted.
-
-The next authorized phase may be selected separately, for example:
-
-1. Material QA and frontend-consumer validation;
-2. retirement audit of the duplicate Product endpoint in `sbm-api`;
-3. CI/CD Quality Gate enforcement;
-4. dedicated Flyway-initialized integration testing.
-
-None of these begins automatically. CI/CD and every subsequent domain remain
-separately authorized scopes.
-
-### 21.5 Non-negotiable restrictions
+### 21.4 Development restrictions
 
 - No Django migrations.
-- No PostgreSQL structural changes.
-- No DBML or Flyway changes.
-- No Product contract redesign.
-- No Material implementation, refactor, coverage expansion, or SonarQube cleanup
-  during the active Product-only phase.
-- No `sbm-manager` changes.
-- No CI/CD pipeline implementation without separate authorization.
+- No `makemigrations` or `migrate`.
+- No PostgreSQL writes or schema changes.
+- No Flyway or DBML changes.
+- No Product or Material redesign.
+- No artificial Product/Material/Service base aggregate.
+- No unrelated Catalog or Ticket implementation.
 - No Git operations unless separately authorized.
-- No secret exposure.
-- No deletion of passing tests without an equivalent replacement.
+- Do not execute `./scripts/qa-check.sh`.
+- Do not run the final SonarQube/coverage workflow during development.
+- Do not create the Service-specific QA context yet.
 
-### 21.6 Completed QA criteria
-
-Completed state:
-
-1. Product tests live under `products/tests/`.
-2. Product-focused and complete suites pass.
-3. Django system checks pass.
-4. Coverage reports and `coverage.xml` are generated.
-5. Coverage and gaps are documented.
-6. No accepted Product behavior changed.
-7. No migration or persistent database mutation occurred.
-8. SonarQube imports Product coverage successfully.
-9. The local Quality Gate passes.
-10. Security, Reliability, and Maintainability have 0 open issues.
-11. The accepted `Catalog.obs` finding is documented as an external-schema
-    mapping decision.
-12. SonarQube overall coverage is 88.4% and duplication is 2.7%.
-13. CI/CD enforcement remains a separate authorized phase.
-
-### 21.7 Codex and Cursor workflow
-
-Cursor remains the editor and visual review environment. Codex may perform the
-repository-wide audit and coordinated test reorganization.
-
-Codex must begin with an audit and must not modify files until it has identified:
+Allowed development validation is limited to focused checks such as:
 
 ```text
-existing Product tests
-pytest configuration
-coverage configuration
-Docker test command
-shared fixtures
-Product use cases and adapters
-current changed files
+python manage.py check
+focused Service tests
+targeted import checks
+targeted Service endpoint smoke validation
 ```
 
-The user validates each major step before Codex proceeds.
+The user will execute the complete QA workflow manually after the implementation
+is complete. A separate Service QA context will be created afterward and is
+outside the current objective.
 
-### 21.8 Local IDE environment
+### 21.5 README documentation rule
 
-A local virtual environment exists at:
+`README.md` must describe the intended completed project, not the implementation
+history. It must preserve the current visual format and include:
 
-```text
-DP-API/.venv
-```
+- project purpose and final boundaries;
+- final app ownership;
+- hybrid and hexagonal architecture;
+- complete requirements and environment variables;
+- Docker network and database prerequisites;
+- build, startup, stop, restart, logs, and validation commands;
+- local URLs and API usage examples;
+- database/Flyway ownership rules;
+- authentication status and security guidance;
+- QA commands and the latest accepted baseline where appropriate;
+- project-documentation distinction between README and context.
 
-It is used only for Cursor/Pylance import resolution and autocomplete. Docker
-remains the official runtime.
-
-Dependencies are installed from:
-
-```text
-core/requirements.txt
-```
-
-Recommended Cursor interpreter:
-
-```text
-${workspaceFolder}/.venv/bin/python
-```
-
-### 21.9 Interaction rule
-
-When the user responds only with:
-
-```text
-ok
-```
-
-it means the previous validation produced exactly the expected result. Continue
-directly to the next step without requesting the output again.
+`PROJECT_CONTEXT.md` remains the factual record of what is completed, pending,
+historical, restricted, or awaiting validation.
 
 
 ## 22. Executive summary
@@ -3260,12 +3387,14 @@ logical deletion, audit, and entity-version behavior are integrated with
 `sbm-manager`. The Material backend now applies that pattern through a
 hexagonal CRUD and safe Price lifecycle. Its compatibility contract preserves
 three legacy rows whose stored Price UUIDs do not exist and supports explicit
-repair through a pricing PATCH. Migrating and accepting the `sbm-manager`
-Material consumer is the active next step. Internal and critical platform
+repair through a pricing PATCH. The Material backend is now isolated in its dedicated app. The next authorized
+backend objective is to create the dedicated `service` app after obtaining and
+verifying the current database project, Flyway, DBML, and read-only PostgreSQL
+schema. Internal and critical platform
 operations continue using `sbm-api`.
 
-The migration remains vertical and incremental. Product supplies the accepted
-capability template now being applied selectively to Material:
+The migration remains vertical and incremental. Product supplies the accepted capability template. Material is now isolated in
+its own app, and Service is the next separately authorized hexagonal vertical:
 
 ```text
 model
@@ -3279,8 +3408,11 @@ model
 → AI Tool
 ```
 
-The Product implementation is resolved. Its duplicate endpoint in `sbm-api`
-may be retired only after all remaining consumers are audited. That retirement
+The Product implementation is resolved, and Material is isolated in its
+dedicated app. Service must not be implemented from assumptions: the current
+database source of truth must be requested and inspected before code changes.
+The duplicate Product endpoint in `sbm-api` may be retired only after all
+remaining consumers are audited. That retirement
 is separate from the active Material implementation and must not trigger a
 Product rewrite.
 
@@ -3300,8 +3432,10 @@ A premature Material refactor previously caused the New Code Quality Gate to
 fail with 61.6% coverage and 15.84% duplication. That work was restored and the
 Product-only scope was re-established. Product and Material are separate domain
 elements and separate tables; they must not be merged or generalized only to
-satisfy SonarQube. Product is now the frozen QA reference. Material, Service, and
-later modules require separate authorized phases. Database changes, CI/CD
+satisfy SonarQube. Product remains the frozen QA reference. The structural
+separation is complete: `material` is the sole canonical Material owner and no
+Material implementation remains inside `products`. Service and later modules
+require separate authorized phases. Database changes, CI/CD
 enforcement, and unrelated module refactors remain outside this completed scope.
 
 The long-term target is a production-grade, configurable ERP API where client users can operate independently and AI assists them through audited, permission-aware REST Tools without bypassing domain rules.

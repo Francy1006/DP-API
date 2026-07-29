@@ -1,0 +1,1 @@
+"""Canonical Material Django application."""

@@ -43,164 +43,161 @@
 
 Client-facing REST API for the Ditaly Pasta business domain within **SBM Suite**.
 
-`dp-api` allows client users to configure and operate the ERP without requiring an internal SBM administrator for routine business operations.
+`dp-api` enables authorized client users to operate and configure the ERP through
+stable REST contracts without depending on the internal `sbm-api` for routine
+business operations.
 
 ## Role within SBM Suite
 
 ```text
 Client user
-→ SBM Manager / client application
+→ SBM Manager / client application / approved AI channel
 → DP-API
-→ Ditaly Pasta business operations
+→ validated Ditaly Pasta domain operation
+→ PostgreSQL managed by Flyway
 ```
-
-`dp-api` is the decoupled API boundary for Ditaly Pasta client operations. `sbm-manager` and other client applications consume `dp-api` for products, prices, providers, branches, catalogs, tickets and other brand-owned capabilities.
-
-`sbm-api` is a separate internal API reserved for critical platform processes and global administration. Client applications do not use it for normal Ditaly Pasta operations.
 
 ```text
 Client operation     → dp-api
 Platform operation   → sbm-api
 ```
 
-A client user may create products or modify prices, but cannot create a new franchise, activate uncontracted modules or provision a new tenant.
+`dp-api` owns client-facing business capabilities. `sbm-api` remains responsible
+for franchise and tenant provisioning, contracted modules, global configuration,
+internal administration, and other platform-level operations.
 
-The two APIs are independently deployable and have distinct responsibilities. Physical database schema location does not merge their API ownership boundaries.
+## Project status
 
-## Current status
-
-- Active repository.
-- Local development environment validated.
-- Django REST API running with Docker.
-- PostgreSQL connection using `ditaly_pasta`, `sbm_business` and `public` schemas.
-- Django Jazzmin administration interface available.
-- Client-facing domain boundary decoupled from the internal `sbm-api`.
-- Designed as the Ditaly Pasta API consumed by `sbm-manager`.
-- AI integration planned through `sbm-ai-assistant`.
-- Production deployment planned.
+- Client-facing domain boundary implemented.
+- Docker-based local runtime.
+- PostgreSQL integration through the shared `sbm-network`.
+- Flyway-managed business schemas.
+- Hybrid architecture with hexagonal verticals.
+- Product and Material separated into canonical apps.
+- Dedicated Service, Catalog, and Ticket ownership.
+- Django Jazzmin administration interface.
+- Automated tests, coverage reports, and SonarQube integration.
+- Ready for integration with `sbm-manager` and approved AI Tools.
 
 ## Technology stack
 
-- Python
+- Python 3.11
 - Django 4.2
 - Django REST Framework
 - PostgreSQL
+- Flyway
 - Django Filter
 - Django CORS Headers
 - Django Jazzmin
 - Docker Compose
 - Pytest
-- Flyway-managed business schemas
+- pytest-django
+- pytest-cov
+- SonarQube Community Build
 
-## Main modules
+## Canonical app ownership
 
-| Module | Responsibility |
-|---|---|
-| `products` | Products, materials, services, catalogs and item configuration |
-| `pricing` | Prices and fiscal price configuration |
-| `providers` | Providers, banks, regions, districts and provider classifications |
-| `branches` | Branches, platforms and agreements |
-| `ticket` | Client-facing ticket operations |
-| `users` | Client-scoped users and user tokens |
-| `authz` | Roles, permissions and restrictions |
-| `business` | Shared business classifications |
-| `documentation` | Operational documentation models |
-| `sales` | Sales-related domain capabilities under development |
+| Domain | Django app | Responsibility |
+|---|---|---|
+| Product | `products` | Product lifecycle, pricing orchestration, audit, confirmation and logical deletion |
+| Material | `material` | Material lifecycle, pricing, legacy compatibility and REST API |
+| Service | `service` | Service lifecycle, pricing, availability, fulfillment and REST API |
+| Catalog | `catalog` | Catalog publication, grouping, menus and item configuration |
+| Ticket | `ticket` | Client-facing ticket lifecycle and operational workflow |
+| Pricing | `pricing` | Shared prices, price configurations and fiscal calculation infrastructure |
+| Providers | `providers` | Providers, banks, regions, districts and classifications |
+| Branches | `branches` | Branches, platforms and agreements |
+| Users | `users` | Client-scoped business users and tokens |
+| Authorization | `authz` | Roles, permissions and restrictions |
+| Business | `business` | Shared business classifications |
+| Documentation | `documentation` | Operational instruction models |
+| Sales | `sales` | Sales-domain capabilities |
+
+A domain is not placed inside another app merely because both use the same
+lookup tables or database schema.
 
 ## Architecture
 
-The platform currently uses a **hybrid architecture**, selected per business
-domain:
+DP-API uses a **hybrid architecture**.
 
-- **Layered Architecture** is retained for CRUD-oriented and simple domains,
-  using the established ViewSet, serializer, model, and PostgreSQL flow.
-- **Hexagonal Architecture** is introduced incrementally for business-critical
-  domains with complex rules, workflows, audit requirements, or external
-  integrations. Controllers delegate to application use cases, use cases
-  depend on domain ports, and Django ORM acts as a persistence adapter.
-
-PostgreSQL remains the source of truth, Flyway owns schema evolution, and
-Django business models remain unmanaged where configured. Architecture changes
-do not alter the public REST contract or the ownership boundary between
-`dp-api` and `sbm-api`.
+Simple CRUD-oriented modules may use the conventional Django flow:
 
 ```text
-Frontend / AI channel
-        ↓
-      DP-API
-        ↓
-Django REST Framework
-        ↓
-PostgreSQL
-├── ditaly_pasta
-├── sbm_business
-└── public
+URL/router
+→ ViewSet
+→ serializer
+→ unmanaged Django model
+→ PostgreSQL
 ```
 
-The physical database schema does not define API ownership by itself. Ownership is determined by the domain rule and by who is authorized to execute the operation.
+Business-critical modules use Hexagonal Architecture:
 
-## Hexagonal Modules
+```text
+REST adapter / controller
+→ application use case
+→ domain entity, policy and repository port
+→ Django ORM repository adapter
+→ Flyway-owned PostgreSQL schema
+```
 
-- Product
-- Provider
-- Material
-- Service
-- Catalog
-- Pricing
-- Orders
-- Inventory
-- Ticket
-- Franchise Provisioning
-- AI Integration
-- Workflow Automation
+Product, Material, Service, Catalog and Ticket are independent verticals. Shared
+code is limited to genuine cross-domain infrastructure or stable shared value
+objects. Domain-specific rules, serializers, use cases and repositories are not
+shared merely to reduce duplication.
 
-Product is the first vertical migration and the reference implementation for
-the platform's hexagonal modules.
+## Database ownership
 
-## API boundaries
+PostgreSQL and Flyway run in an independent database stack. DP-API does not own
+or provision the physical schema.
 
-### DP-API responsibilities
+```text
+DP-API
+→ Django/DRF application
+→ unmanaged ORM mappings
 
-- Products
-- Materials
-- Services
-- Prices
-- Providers
-- Branches
-- Catalogs
-- Tickets
-- Client users and permissions
-- Operational configuration
-- Future AI-assisted client operations
+SBM-DB / Flyway
+→ schemas
+→ tables and columns
+→ constraints and indexes
+→ triggers and functions
+→ versioned database migrations
+```
 
-### SBM-API responsibilities
+The configured PostgreSQL search path is:
 
-- Franchise and tenant creation
-- Contracted module activation
-- Platform-level administration
-- Global configuration
-- Subscription and service management
-- Schema provisioning
-- Internal SBM operations
+```text
+ditaly_pasta,sbm_business,public
+```
 
-## Local development
-
-### Requirements
-
-- Docker
-- Docker Compose
-- PostgreSQL available through the configured Docker network
-- Existing external Docker network:
+Do not run Django schema migrations for Flyway-owned business tables:
 
 ```bash
- docker network create sbm-network
+python manage.py makemigrations
+python manage.py migrate
 ```
 
-Run the command only when the network does not already exist.
+Structural database changes belong to the database/Flyway project and must be
+reviewed separately.
 
-### Environment
+## Requirements
 
-Create or configure the environment file used by Docker Compose.
+- Docker Desktop or Docker Engine
+- Docker Compose
+- Current SBM database/Flyway stack
+- External Docker network `sbm-network`
+- Valid local environment file
+- SonarQube stack only when running static analysis
+
+Create the shared network once when it does not exist:
+
+```bash
+docker network create sbm-network
+```
+
+## Environment configuration
+
+Create `.env.dev`, `.env.prod`, or another environment file outside version
+control.
 
 Main variables:
 
@@ -230,34 +227,79 @@ VIRTUAL_HOST
 VIRTUAL_PORT
 LETSENCRYPT_HOST
 LETSENCRYPT_EMAIL
+SONAR_HOST_URL
+SONAR_TOKEN
 ```
 
-Do not commit real credentials.
+Example local values:
 
-### Start the API
+```text
+API_PUBLIC_PORT=8081
+DB_HOST=postgres
+DB_PORT=5432
+DEBUG=True
+TIME_ZONE=America/Santiago
+SONAR_HOST_URL=http://host.docker.internal:9000
+```
 
-When the environment file is named `.env` and is located beside `docker-compose.yml`:
+Never commit credentials, tokens, real hostnames, or production secrets.
+
+## Build and start
+
+Build the API image:
 
 ```bash
-docker compose up -d --build
+docker compose --env-file .env.dev build api
 ```
 
-When using another environment file:
+Start the API:
+
+```bash
+docker compose --env-file .env.dev up -d
+```
+
+Build and start in one command:
 
 ```bash
 docker compose --env-file .env.dev up -d --build
 ```
 
-### Validate containers
+## Runtime operations
+
+View running containers:
 
 ```bash
 docker ps
 ```
 
-### View logs
+View API logs:
 
 ```bash
-docker compose logs -f api
+docker compose --env-file .env.dev logs -f api
+```
+
+Restart the API:
+
+```bash
+docker compose --env-file .env.dev restart api
+```
+
+Stop the project:
+
+```bash
+docker compose --env-file .env.dev down
+```
+
+Open a shell inside the API container:
+
+```bash
+docker compose --env-file .env.dev exec api sh
+```
+
+Run the Django system check:
+
+```bash
+docker compose --env-file .env.dev run --rm --no-deps --entrypoint python api manage.py check
 ```
 
 ## Local URLs
@@ -274,45 +316,99 @@ DRF login:  http://localhost:8081/api-auth/
 Token:      http://localhost:8081/api-token-auth/
 ```
 
-`dp-api` and `sbm-api` can run in parallel because they use separate containers and different host ports:
+DP-API and SBM-API run in parallel:
 
 ```text
 dp-api   → localhost:8081 → container 8000
 sbm-api  → localhost:8082 → container 8000
 ```
 
-## Authentication
-
-Current global DRF configuration:
-
-- Session Authentication
-- Basic Authentication
-- Authenticated access required by default
-- DRF token endpoint exposed
-
-Token authentication is not yet configured globally as a default authentication class and must be reviewed before production integration.
-
-## Database management
-
-Business app migrations are disabled in Django because the business schemas are intended to be managed externally with Flyway.
-
-Configured search path:
+## Main REST resources
 
 ```text
-ditaly_pasta,sbm_business,public
+/api/products/
+/api/materials/
+/api/services/
+/api/catalogs/
+/api/tickets/
+/api/prices/
+/api/price-configuration/
+/api/providers/
+/api/branches/
+/api/users/
+/api/roles/
 ```
 
-Do not generate or apply Django migrations for the business apps without first validating the database ownership strategy.
+Actual fields, filters and permitted methods are defined by each domain contract.
+
+## Usage examples
+
+Health check:
+
+```bash
+curl http://localhost:8081/api/health/
+```
+
+Authenticated Product list with Basic Authentication:
+
+```bash
+curl -u "<username>:<password>"   http://localhost:8081/api/products/
+```
+
+Authenticated Material list:
+
+```bash
+curl -u "<username>:<password>"   http://localhost:8081/api/materials/
+```
+
+Authenticated Service list:
+
+```bash
+curl -u "<username>:<password>"   http://localhost:8081/api/services/
+```
+
+Create and update payloads must follow the corresponding serializer contract.
+Server-controlled fields such as generated identifiers, audit timestamps,
+confirmation metadata and derived Price values must not be fabricated by
+clients.
+
+## Authentication and authorization
+
+The API supports authenticated access through the configured DRF authentication
+classes. Session and Basic Authentication are available for local operation.
+The token endpoint is exposed for integrations configured to use DRF tokens.
+
+Every production request must resolve:
+
+```text
+identity
+→ tenant or franchise context
+→ active contracted modules
+→ role
+→ permission
+→ restriction
+→ requested business object
+```
+
+Client applications must never use unrestricted internal platform credentials.
+
+## Administration
+
+Django Jazzmin is available at:
+
+```text
+http://localhost:8081/admin/
+```
+
+Administration registrations follow canonical app ownership. Product is managed
+from `products`, Material from `material`, Service from `service`, Catalog from
+`catalog`, and Ticket from `ticket`.
 
 ## QA and code quality
 
-Docker is the official QA runtime. The Product QA flow combines automated tests,
-coverage generation and SonarQube static analysis without running Django
-migrations or modifying the PostgreSQL schema.
+Docker is the official QA runtime.
 
-### QA scripts
-
-The repository provides three executable scripts under `scripts/`:
+Available scripts:
 
 ```text
 scripts/coverage.sh
@@ -320,7 +416,7 @@ scripts/sonar-scan.sh
 scripts/qa-check.sh
 ```
 
-Grant execution permission when cloning the repository or creating the scripts:
+Grant execution permission when required:
 
 ```bash
 chmod +x scripts/coverage.sh
@@ -328,132 +424,121 @@ chmod +x scripts/sonar-scan.sh
 chmod +x scripts/qa-check.sh
 ```
 
-### Generate tests and coverage
+Run tests and generate `coverage.xml`:
 
 ```bash
 ./scripts/coverage.sh
 ```
 
-This script:
+Run SonarQube analysis:
 
-1. loads the configured Compose environment file;
-2. executes the Product pytest suite inside the `api` service;
-3. measures line and branch coverage with `pytest-cov`;
-4. generates `coverage.xml` inside `dp-core`;
-5. copies `coverage.xml` to the repository root.
+```bash
+./scripts/sonar-scan.sh
+```
 
-Coverage measures which application lines and decision branches were executed by
-the tests. SonarQube reads `coverage.xml`; it does not execute pytest itself.
-Always regenerate coverage before a new SonarQube analysis to avoid reporting
-stale results.
+Run the complete QA sequence:
 
-### Run SonarQube analysis
+```bash
+./scripts/qa-check.sh
+```
 
-The local SonarQube server must be running and the environment file must contain:
+Run the complete pytest suite directly:
+
+```bash
+docker compose --env-file .env.dev run --rm --no-deps --entrypoint pytest api
+```
+
+Run Product tests:
+
+```bash
+docker compose --env-file .env.dev run --rm --no-deps --entrypoint pytest api products/tests/
+```
+
+Run Material tests:
+
+```bash
+docker compose --env-file .env.dev run --rm --no-deps --entrypoint pytest api material/tests/
+```
+
+Run Service tests:
+
+```bash
+docker compose --env-file .env.dev run --rm --no-deps --entrypoint pytest api service/tests/
+```
+
+Latest accepted Product quality baseline:
+
+```text
+Product tests                    54 passed
+Complete suite                   71 passed
+Django system check              0 issues
+SonarQube overall coverage       88.4%
+Security open issues             0
+Reliability open issues          0
+Maintainability open issues      0
+Accepted design issues           1
+Duplicated lines                 2.7%
+Quality Gate                     Passed
+```
+
+Domain-specific QA baselines are maintained independently as each canonical app
+is completed.
+
+## SonarQube configuration
+
+Required environment variables:
 
 ```text
 SONAR_HOST_URL=http://host.docker.internal:9000
 SONAR_TOKEN=<project-analysis-token>
 ```
 
-Do not commit the token or any environment file containing secrets.
-
-Run the scanner:
-
-```bash
-./scripts/sonar-scan.sh
-```
-
-The scanner reads `sonar-project.properties`, analyzes the configured Product
-sources, imports `coverage.xml`, and sends the report to the local SonarQube
-server. It reports reliability, maintainability, security findings, coverage,
-duplications and the Quality Gate result.
-
-### Run the complete QA flow
-
-```bash
-./scripts/qa-check.sh
-```
-
-Execution order:
-
-```text
-pytest + coverage.xml
-→ SonarScanner
-→ SonarQube Quality Gate
-```
-
-The script stops immediately if tests or coverage generation fail, so SonarQube
-never receives a report built from a failing test run.
-
-### Direct commands
-
-Build the current dependencies:
-
-```bash
-docker compose --env-file .env.dev build api
-```
-
-Run the complete suite or only Product:
-
-```bash
-docker compose --env-file .env.dev run --rm --no-deps --entrypoint pytest api
-docker compose --env-file .env.dev run --rm --no-deps --entrypoint pytest api products/tests/
-```
-
-Latest validated baseline:
-
-```text
-Product tests                    54 passed
-Complete suite                   71 passed
-Django system check              0 issues
-Coverage including branches      73.64%
-Line coverage                    78.44%
-Branch coverage                  33.19%
-SonarQube Product coverage       67.9%
-SonarQube reliability rating     B (2 issues)
-SonarQube maintainability rating A (21 issues)
-SonarQube security rating        A (0 issues)
-SonarQube duplications           12.2%
-Quality Gate                     Passed
-```
-
-The pytest and SonarQube percentages use different calculations. Pytest reports
-coverage for the Python package and separates line and branch coverage;
-SonarQube combines executable lines and conditions according to its own metric.
+The token must never be committed. SonarScanner imports `coverage.xml`; it does
+not execute pytest, so coverage must be regenerated before analysis.
 
 ## AI integration
 
-Planned flow:
+Approved AI channels call DP-API through explicit Tools:
 
 ```text
 Client user
-→ Slack / SBM Manager / future channel
+→ Slack / SBM Manager / approved channel
 → SBM AI Assistant
 → DP-API Tool
 → validated domain operation
-→ structured response
+→ structured result
 ```
 
-The AI layer must never bypass `dp-api`, access business tables directly or reproduce domain validation rules.
+The AI layer must not access PostgreSQL directly, bypass authorization, invent
+identifiers, reproduce business calculations outside the responsible API, or
+turn rejected operations into successful responses.
+
+## Security
+
+- Keep secrets outside Git.
+- Use explicit production CORS origins.
+- Replace development credentials before deployment.
+- Use a production WSGI/ASGI server.
+- Enforce tenant-aware and object-level authorization.
+- Restrict admin access.
+- Rotate exposed credentials immediately.
+- Record auditable user identity for write operations.
+- Apply the same authorization rules to AI-triggered actions.
+- Review rate limiting, secure errors and structured logging before deployment.
 
 ## Project documentation
 
-`PROJECT_CONTEXT.md` contains persistent technical and historical context for continuing development with an LLM.
+```text
+README.md
+→ final-state project overview, setup, configuration and usage
 
-It is intentionally separate from this README:
+PROJECT_CONTEXT.md
+→ implementation status, historical decisions, active objective, risks and
+  instructions for LLM-assisted development
+```
 
-- `README.md`: public project overview and developer entry point.
-- `PROJECT_CONTEXT.md`: detailed persistent project memory.
-
-## Security notes
-
-- Never commit `.env` files containing real secrets.
-- Rotate any credential that has been shared outside its intended environment.
-- Disable permissive CORS before production.
-- Replace Django `runserver` with a production WSGI/ASGI server before deployment.
-- Add explicit authorization for client, tenant and module scope.
-- Audit AI-triggered write operations.
+The README describes the completed architecture and developer workflow. The
+context file is the authoritative source for ongoing implementation state.
 
 ## License
 

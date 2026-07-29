@@ -1,6 +1,6 @@
-from products.application.material_commands import ListMaterialsQuery
-from products.application.material_dto import MaterialDTO
-from products.domain.material_repositories import MaterialRepository
+from material.application.commands import ListMaterialsQuery
+from material.application.dto import MaterialDTO
+from material.domain.repositories import MaterialRepository
 
 
 class ListMaterials:

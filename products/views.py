@@ -32,7 +32,6 @@ from .serializers import (
     ItemConfigurationDetailSerializer,
     ServiceSerializer,
 )
-from .presentation.material_views import MaterialViewSet
 from .presentation.views import ProductViewSet
 
 # Create your views here.

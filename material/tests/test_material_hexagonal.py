@@ -6,28 +6,28 @@ from decimal import Decimal
 from django.test import SimpleTestCase
 from django.urls import reverse
 
-from pricing.domain.entities import Price, ProductPriceConfiguration
+from pricing.domain.entities import Price, PriceConfiguration
 from pricing.domain.exceptions import CurrentPriceNotFound
-from products.application.material_commands import (
+from material.application.commands import (
     CreateMaterialCommand,
     DeleteMaterialCommand,
     UpdateMaterialCommand,
 )
-from products.application.use_cases.material import (
+from material.application.use_cases import (
     CreateMaterial,
     DeleteMaterial,
     UpdateMaterial,
 )
-from products.domain.material_entities import Material
-from products.domain.material_exceptions import (
+from material.domain.entities import Material
+from material.domain.exceptions import (
     ImmutableMaterialField,
     LegacyMaterialPriceInputRequired,
 )
-from products.presentation.material_serializers import (
+from material.presentation.serializers import (
     MaterialCommandSerializer,
     MaterialSerializer,
 )
-from products.presentation.material_views import MaterialViewSet
+from material.presentation.views import MaterialViewSet
 
 
 ACTOR = "5fbf2886-4ad0-11f0-8ce6-0242ac120002"
@@ -162,7 +162,7 @@ class FakeMaterialPriceRepository:
         return self.references
 
     def get_material_configuration(self, code):
-        return ProductPriceConfiguration(
+        return PriceConfiguration(
             code=code,
             name="MATERIAL_NORMAL_IVA",
             record_type=2,
@@ -178,7 +178,7 @@ class FakeMaterialPriceRepository:
         self,
         components,
         configuration_code,
-        product_code,
+        material_code,
         created_at,
         created_by,
     ):
@@ -196,7 +196,7 @@ class FakeMaterialPriceRepository:
             is_confirmed=None,
             created_at=created_at,
             created_by=created_by,
-            record_item_code=product_code,
+            record_item_code=material_code,
             price_record_type=2,
         )
         self.created.append(price)

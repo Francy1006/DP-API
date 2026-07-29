@@ -3,7 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from products.domain.material_entities import Material
+from material.domain.entities import Material
 
 
 @dataclass(frozen=True)

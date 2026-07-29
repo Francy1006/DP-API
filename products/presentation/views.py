@@ -23,15 +23,17 @@ from products.domain.exceptions import (
     AuditUserRequired,
     ImmutableProductField,
     ProductNotFound,
+    ProductPriceConfigurationUnavailable,
 )
 from products.infrastructure.clock import DjangoClock
-from products.infrastructure.repositories import DjangoProductRepository
+from products.infrastructure.repositories import (
+    DjangoPriceRepository,
+    DjangoProductRepository,
+)
 from pricing.domain.exceptions import (
     InvalidBaseNetAmount,
     PricingError,
-    ProductPriceConfigurationUnavailable,
 )
-from pricing.infrastructure.repositories import DjangoPriceRepository
 from pricing.infrastructure.transactions import DjangoTransactionManager
 from products.presentation.serializers import (
     DeletedProductSerializer,

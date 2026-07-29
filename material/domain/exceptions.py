@@ -1,3 +1,6 @@
+from pricing.domain.exceptions import PricingError
+
+
 class MaterialError(Exception):
     """Base exception for Material application and domain failures."""
 
@@ -30,3 +33,7 @@ class LegacyMaterialPriceInputRequired(MaterialError):
     def __init__(self, missing_fields):
         self.missing_fields = tuple(missing_fields)
         super().__init__("Material price repair requires complete pricing inputs")
+
+
+class MaterialPriceConfigurationUnavailable(PricingError):
+    pass

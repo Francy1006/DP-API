@@ -12,7 +12,6 @@ from .models import (
     ItemConfiguration,
     ItemConfigurationDetail,
     Product,
-    Material,
     Service,
 )
 
@@ -304,68 +303,6 @@ class ProductAdmin(admin.ModelAdmin):
                     "min_package_purchase",
                 )
             },
-        ),
-        ("Paquete y URL", {"fields": ("package", "url")}),
-        ("Estado", {"fields": ("is_active", "is_deleted", "is_confirmed")}),
-        (
-            FIELDSET_AUDIT,
-            {
-                "fields": (
-                    "created_at",
-                    "updated_at",
-                    "confirmed_at",
-                    "deleted_at",
-                    "log",
-                    "version",
-                ),
-                "classes": ("collapse",),
-            },
-        ),
-    )
-
-
-@admin.register(Material)
-class MaterialAdmin(admin.ModelAdmin):
-    list_display = [
-        "code",
-        "sku",
-        "description",
-        "provider",
-        "type",
-        "item_group",
-        "category",
-        "is_active",
-        "is_deleted",
-        "is_confirmed",
-        "created_at",
-    ]
-    list_filter = [
-        "provider",
-        "type",
-        "item_group",
-        "category",
-        "is_active",
-        "is_deleted",
-        "is_confirmed",
-        "created_at",
-    ]
-    search_fields = ["code", "sku", "description"]
-    ordering = ["description"]
-    readonly_fields = [
-        "id",
-        "created_at",
-        "updated_at",
-        "confirmed_at",
-        "deleted_at",
-        "log",
-        "version",
-    ]
-    fieldsets = (
-        (FIELDSET_BASIC_INFO, {"fields": ("code", "sku", "description", "obs")}),
-        (FIELDSET_CLASSIFICATION, {"fields": ("type", "item_group", "category")}),
-        (
-            FIELDSET_PROVIDER_PRICES,
-            {"fields": ("provider", "price", "package_unit", "min_package_purchase")},
         ),
         ("Paquete y URL", {"fields": ("package", "url")}),
         ("Estado", {"fields": ("is_active", "is_deleted", "is_confirmed")}),

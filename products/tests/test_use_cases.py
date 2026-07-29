@@ -11,7 +11,7 @@ from products.application.commands import (
 )
 from products.application.use_cases import CreateProduct, DeleteProduct, UpdateProduct
 from products.domain.exceptions import ImmutableProductField
-from pricing.domain.entities import Price, ProductPriceConfiguration
+from pricing.domain.entities import Price, PriceConfiguration
 from products.tests.factories import build_product
 
 
@@ -64,7 +64,7 @@ class FakeProductRepository:
 
 class FakePriceRepository:
     def get_product_configuration(self, configuration_code):
-        return ProductPriceConfiguration(
+        return PriceConfiguration(
             code=CONFIGURATION,
             name="PRODUCT_NORMAL_IVA",
             record_type=1,

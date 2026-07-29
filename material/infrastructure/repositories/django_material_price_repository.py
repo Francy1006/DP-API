@@ -3,27 +3,23 @@ from uuid import uuid4
 
 from django.db import connection
 
-from pricing.domain.entities import (
-    Price,
-    ProductPriceConfiguration,
+from material.domain.exceptions import (
+    MaterialPriceConfigurationUnavailable,
 )
+from material.models import Material as MaterialModel
+from pricing.domain.entities import Price, PriceConfiguration
 from pricing.domain.exceptions import (
     CurrentPriceNotFound,
     FiscalDirectiveUnavailable,
-    MaterialPriceConfigurationUnavailable,
-    ProductPriceConfigurationUnavailable,
     UnsafeCurrentPrice,
 )
 from pricing.models import Price as PriceModel
-from products.models import Material as MaterialModel
-from products.models import Product as ProductModel
 
 
-class DjangoPriceRepository:
-    """ORM/SQL adapter limited to the Product price-versioning slice."""
+class DjangoMaterialPriceRepository:
+    """Independent Price adapter constrained to record_type=MATERIAL."""
 
-    record_type = 1
-    configuration_exception = ProductPriceConfigurationUnavailable
+    record_type = 2
 
     @staticmethod
     def _to_entity(model):
@@ -52,11 +48,11 @@ class DjangoPriceRepository:
             raise CurrentPriceNotFound from error
         return self._to_entity(model)
 
-    def count_product_references(self, price_code):
-        # Include soft-deleted Products: their foreign-key reference still exists.
-        return ProductModel.objects.filter(price_id=price_code).count()
+    def count_material_references(self, price_code):
+        # Material.price remains scalar while legacy dangling UUIDs exist.
+        return MaterialModel.objects.filter(price=price_code).count()
 
-    def get_product_configuration(self, configuration_code):
+    def get_material_configuration(self, configuration_code):
         with connection.cursor() as cursor:
             cursor.execute(
                 """
@@ -83,7 +79,7 @@ class DjangoPriceRepository:
             )
             rows = cursor.fetchall()
         if len(rows) != 1:
-            raise self.configuration_exception
+            raise MaterialPriceConfigurationUnavailable
         (
             code,
             name,
@@ -92,7 +88,7 @@ class DjangoPriceRepository:
             variable_formula_name,
             formula_template,
         ) = rows[0]
-        return ProductPriceConfiguration(
+        return PriceConfiguration(
             code=code,
             name=name,
             record_type=record_type,
@@ -128,7 +124,7 @@ class DjangoPriceRepository:
         self,
         components,
         configuration_code,
-        product_code,
+        material_code,
         created_at,
         created_by,
     ):
@@ -144,7 +140,7 @@ class DjangoPriceRepository:
             is_current=True,
             created_at=created_at,
             created_by_id=created_by,
-            record_item_code=product_code,
+            record_item_code=material_code,
             price_record_type=self.record_type,
         )
         return self._to_entity(model)
@@ -156,17 +152,3 @@ class DjangoPriceRepository:
         ).update(is_current=False)
         if updated != 1:
             raise UnsafeCurrentPrice
-
-
-class DjangoMaterialPriceRepository(DjangoPriceRepository):
-    """Price adapter constrained to record_type=MATERIAL (id 2)."""
-
-    record_type = 2
-    configuration_exception = MaterialPriceConfigurationUnavailable
-
-    def get_material_configuration(self, configuration_code):
-        return self.get_product_configuration(configuration_code)
-
-    def count_material_references(self, price_code):
-        # Material.price is intentionally scalar while legacy dangling UUIDs exist.
-        return MaterialModel.objects.filter(price=price_code).count()

@@ -1,14 +1,14 @@
 from dataclasses import dataclass
 from decimal import Decimal
 
-from pricing.domain.entities import PriceComponents, ProductPriceConfiguration
+from pricing.domain.entities import PriceComponents, PriceConfiguration
 from pricing.domain.policies import VariableFormulaPriceEngine
-from pricing.domain.repositories import MaterialPriceRepository
+from material.domain.repositories import MaterialPriceRepository
 
 
 @dataclass(frozen=True)
 class CalculatedMaterialPrice:
-    configuration: ProductPriceConfiguration
+    configuration: PriceConfiguration
     components: PriceComponents
 
 

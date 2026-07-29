@@ -10,6 +10,7 @@ services:
       - ./users:/usr/src/app/users
       - ./authz:/usr/src/app/authz
       - ./products:/usr/src/app/products
+      - ./material:/usr/src/app/material
       - ./providers:/usr/src/app/providers
       - ./pricing:/usr/src/app/pricing
       - ./documentation:/usr/src/app/documentation

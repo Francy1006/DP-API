@@ -3,7 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Optional
 
-from .material_exceptions import ImmutableMaterialField
+from .exceptions import ImmutableMaterialField
 
 
 def _terminated_log(value: str) -> str:

@@ -5,41 +5,40 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import APIException, NotFound, ValidationError
 from rest_framework.response import Response
 
-from pricing.domain.exceptions import (
-    InvalidBaseNetAmount,
-    MaterialPriceConfigurationUnavailable,
-    PricingError,
-)
-from pricing.infrastructure.repositories import DjangoMaterialPriceRepository
-from pricing.infrastructure.transactions import DjangoTransactionManager
-from products.application.material_commands import (
+from material.application.commands import (
     CreateMaterialCommand,
     DeleteMaterialCommand,
     ListMaterialsQuery,
     UpdateMaterialCommand,
 )
-from products.application.use_cases.material import (
+from material.application.use_cases import (
     CreateMaterial,
     DeleteMaterial,
     GetMaterial,
     ListMaterials,
     UpdateMaterial,
 )
-from products.domain.material_exceptions import (
+from material.domain.exceptions import (
     ImmutableMaterialField,
     LegacyMaterialPriceInputRequired,
     MaterialAuditUserNotFound,
     MaterialAuditUserRequired,
     MaterialNotFound,
+    MaterialPriceConfigurationUnavailable,
 )
-from products.infrastructure.clock import DjangoClock
-from products.infrastructure.repositories import DjangoMaterialRepository
-from products.presentation.material_serializers import (
+from material.infrastructure.clock import DjangoClock
+from material.infrastructure.repositories import (
+    DjangoMaterialPriceRepository,
+    DjangoMaterialRepository,
+)
+from material.presentation.serializers import (
     DeletedMaterialSerializer,
     MaterialCommandSerializer,
     MaterialFilterSerializer,
     MaterialSerializer,
 )
+from pricing.domain.exceptions import InvalidBaseNetAmount, PricingError
+from pricing.infrastructure.transactions import DjangoTransactionManager
 
 
 class MaterialPriceVersionConflict(APIException):

@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
-from products.models import Material
+from material.models import Material
 
 
 class MaterialSerializer(serializers.Serializer):

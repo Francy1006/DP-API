@@ -1,14 +1,18 @@
-from products.application.material_commands import UpdateMaterialCommand
-from products.application.material_dto import MaterialDTO
-from products.domain.material_exceptions import (
+from material.application.calculate_price import CalculateMaterialPrice
+from material.application.commands import UpdateMaterialCommand
+from material.application.dto import MaterialDTO
+from material.domain.exceptions import (
     LegacyMaterialPriceInputRequired,
     MaterialAuditUserNotFound,
     MaterialAuditUserRequired,
 )
-from products.domain.material_repositories import MaterialClock, MaterialRepository
-from pricing.application import CalculateMaterialPrice
+from material.domain.repositories import (
+    MaterialClock,
+    MaterialPriceRepository,
+    MaterialRepository,
+)
 from pricing.domain.exceptions import CurrentPriceNotFound, UnsafeCurrentPrice
-from pricing.domain.repositories import MaterialPriceRepository, TransactionManager
+from pricing.domain.repositories import TransactionManager
 
 
 class UpdateMaterial:
@@ -118,7 +122,7 @@ class UpdateMaterial:
             new_price = self.price_repository.create_version(
                 components=calculated.components,
                 configuration_code=calculated.configuration.code,
-                product_code=material.code,
+                material_code=material.code,
                 created_at=now,
                 created_by=command.updated_by,
             )

@@ -1,13 +1,17 @@
-from products.application.material_commands import CreateMaterialCommand
-from products.application.material_dto import MaterialDTO
-from products.domain.material_entities import Material
-from products.domain.material_exceptions import (
+from material.application.calculate_price import CalculateMaterialPrice
+from material.application.commands import CreateMaterialCommand
+from material.application.dto import MaterialDTO
+from material.domain.entities import Material
+from material.domain.exceptions import (
     MaterialAuditUserNotFound,
     MaterialAuditUserRequired,
 )
-from products.domain.material_repositories import MaterialClock, MaterialRepository
-from pricing.application import CalculateMaterialPrice
-from pricing.domain.repositories import MaterialPriceRepository, TransactionManager
+from material.domain.repositories import (
+    MaterialClock,
+    MaterialPriceRepository,
+    MaterialRepository,
+)
+from pricing.domain.repositories import TransactionManager
 
 
 class CreateMaterial:
@@ -51,7 +55,7 @@ class CreateMaterial:
             price = self.price_repository.create_version(
                 components=calculated.components,
                 configuration_code=calculated.configuration.code,
-                product_code=material.code,
+                material_code=material.code,
                 created_at=now,
                 created_by=command.created_by,
             )

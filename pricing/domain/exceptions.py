@@ -14,14 +14,6 @@ class UnsafeCurrentPrice(PricingError):
     pass
 
 
-class ProductPriceConfigurationUnavailable(PricingError):
-    pass
-
-
-class MaterialPriceConfigurationUnavailable(PricingError):
-    pass
-
-
 class FiscalDirectiveUnavailable(PricingError):
     pass
 

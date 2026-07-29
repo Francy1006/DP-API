@@ -1,10 +1,10 @@
+from products.application.calculate_price import CalculateProductPrice
 from products.application.commands import CreateProductCommand
 from products.application.dto import ProductDTO
 from products.domain.entities import Product
 from products.domain.exceptions import AuditUserNotFound, AuditUserRequired
-from products.domain.repositories import Clock, ProductRepository
-from pricing.application import CalculateProductPrice
-from pricing.domain.repositories import PriceRepository, TransactionManager
+from products.domain.repositories import Clock, PriceRepository, ProductRepository
+from pricing.domain.repositories import TransactionManager
 
 
 class CreateProduct:

@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from pricing.domain.entities import Price, ProductPriceConfiguration
+from pricing.domain.entities import Price, PriceConfiguration
 from products.domain.exceptions import ProductNotFound
 from products.presentation import views as product_views
 from products.presentation.views import ProductViewSet
@@ -125,12 +125,12 @@ class InMemoryPriceRepository:
 
     def get_product_configuration(self, configuration_code):
         if configuration_code != DEFAULT_CONFIGURATION:
-            from pricing.domain.exceptions import (
+            from products.domain.exceptions import (
                 ProductPriceConfigurationUnavailable,
             )
 
             raise ProductPriceConfigurationUnavailable
-        return ProductPriceConfiguration(
+        return PriceConfiguration(
             code=DEFAULT_CONFIGURATION,
             name="PRODUCT_NORMAL_IVA",
             record_type=1,

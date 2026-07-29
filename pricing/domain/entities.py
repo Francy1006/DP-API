@@ -24,7 +24,7 @@ class Price:
 
 
 @dataclass(frozen=True)
-class ProductPriceConfiguration:
+class PriceConfiguration:
     code: str
     name: str
     record_type: int

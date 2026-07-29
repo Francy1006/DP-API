@@ -1,3 +1,6 @@
+from pricing.domain.exceptions import PricingError
+
+
 class ProductError(Exception):
     """Base exception for Product application and domain failures."""
 
@@ -22,3 +25,7 @@ class ImmutableProductField(ProductError):
     def __init__(self, field_name):
         self.field_name = field_name
         super().__init__(f"{field_name} cannot be changed after Product creation")
+
+
+class ProductPriceConfigurationUnavailable(PricingError):
+    pass

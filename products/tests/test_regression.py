@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from django.test import SimpleTestCase
 
-from pricing.domain.entities import Price, ProductPriceConfiguration
+from pricing.domain.entities import Price, PriceConfiguration
 from products.application.commands import CreateProductCommand, UpdateProductCommand
 from products.application.use_cases import CreateProduct, UpdateProduct
 from products.domain.entities import Product
@@ -125,7 +125,7 @@ class FakePriceRepository:
         return self.references
 
     def get_product_configuration(self, configuration_code):
-        return ProductPriceConfiguration(
+        return PriceConfiguration(
             code=configuration_code,
             name="PRODUCT_NORMAL_IVA",
             record_type=1,

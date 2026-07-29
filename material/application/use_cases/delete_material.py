@@ -1,10 +1,10 @@
-from products.application.material_commands import DeleteMaterialCommand
-from products.application.material_dto import DeletedMaterialDTO
-from products.domain.material_exceptions import (
+from material.application.commands import DeleteMaterialCommand
+from material.application.dto import DeletedMaterialDTO
+from material.domain.exceptions import (
     MaterialAuditUserNotFound,
     MaterialAuditUserRequired,
 )
-from products.domain.material_repositories import MaterialClock, MaterialRepository
+from material.domain.repositories import MaterialClock, MaterialRepository
 
 
 class DeleteMaterial:
