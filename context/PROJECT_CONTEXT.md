@@ -2,6 +2,130 @@
 
 > **Last updated:** 2026-07-30
 >
+> **Purpose:** Persistent technical and planning context for `dp-api`.
+>
+> **Accuracy note:** Implemented behavior requires repository or QA evidence. Planned QA work below is user-guided and must not be represented as completed.
+
+## 1. Executive summary
+
+`dp-api` is the client-facing business API in SBM Suite. Its active focus is now the definition and implementation of a complete, evidence-based QA procedure.
+
+## 2. Project purpose
+
+Provide validated client-facing ERP operations while preserving API, security, tenant, database and platform ownership boundaries.
+
+## 3. Current objective
+
+Develop the complete QA procedure for `dp-api`.
+
+The objective includes:
+
+- QA strategy and scope;
+- mandatory quality gates;
+- unit, integration, API, database and security testing;
+- test and fixture structure;
+- Docker-based execution;
+- acceptance and rejection criteria;
+- storage of real validation evidence;
+- coverage and static analysis;
+- defect and exception handling;
+- current QA status;
+- pending QA work;
+- documentation of the approved procedure in `context/QA_CONTEXT.md`.
+
+`context/QA_CONTEXT.md` remains protected by the current context-upgrade workflow. Its implementation requires a dedicated authorized workflow or an explicit change to the protection contract.
+
+## 4. Scope and ownership
+
+`dp-api` owns client-facing Ditaly Pasta business operations. Platform administration remains owned by `sbm-api`; PostgreSQL schemas and Flyway migrations remain owned by `SBM-DB`.
+
+## 5. Architecture
+
+The project uses Django REST Framework with project-specific domain applications and shared SBM Suite infrastructure. Existing validated architecture remains unchanged by this planning update.
+
+## 6. Runtime and containers
+
+QA execution must be reproducible through Docker. Exact commands and service dependencies must be documented only after validation.
+
+## 7. Configuration
+
+QA configuration must avoid exposing secrets and must distinguish local, test and integration environments.
+
+## 8. Modules
+
+The QA procedure must apply consistently across current and future domain modules, including Product, Material, Service, Catalog and Ticket.
+
+## 9. Data model ownership
+
+Business schemas, constraints and Flyway migrations belong to `SBM-DB`. Database tests in `dp-api` must validate integration without creating unauthorized Django business migrations.
+
+## 10. API surface
+
+The QA procedure must define API validation for status codes, payloads, authentication, authorization, filtering, pagination, validation errors and domain invariants.
+
+## 11. Authentication and authorization
+
+Security testing must cover unauthenticated access, role and permission boundaries, tenant isolation and prohibited platform operations.
+
+## 12. Integrations
+
+Integration tests must cover approved dependencies without fabricating successful external validations.
+
+## 13. Implemented behavior
+
+No new QA procedure, tests, coverage result, SonarQube result, migration or deployment is marked as implemented by this planning update.
+
+## 14. Validation evidence
+
+QA evidence not supplied.
+
+## 15. Database and migration impact
+
+No database or migration change is established by this objective update.
+
+## 16. Security considerations
+
+The QA procedure must include security-focused validation and must not expose credentials, environment secrets or cross-tenant data.
+
+## 17. Accepted risks and constraints
+
+- `context/QA_CONTEXT.md` is currently protected from `context-upgrade`.
+- QA state must remain unknown until commands and results are explicitly evidenced.
+- Coverage and static-analysis thresholds still require an approved definition.
+
+## 18. Completed work
+
+The active QA objective has been defined and separated from completed implementation.
+
+## 19. Pending work
+
+- authorize the workflow responsible for updating `context/QA_CONTEXT.md`;
+- define the QA strategy and test pyramid;
+- define mandatory quality gates;
+- inventory existing tests and fixtures;
+- establish Docker execution commands;
+- define coverage and static-analysis thresholds;
+- define evidence format and storage;
+- define defect severity and exception approval;
+- implement and validate the procedure;
+- update `context/QA_CONTEXT.md` through an authorized workflow.
+
+## 20. Required behavior
+
+- Never claim QA execution without explicit evidence.
+- Never invent coverage, SonarQube, migrations or deployment results.
+- Keep QA policy separate from current QA evidence.
+- Reject changes that fail mandatory quality gates once those gates are approved.
+- Preserve database and project ownership boundaries.
+
+## 21. Historical decisions
+
+The previous project context is preserved below as a historical snapshot. Its original top-level headings were demoted to maintain the canonical structure contract.
+
+### PROJECT_CONTEXT.md
+
+> **Last updated:** 2026-07-30
+>
 > **Purpose of this file**
 >
 > This document is persistent project memory for an LLM. It is **not** a README, onboarding guide, product brochure, installation tutorial, or complete API reference. It preserves the product, technical, architectural, historical, and migration context required to continue developing `dp-api` in a new conversation without access to the original chat.
@@ -12,7 +136,7 @@
 
 ---
 
-## 1. Project objective
+#### 1. Project objective
 
 ### 1.1 What `dp-api` is
 
@@ -111,7 +235,7 @@ The future architecture should allow:
 
 ---
 
-## 2. Terminology and ownership model
+#### 2. Terminology and ownership model
 
 ### 2.1 Client user
 
@@ -154,7 +278,7 @@ Ownership must be decided by **who is allowed to execute the operation and which
 
 ---
 
-## 3. Current state
+#### 3. Current state
 
 ### 3.1 General status
 
@@ -569,7 +693,7 @@ between Django authentication users and business users. It belongs to the
 later authentication/security phase and does not reopen the resolved Product
 vertical migration.
 
-## 4. Current architecture
+#### 4. Current architecture
 
 ### 4.1 Runtime flow
 
@@ -659,7 +783,7 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env.dev'))
 The production environment line exists but is commented:
 
 ```python
-# environ.Env.read_env(os.path.join(BASE_DIR, '.env.prod'))
+### environ.Env.read_env(os.path.join(BASE_DIR, '.env.prod'))
 ```
 
 This is temporary and should be replaced by environment-driven selection before production.
@@ -709,7 +833,7 @@ Therefore:
 
 ---
 
-## 5. Application responsibilities
+#### 5. Application responsibilities
 
 ### 5.1 `users`
 
@@ -1428,7 +1552,7 @@ Target:
 
 ---
 
-## 6. API surface
+#### 6. API surface
 
 ### 6.1 General endpoints
 
@@ -1495,7 +1619,7 @@ Actual permissions, filters, lookup fields, and serializer behavior must be vali
 
 ---
 
-## 7. Authentication and authorization
+#### 7. Authentication and authorization
 
 ### 7.1 Current global DRF authentication
 
@@ -1560,7 +1684,7 @@ Target guarantees:
 
 ---
 
-## 8. Database ownership
+#### 8. Database ownership
 
 ### 8.1 Schemas
 
@@ -1661,7 +1785,7 @@ Before any model migration:
 
 ---
 
-## 9. Migration from `sbm-api`
+#### 9. Migration from `sbm-api`
 
 ### 9.1 Why migration is required
 
@@ -1796,7 +1920,7 @@ Recommended order:
 
 ---
 
-## 10. Integration with `sbm-manager`
+#### 10. Integration with `sbm-manager`
 
 ### 10.1 Current intended frontend
 
@@ -1844,7 +1968,7 @@ Exceptions must be explicit and justified, not accidental.
 
 ---
 
-## 11. Integration with `sbm-ai-assistant`
+#### 11. Integration with `sbm-ai-assistant`
 
 ### 11.1 Role of `dp-api`
 
@@ -1901,7 +2025,7 @@ Write operations require:
 
 ---
 
-## 12. Docker and environments
+#### 12. Docker and environments
 
 ### 12.1 Current Compose service
 
@@ -1988,7 +2112,7 @@ It is external and must exist before Compose starts.
 
 ---
 
-## 13. Development conventions
+#### 13. Development conventions
 
 ### 13.1 Hybrid architecture
 
@@ -2178,7 +2302,7 @@ Ownership rules for additional apps will be defined separately.
 
 ---
 
-## 14. Repository visual identity
+#### 14. Repository visual identity
 
 The repository uses a VS Code title-bar color to distinguish it from other projects.
 
@@ -2214,7 +2338,7 @@ Purpose:
 
 ---
 
-## 15. Testing
+#### 15. Testing
 
 ### 15.1 Current validated state
 
@@ -2867,7 +2991,7 @@ Important decisions and limitations:
 
 ---
 
-## 16. Security
+#### 16. Security
 
 ### 16.1 Current risks
 
@@ -2907,7 +3031,7 @@ Future AI Tools must:
 
 ---
 
-## 17. Technical debt
+#### 17. Technical debt
 
 ### High priority
 
@@ -2946,7 +3070,7 @@ Future AI Tools must:
 
 ---
 
-## 18. Architectural decisions
+#### 18. Architectural decisions
 
 ### 18.1 Client-facing API separated from internal API
 
@@ -3020,7 +3144,7 @@ responsibilities into `dp-api`.
 
 ---
 
-## 19. Rules that must remain stable
+#### 19. Rules that must remain stable
 
 1. Client users use `dp-api` for normal Ditaly Pasta operations.
 2. Internal platform administrators use `sbm-api` for platform operations.
@@ -3040,7 +3164,7 @@ responsibilities into `dp-api`.
 
 ---
 
-## 20. Roadmap
+#### 20. Roadmap
 
 ### Legend
 
@@ -3168,7 +3292,7 @@ responsibilities into `dp-api`.
 
 ---
 
-## Hexagonal Architecture Roadmap
+#### Hexagonal Architecture Roadmap
 
 Hexagonal migrations are incremental and vertical. A candidate is migrated
 only when its scope is explicitly authorized, and each migration must preserve
@@ -3217,7 +3341,7 @@ entries remain future candidates.
 
 ---
 
-## 21. Immediate next step
+#### 21. Immediate next step
 
 ### 21.1 Current exact objective — create the dedicated Service app
 
@@ -3366,7 +3490,7 @@ history. It must preserve the current visual format and include:
 historical, restricted, or awaiting validation.
 
 
-## 22. Executive summary
+#### 22. Executive summary
 
 `dp-api` is the client-facing domain API for Ditaly Pasta inside SBM Suite. It runs with Django REST Framework and PostgreSQL, uses the `ditaly_pasta,sbm_business,public` search path, exposes resource ViewSets for products, providers, pricing, branches, tickets, authorization, users, and supporting business data, and was validated locally through its Jazzmin admin at `localhost:8081`.
 
@@ -3442,7 +3566,7 @@ The long-term target is a production-grade, configurable ERP API where client us
 
 ---
 
-## Context deployment and upgrade workflow
+#### Context deployment and upgrade workflow
 
 DP-API provides:
 
@@ -3482,3 +3606,8 @@ system-prompt files remain read-only.
 
 No DP-API QA results were supplied in this context package, so the current
 iteration must not be represented as fully validated.
+
+
+## 22. Document boundary
+
+This document records project context and the current objective. Detailed QA policy belongs in `context/QA_CONTEXT.md` and must be changed only through an authorized workflow.

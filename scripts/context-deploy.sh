@@ -36,7 +36,18 @@ CONTEXT_ROOT="${SBM_SUITE_ROOT}/context"
 INPUT_DIR="${CONTEXT_ROOT}/input"
 OUTPUT_DIR="${CONTEXT_ROOT}/output"
 PROMPT_TEMPLATE="${CONTEXT_ROOT}/SYS_PROMPT.md"
+FORMAT_CONTEXT_FILE="${CONTEXT_ROOT}/FORMAT_CONTEXT.md"
 QA_RESULTS_FILE="${DP_API_ROOT}/context/qa-results.md"
+
+[[ -f "${PROMPT_TEMPLATE}" ]] || {
+  echo "ERROR: No existe ${PROMPT_TEMPLATE}"
+  exit 1
+}
+
+[[ -f "${FORMAT_CONTEXT_FILE}" ]] || {
+  echo "ERROR: No existe ${FORMAT_CONTEXT_FILE}"
+  exit 1
+}
 
 mkdir -p "${INPUT_DIR}" "${OUTPUT_DIR}"
 
@@ -103,6 +114,7 @@ print(json.dumps({
     "workflow": "context-deploy",
     "project_root": "/suite/DP-API",
     "source_context_root": "/suite",
+    "format_context_path": "/suite/context/FORMAT_CONTEXT.md",
     "output_directory": "/suite/context/output",
     "change_summary": os.environ["CHANGE_SUMMARY"],
     "changed_files": changed_files,

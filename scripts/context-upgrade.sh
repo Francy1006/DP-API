@@ -31,13 +31,27 @@ AI_ASSISTANT_URL="$(get_env AI_ASSISTANT_URL)"
   exit 1
 }
 
-curl --fail --silent --show-error \
-  -X POST "${AI_ASSISTANT_URL}/contexts/upgrade" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"project_name\":\"${PROJECT_NAME}\",
-    \"workflow\":\"context-upgrade\"
-  }"
+RESPONSE_FILE="$(mktemp)"
+trap 'rm -f "${RESPONSE_FILE}"' EXIT
 
+HTTP_STATUS="$(
+  curl --silent --show-error \
+    -o "${RESPONSE_FILE}" \
+    -w "%{http_code}" \
+    -X POST "${AI_ASSISTANT_URL}/contexts/upgrade" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"project_name\":\"${PROJECT_NAME}\",
+      \"workflow\":\"context-upgrade\"
+    }"
+)"
+
+cat "${RESPONSE_FILE}"
 echo
+
+if [[ "${HTTP_STATUS}" -lt 200 || "${HTTP_STATUS}" -ge 300 ]]; then
+  echo "ERROR: Context upgrade respondió HTTP ${HTTP_STATUS}"
+  exit 1
+fi
+
 echo "Contextos actualizados correctamente."
