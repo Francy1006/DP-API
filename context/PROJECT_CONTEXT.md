@@ -1,6 +1,6 @@
 # PROJECT_CONTEXT.md
 
-> **Last updated:** 2026-07-29
+> **Last updated:** 2026-07-30
 >
 > **Purpose of this file**
 >
@@ -3439,3 +3439,46 @@ require separate authorized phases. Database changes, CI/CD
 enforcement, and unrelated module refactors remain outside this completed scope.
 
 The long-term target is a production-grade, configurable ERP API where client users can operate independently and AI assists them through audited, permission-aware REST Tools without bypassing domain rules.
+
+---
+
+## Context deployment and upgrade workflow
+
+DP-API provides:
+
+```text
+scripts/context-deploy.sh
+scripts/context-upgrade.sh
+```
+
+Export:
+
+```text
+Git working tree
+→ context-deploy.sh
+→ change summary, changed files and diff
+→ POST /contexts/export
+→ Qdrant sbm_contexts
+→ RAG-selected chunks
+→ complete update-authorized files
+→ context-package.zip
+```
+
+Upgrade:
+
+```text
+context-upgrade.zip
+→ SBM-SUITE/context/input
+→ context-upgrade.sh
+→ POST /contexts/upgrade
+→ validation
+→ timestamped backup
+→ atomic replacement with rollback
+→ input cleanup after success
+```
+
+The export ZIP does not contain vectors. Protected business, QA, deploy and
+system-prompt files remain read-only.
+
+No DP-API QA results were supplied in this context package, so the current
+iteration must not be represented as fully validated.

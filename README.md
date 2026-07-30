@@ -550,3 +550,34 @@ Private portfolio and development project unless a separate license is added.
 Signed by CONKER
 SBM Suite
 ```
+
+## Context lifecycle
+
+Export the current project change:
+
+```bash
+./scripts/context-deploy.sh
+```
+
+Generated artifacts:
+
+```text
+SBM-SUITE/context/output/context-package.zip
+SBM-SUITE/context/output/SYS_PROMPT.md
+```
+
+After ChatGPT generates `context-upgrade.zip`, place it at:
+
+```text
+SBM-SUITE/context/input/context-upgrade.zip
+```
+
+Apply the reviewed update:
+
+```bash
+./scripts/context-upgrade.sh
+```
+
+The upgrade validates paths, manifest metadata and hashes, creates a
+timestamped backup, applies only allowlisted files atomically, and removes the
+input ZIP only after full success.
