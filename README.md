@@ -74,7 +74,7 @@ internal administration, and other platform-level operations.
 - Flyway-managed business schemas.
 - Hybrid architecture with hexagonal verticals.
 - Product and Material separated into canonical apps.
-- Dedicated Service, Catalog, and Ticket ownership.
+- Dedicated Material and Ticket apps; legacy Service and Catalog mappings remain in `products` pending extraction.
 - Django Jazzmin administration interface.
 - Automated tests, coverage reports, and SonarQube integration.
 - Ready for integration with `sbm-manager` and approved AI Tools.
@@ -95,14 +95,14 @@ internal administration, and other platform-level operations.
 - pytest-cov
 - SonarQube Community Build
 
-## Canonical app ownership
+## Current app ownership
 
 | Domain | Django app | Responsibility |
 |---|---|---|
 | Product | `products` | Product lifecycle, pricing orchestration, audit, confirmation and logical deletion |
 | Material | `material` | Material lifecycle, pricing, legacy compatibility and REST API |
-| Service | `service` | Service lifecycle, pricing, availability, fulfillment and REST API |
-| Catalog | `catalog` | Catalog publication, grouping, menus and item configuration |
+| Service | `products` (legacy) | Current Service model, serializer, ViewSet and `/api/services/`; dedicated app remains pending |
+| Catalog | `products` (legacy) | Current Catalog model, serializer, ViewSet and `/api/catalogs/`; dedicated app remains pending |
 | Ticket | `ticket` | Client-facing ticket lifecycle and operational workflow |
 | Pricing | `pricing` | Shared prices, price configurations and fiscal calculation infrastructure |
 | Providers | `providers` | Providers, banks, regions, districts and classifications |
@@ -113,8 +113,9 @@ internal administration, and other platform-level operations.
 | Documentation | `documentation` | Operational instruction models |
 | Sales | `sales` | Sales-domain capabilities |
 
-A domain is not placed inside another app merely because both use the same
-lookup tables or database schema.
+New domain work should not be placed inside another app merely because both use
+the same lookup tables or database schema. Service and Catalog are documented
+legacy exceptions awaiting dedicated extraction.
 
 ## Architecture
 
@@ -140,10 +141,11 @@ REST adapter / controller
 → Flyway-owned PostgreSQL schema
 ```
 
-Product, Material, Service, Catalog and Ticket are independent verticals. Shared
-code is limited to genuine cross-domain infrastructure or stable shared value
-objects. Domain-specific rules, serializers, use cases and repositories are not
-shared merely to reduce duplication.
+Product and Material are implemented as hexagonal verticals. Ticket has a
+dedicated Django app. Service and Catalog remain conventional CRUD resources in
+`products`; they are separate domain boundaries but not yet dedicated apps.
+Shared code is limited to genuine cross-domain infrastructure or stable shared
+value objects.
 
 ## Database ownership
 
@@ -229,6 +231,9 @@ LETSENCRYPT_HOST
 LETSENCRYPT_EMAIL
 SONAR_HOST_URL
 SONAR_TOKEN
+DOPPLER_PROJECT
+AI_ASSISTANT_URL
+SBM_SUITE_ROOT
 ```
 
 Example local values:
@@ -400,9 +405,44 @@ Django Jazzmin is available at:
 http://localhost:8081/admin/
 ```
 
-Administration registrations follow canonical app ownership. Product is managed
-from `products`, Material from `material`, Service from `service`, Catalog from
-`catalog`, and Ticket from `ticket`.
+Administration registrations follow current repository ownership. Product,
+Service and Catalog are registered from `products`, Material from `material`,
+and Ticket from `ticket`.
+
+## Reusable components
+
+| File name | Path | Description |
+|---|---|---|
+| `context-deploy.sh` | `scripts/context-deploy.sh` | Exports DP-API context evidence through `POST /contexts/export` using the global suite context paths. |
+| `context-upgrade.sh` | `scripts/context-upgrade.sh` | Applies the single reviewed context upgrade through `POST /contexts/upgrade` with global backup and cleanup validation. |
+| `documentation-deploy.sh` | `scripts/documentation-deploy.sh` | Exports documentation evidence using the suite root and global project tree. |
+| `documentation-upgrade.sh` | `scripts/documentation-upgrade.sh` | Applies a reviewed documentation upgrade from the global documentation exchange directory. |
+| `coverage.sh` | `scripts/coverage.sh` | Runs the coverage workflow and produces the report consumed by quality tooling. |
+| `qa-check.sh` | `scripts/qa-check.sh` | Orchestrates the repository QA sequence. |
+| `sonar-scan.sh` | `scripts/sonar-scan.sh` | Runs the configured SonarQube analysis. |
+| `project-tree.sh` | `project-tree.sh` | Compatibility launcher for the suite-global `context/project-tree.sh`; it does not generate a tree inside DP-API. |
+| `entrypoint.sh` | `core/entrypoint.sh` | Shared API-container startup sequence. |
+| `calculate_price.py` | `products/application/calculate_price.py` | Product application service for price calculation. |
+| `calculate_price.py` | `material/application/calculate_price.py` | Material application service for price calculation. |
+| Product use cases | `products/application/use_cases/` | Reusable Product create, read, list, update and logical-delete application operations. |
+| Material use cases | `material/application/use_cases/` | Reusable Material create, read, list, update and logical-delete application operations. |
+| Provider use cases | `providers/application/use_cases/` | Reusable Provider create, read, list, update and delete application operations. |
+| Product repositories | `products/infrastructure/repositories/` | Django adapters for Product and Product Price repository ports. |
+| Material repositories | `material/infrastructure/repositories/` | Django adapters for Material and Material Price repository ports. |
+| Provider repository | `providers/infrastructure/repositories/django_provider_repository.py` | Django adapter for the Provider repository port. |
+| `transactions.py` | `pricing/infrastructure/transactions.py` | Shared transaction boundary used by pricing-aware application flows. |
+| `policies.py` | `pricing/domain/policies.py` | Reusable pricing domain policies. |
+| `clock.py` | `products/infrastructure/clock.py` | Product clock adapter for deterministic application workflows. |
+| `clock.py` | `material/infrastructure/clock.py` | Material clock adapter for deterministic application workflows. |
+| `models.py` | `products/models.py` | Product, catalog and supporting unmanaged ORM mappings. |
+| `models.py` | `material/models.py` | Canonical Material unmanaged ORM mappings. |
+| `models.py` | `pricing/models.py` | Shared Price and fiscal-configuration ORM mappings. |
+| `models.py` | `providers/models.py` | Provider and provider-lookup ORM mappings. |
+| `models.py` | `users/models.py` | Business user and user-type ORM mappings used by audit relationships. |
+| `models.py` | `authz/models.py` | Role, permission and restriction ORM mappings. |
+
+Business services stay inside their owning application vertical. There is no
+generic `services/` package in this repository.
 
 ## QA and code quality
 
@@ -460,11 +500,9 @@ Run Material tests:
 docker compose --env-file .env.dev run --rm --no-deps --entrypoint pytest api material/tests/
 ```
 
-Run Service tests:
-
-```bash
-docker compose --env-file .env.dev run --rm --no-deps --entrypoint pytest api service/tests/
-```
+There is currently no dedicated `service/tests/` suite because Service remains
+implemented in `products`. Service behavior must be covered through the
+applicable Product or full-suite tests until its dedicated app is created.
 
 Latest accepted Product quality baseline:
 
@@ -562,14 +600,14 @@ Export the current project change:
 Generated artifacts:
 
 ```text
-SBM-SUITE/context/output/context-package.zip
-SBM-SUITE/context/output/SYS_PROMPT.md
+${SBM_SUITE_ROOT}/context/output
+${SBM_SUITE_ROOT}/context/output/SYS_PROMPT.md
 ```
 
 After ChatGPT generates `context-upgrade.zip`, place it at:
 
 ```text
-SBM-SUITE/context/input/context-upgrade.zip
+${SBM_SUITE_ROOT}/context/input/context-upgrade.zip
 ```
 
 Apply the reviewed update:
@@ -579,5 +617,5 @@ Apply the reviewed update:
 ```
 
 The upgrade validates paths, manifest metadata and hashes, creates a
-timestamped backup, applies only allowlisted files atomically, and removes the
-input ZIP only after full success.
+timestamped backup under `${SBM_SUITE_ROOT}/context/backup`, applies only
+allowlisted files atomically, and removes the input ZIP only after full success.

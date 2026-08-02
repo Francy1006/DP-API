@@ -2,431 +2,183 @@
 
 > **Project:** DP-API
 >
-> **Purpose:** Define the `context-deploy` workflow executed after DP-API QA to prepare, update, validate, and apply project contexts.
+> **Last updated:** 2026-08-02
+>
+> **Purpose:** Document the real export and reviewed-upgrade workflows for DP-API context files. These workflows do not deploy application infrastructure.
 
-## 1. Scope
+## 1. Scope and ownership
 
-`context-deploy` does not deploy application infrastructure.
-
-It updates only:
-
-```text
-DP-API/context/PROJECT_CONTEXT.md
-DP-API/README.md
-SBM-SUITE/PROJECT_CONTEXT.md
-SBM-SUITE/context/SUITE_CONTEXT.md
-SBM-SUITE/README.md
-```
-
-It must not update:
+DP-API owns the client-side orchestration scripts:
 
 ```text
-QA_CONTEXT.md
-BUSINESS_CONTEXT.md
-DEPLOY_CONTEXT.md
-SYS_PROMPT.md
+dp/DP-API/scripts/context-deploy.sh
+dp/DP-API/scripts/context-upgrade.sh
 ```
 
-QA context updates belong to a future `qa-context-update` workflow.
+SBM-AI-ASSISTANT owns the backend endpoints that build the context package and apply a reviewed upgrade. The shared suite context owns the prompt, format, exchange directories, backup and project tree.
 
-## 2. Trigger
+Neither script runs database migrations, modifies PostgreSQL, commits, pushes, or calculates the suite root from parent directories.
 
-After manually completing QA, the user executes:
+## 2. Required configuration
+
+Both scripts locate DP-API from their own file location and read the project-local `.env.dev`. They read:
+
+```text
+DOPPLER_PROJECT
+AI_ASSISTANT_URL
+SBM_SUITE_ROOT
+```
+
+`DOPPLER_PROJECT` must be present for the local environment, while the context protocol always identifies this repository as:
+
+```text
+project_name=dp-api
+```
+
+`SBM_SUITE_ROOT` is the only allowed host source for the suite root. It must name an existing directory. Environment values, credentials and tokens must never be copied into context artifacts or logs.
+
+## 3. Canonical paths
+
+Host paths are derived from `${SBM_SUITE_ROOT}`:
+
+| Purpose | Host path | Container path |
+|---|---|---|
+| Suite source root | `${SBM_SUITE_ROOT}` | `/suite` |
+| DP-API project | `${SBM_SUITE_ROOT}/dp/DP-API` | `/suite/dp/DP-API` |
+| System prompt | `${SBM_SUITE_ROOT}/context/SYS_PROMPT.md` | `/suite/context/SYS_PROMPT.md` |
+| Format definition | `${SBM_SUITE_ROOT}/context/FORMAT_CONTEXT.md` | `/suite/context/FORMAT_CONTEXT.md` |
+| Input | `${SBM_SUITE_ROOT}/context/input` | `/suite/context/input` |
+| Output | `${SBM_SUITE_ROOT}/context/output` | `/suite/context/output` |
+| Backup | `${SBM_SUITE_ROOT}/context/backup` | `/suite/context/backup` |
+| Tree generator | `${SBM_SUITE_ROOT}/context/project-tree.sh` | `/suite/context/project-tree.sh` |
+| Project tree | `${SBM_SUITE_ROOT}/context/project-tree.txt` | `/suite/context/project-tree.txt` |
+
+There is one backup directory: `context/backup`. The workflows must never create or use an alternative plural directory. Project-tree artifacts are global and are not generated inside DP-API.
+
+## 4. Context deploy workflow
+
+Run after collecting the relevant QA evidence:
 
 ```bash
 ./scripts/context-deploy.sh
 ```
 
-The script must send:
+The script performs the following sequence:
+
+1. reads and validates the required variables from `.env.dev`;
+2. validates the global prompt and format files;
+3. prepares the global input and output directories and removes stale exchange artifacts while preserving `.gitkeep`;
+4. generates `/suite/context/output/SYS_PROMPT.md` from the global prompt for `dp-api`;
+5. requires and runs the executable global `project-tree.sh`, then requires the resulting global `project-tree.txt`;
+6. captures unstaged and staged Git diff, modified paths, untracked non-ignored paths and optional `context/qa-results.md`;
+7. excludes `.env` and `.env.*` paths from both the diff and changed-file list;
+8. sends `POST /contexts/export` to `AI_ASSISTANT_URL`;
+9. requires a completed response for workflow `context-deploy`, project `dp-api`, without reported errors;
+10. prints the global output and response paths.
+
+The backend payload contains exactly these path semantics:
 
 ```text
 project_name=dp-api
 workflow=context-deploy
+project_root=/suite/dp/DP-API
+source_context_root=/suite
+format_context_path=/suite/context/FORMAT_CONTEXT.md
+output_directory=/suite/context/output
 ```
 
-## 3. Working folders
+The payload also includes `change_summary`, `changed_files`, `git_diff` and `qa_results`. It must not contain environment files, secrets or tokens.
+
+Expected reviewed artifacts are written under:
 
 ```text
-SBM-SUITE/context/
-├── SYS_PROMPT.md
-├── input/
-│   ├── zip/
-│   └── exported/
-└── output/
+${SBM_SUITE_ROOT}/context/output
 ```
 
-Ignore with Git:
+The exact archive names returned by the backend remain backend-controlled and must be confirmed from its successful response.
+
+## 5. Manual review stage
+
+The generated package and parameterized prompt are provided to the approved context-review process. The returned archive must be named exactly:
 
 ```text
-context/output/*
-context/input/zip/*
-context/input/exported/*
+context-upgrade.zip
 ```
 
-## 4. Initial cleanup
-
-Before processing, clean completely:
+Place it at:
 
 ```text
-SBM-SUITE/context/output/
-SBM-SUITE/context/input/zip/
-SBM-SUITE/context/input/exported/
+${SBM_SUITE_ROOT}/context/input/context-upgrade.zip
 ```
 
-Do not delete the directories.
+Only reviewed context and README changes belonging to the allowlist may be accepted. QA, business, deployment and prompt sources remain protected unless a separately authorized workflow explicitly includes them.
 
-## 5. SBM-AI-ASSISTANT responsibilities
+## 6. Context upgrade workflow
 
-`context-deploy.sh` calls an SBM-AI-ASSISTANT FastAPI endpoint or function.
+Apply the reviewed archive with:
 
-SBM-AI-ASSISTANT must:
-
-1. discover applicable global and DP-API contexts;
-2. read Markdown sources;
-3. chunk and embed them;
-4. index them in Qdrant;
-5. create the ChatGPT input package;
-6. copy and parameterize `SYS_PROMPT.md`.
-
-Collections:
-
-```text
-sbm_contexts → suite and project contexts
-sbm_docs     → Confluence documentation
+```bash
+./scripts/context-upgrade.sh
 ```
 
-Do not mix them.
+The script:
 
-Git Markdown files remain the source of truth. Qdrant is only the retrieval index.
+1. reads and validates `.env.dev` and `SBM_SUITE_ROOT`;
+2. searches only `${SBM_SUITE_ROOT}/context/input/context-upgrade.zip`;
+3. requires that this file exists and that exactly one `*.zip` exists directly in the global input directory;
+4. creates or reuses only `${SBM_SUITE_ROOT}/context/backup`;
+5. calls `POST /contexts/upgrade` with project `dp-api` and workflow `context-upgrade`;
+6. preserves the ZIP when the request fails at transport or HTTP level;
+7. validates `workflow`, `project_name`, `errors`, `input_cleaned`, non-empty `updated_files` and `backup_directory` in a successful response;
+8. requires the reported backup to be under `/suite/context/backup/`;
+9. verifies the backend removed the input ZIP only after success;
+10. prints every updated file and the generated backup path.
 
-## 6. Qdrant metadata
+The backend is responsible for validating archive type, paths, allowlist, manifest, hashes, UTF-8 content, duplicate members, symbolic links, archive limits and Zip Slip before changing any target.
 
-Each chunk should include:
+## 7. Atomicity and cleanup
 
-```text
-project
-project_name
-repository
-context_type
-domain
-section
-source_path
-updated_at
-version
-is_active
-content_hash
-```
-
-## 7. ChatGPT input package
-
-Do not export raw vectors or embeddings.
-
-Export the original contexts and relevant project documentation as:
+The backend must stage and validate the complete upgrade, create the backup, and then replace allowlisted targets atomically. A successful response is valid only when:
 
 ```text
-SBM-SUITE/context/output/context-package.zip
-```
-
-Recommended content:
-
-```text
-SBM-SUITE/PROJECT_CONTEXT.md
-SBM-SUITE/README.md
-SBM-SUITE/context/SUITE_CONTEXT.md
-SBM-SUITE/context/BUSINESS_CONTEXT.md
-SBM-SUITE/context/QA_CONTEXT.md
-DP-API/context/PROJECT_CONTEXT.md
-DP-API/context/QA_CONTEXT.md
-DP-API/context/DEPLOY_CONTEXT.md
-DP-API/README.md
-manifest.json
-```
-
-Preserve all folder names and filenames.
-
-## 8. System prompt
-
-Template:
-
-```text
-SBM-SUITE/context/SYS_PROMPT.md
-```
-
-Generated copy:
-
-```text
-SBM-SUITE/context/output/SYS_PROMPT.md
-```
-
-Replace its project parameter with:
-
-```text
+workflow=context-upgrade
 project_name=dp-api
+updated_files=<non-empty list>
+backup_directory=/suite/context/backup/<generated-backup>
+input_cleaned=true
+errors=[]
 ```
 
-The generated prompt must instruct ChatGPT to:
+The input archive may be removed only after all replacements and post-update checks succeed. On failure, the original targets and `context-upgrade.zip` must remain available for diagnosis or retry.
 
-1. correlate DP-API with `SUITE_CONTEXT.md` and `BUSINESS_CONTEXT.md`;
-2. inspect global and DP-API QA contexts without modifying them;
-3. use previously completed QA evidence;
-4. update DP-API and SBM-SUITE README files;
-5. update both `PROJECT_CONTEXT.md` files;
-6. update `SUITE_CONTEXT.md` only when suite interaction changed;
-7. preserve paths and filenames;
-8. return only allowed updated files in one ZIP;
-9. never modify QA, Business, Deploy, or System Prompt contexts.
+## 8. Rollback
 
-## 9. Manual ChatGPT stage
+Rollback uses the exact timestamped backup reported by the successful upgrade response:
 
-The user uploads:
+1. stop further context upgrades;
+2. inspect the reported directory under `${SBM_SUITE_ROOT}/context/backup`;
+3. compare its manifest and files with the updated targets;
+4. restore only the affected allowlisted paths, preserving their relative paths;
+5. rerun repository checks and context validation;
+6. retain the failed upgrade evidence until the incident is resolved.
 
-```text
-context-package.zip
-SYS_PROMPT.md
+Do not use an unreported backup, a plural backup directory, or a broad recursive copy. Git history can supplement investigation but does not replace the upgrade backup or authorize destructive reset commands.
+
+## 9. Validation performed
+
+Repository-local validation for this workflow consists of:
+
+```bash
+bash -n scripts/context-deploy.sh
+bash -n scripts/context-upgrade.sh
 ```
 
-ChatGPT returns one ZIP containing only permitted updates.
+Static searches verify the absence of legacy mount paths, plural backup paths and DP-API-local project-tree references in active context workflows. A real endpoint call is not part of static validation because it would clean shared input/output directories and invoke an external service.
 
-## 10. Returned ZIP intake
+## 10. Current limitations
 
-The user places the ZIP in:
-
-```text
-SBM-SUITE/context/input/zip/
-```
-
-Only one candidate ZIP should exist.
-
-Validate:
-
-- ZIP format;
-- permitted paths;
-- exact filenames;
-- `project_name`;
-- UTF-8 Markdown;
-- no Zip Slip;
-- no absolute paths;
-- no symbolic links;
-- no duplicate paths;
-- no unexpected extensions;
-- acceptable file and archive size.
-
-## 11. Asynchronous import
-
-The user asks the existing Slack chatbot to update SBM Suite context.
-
-SBM-AI-ASSISTANT processes it through FastAPI or an agent Tool:
-
-1. detect ZIP in `context/input/zip/`;
-2. validate it;
-3. extract it into `context/input/exported/`;
-4. preserve all paths;
-5. validate allowed files;
-6. generate or validate `manifest.json`;
-7. stage replacements;
-8. replace files atomically;
-9. reindex changed Markdown in Qdrant;
-10. clean `context/input/exported/` after success.
-
-Example:
-
-```text
-context/input/exported/
-├── PROJECT_CONTEXT.md
-├── README.md
-├── context/
-│   └── SUITE_CONTEXT.md
-└── DP-API/
-    ├── README.md
-    └── context/
-        └── PROJECT_CONTEXT.md
-```
-
-## 12. Manifest
-
-Required:
-
-```json
-{
-  "project_name": "dp-api",
-  "workflow": "context-deploy",
-  "allowed_files": [],
-  "source_package": "",
-  "generated_at": "",
-  "content_hashes": {}
-}
-```
-
-## 13. Atomic replacement
-
-The importer must:
-
-1. validate the complete package;
-2. verify all target paths;
-3. verify hashes when available;
-4. stage all files;
-5. replace all targets atomically;
-6. reindex changed contexts;
-7. report success;
-8. clean `exported/`.
-
-No extra backup is required because Git provides version history.
-
-On failure, retain original contexts and do not report success.
-
-## 14. Protected files
-
-Reject any modification to:
-
-```text
-SBM-SUITE/context/BUSINESS_CONTEXT.md
-SBM-SUITE/context/QA_CONTEXT.md
-SBM-SUITE/context/SYS_PROMPT.md
-DP-API/context/QA_CONTEXT.md
-DP-API/context/DEPLOY_CONTEXT.md
-```
-
-Reject files belonging to another project except permitted global SBM-SUITE files.
-
-## 15. README rules
-
-README updates must describe the completed project and may include:
-
-- current architecture;
-- canonical app ownership;
-- configuration;
-- usage;
-- runtime;
-- endpoints;
-- accepted QA state.
-
-## 16. Project context rules
-
-Update DP-API `PROJECT_CONTEXT.md` with:
-
-- completed implementation;
-- architecture changes;
-- validated QA results;
-- current objective;
-- pending risks;
-- database and migration impact.
-
-Update SBM-SUITE `PROJECT_CONTEXT.md` with:
-
-- suite progress;
-- affected project;
-- cross-project consequences;
-- next global objective.
-
-Update `SUITE_CONTEXT.md` only when architecture, ownership, integrations, containers, shared data flow, Qdrant, or AI-assistant interaction changed.
-
-## 17. Script requirements
-
-Create:
-
-```text
-DP-API/scripts/context-deploy.sh
-```
-
-It must:
-
-1. use `set -euo pipefail`;
-2. resolve paths safely;
-3. set `project_name=dp-api`;
-4. clean working folders;
-5. call SBM-AI-ASSISTANT;
-6. wait for export completion;
-7. parameterize `SYS_PROMPT.md`;
-8. verify ZIP and prompt outputs;
-9. print exact output paths;
-10. fail immediately on error.
-
-It must not:
-
-- execute QA;
-- execute migrations;
-- modify PostgreSQL;
-- update contexts directly;
-- commit or push;
-- replace contexts before ChatGPT returns the reviewed ZIP.
-
-## 18. SBM-AI-ASSISTANT interface
-
-Input:
-
-```text
-project_name
-workflow
-source_context_root
-output_directory
-```
-
-Output:
-
-```text
-status
-job_id
-context_zip_path
-system_prompt_path
-indexed_source_count
-chunk_count
-collection_name
-errors
-```
-
-The process may be asynchronous.
-
-## 19. Logging
-
-Record:
-
-```text
-workflow
-project_name
-job_id
-source files
-generated package
-chunk count
-Qdrant collection
-imported files
-content hashes
-start time
-finish time
-status
-error
-```
-
-Never log secrets.
-
-## 20. Success criteria
-
-Success requires:
-
-- QA completed previously;
-- contexts indexed;
-- ChatGPT package generated;
-- parameterized prompt generated;
-- returned ZIP validated;
-- allowed files replaced atomically;
-- changed contexts reindexed;
-- `exported/` cleaned;
-- no protected file modified.
-
-## 21. Stable rules
-
-1. Command: `./scripts/context-deploy.sh`.
-2. Project: `dp-api`.
-3. SBM-AI-ASSISTANT owns embeddings and ingestion.
-4. Qdrant collection: `sbm_contexts`.
-5. Confluence remains in `sbm_docs`.
-6. ChatGPT receives Markdown, not raw vectors.
-7. Preserve paths and filenames.
-8. Clean prior artifacts first.
-9. Update only Project Context, Suite Context, and README files.
-10. Never update QA Context in this workflow.
-11. Never update Business Context automatically.
-12. Never update Deploy Context automatically.
-13. Validate ZIP and manifest.
-14. Replace atomically.
-15. Git provides history.
-16. Clean `exported/` only after success.
+- End-to-end success depends on the mounted suite context and a compatible SBM-AI-ASSISTANT backend.
+- The client can preserve the input on transport and HTTP failure; once a backend has accepted a request, transactionality and cleanup ordering are backend responsibilities.
+- The scripts validate response metadata but do not independently inspect backend-created archive contents or restored files.
+- `context/qa-results.md` is optional, so missing QA evidence is reported in the payload rather than synthesized.
+- No repository-local automated tests currently mock the context backend; syntax and static contract checks are the available local verification.

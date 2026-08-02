@@ -2,7 +2,6 @@
 set -euo pipefail
 
 DP_API_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SBM_SUITE_ROOT="$(cd "${DP_API_ROOT}/.." && pwd)"
 ENV_FILE="${DP_API_ROOT}/.env.dev"
 
 [[ -f "${ENV_FILE}" ]] || {
@@ -12,28 +11,40 @@ ENV_FILE="${DP_API_ROOT}/.env.dev"
 
 get_env() {
   local key="$1"
-  local value
 
-  value="$(
-    grep -E "^${key}=" "${ENV_FILE}" \
-      | tail -n 1 \
-      | cut -d '=' -f2- \
-      | sed 's/^"//; s/"$//'
-  )"
-
-  printf '%s' "${value}"
+  awk -v key="${key}" '
+    index($0, key "=") == 1 { value = substr($0, length(key) + 2) }
+    END {
+      sub(/\r$/, "", value)
+      sub(/^"/, "", value)
+      sub(/"$/, "", value)
+      printf "%s", value
+    }
+  ' "${ENV_FILE}"
 }
 
-PROJECT_NAME="$(get_env DOPPLER_PROJECT)"
+DOPPLER_PROJECT="$(get_env DOPPLER_PROJECT)"
 AI_ASSISTANT_URL="$(get_env AI_ASSISTANT_URL)"
+SBM_SUITE_ROOT="$(get_env SBM_SUITE_ROOT)"
+CONTEXT_PROJECT_NAME="dp-api"
 
-[[ -n "${PROJECT_NAME}" ]] || {
+[[ -n "${DOPPLER_PROJECT}" ]] || {
   echo "ERROR: Falta DOPPLER_PROJECT"
   exit 1
 }
 
 [[ -n "${AI_ASSISTANT_URL}" ]] || {
   echo "ERROR: Falta AI_ASSISTANT_URL"
+  exit 1
+}
+
+[[ -n "${SBM_SUITE_ROOT}" ]] || {
+  echo "ERROR: Falta SBM_SUITE_ROOT"
+  exit 1
+}
+
+[[ -d "${SBM_SUITE_ROOT}" ]] || {
+  echo "ERROR: No existe ${SBM_SUITE_ROOT}"
   exit 1
 }
 
@@ -74,7 +85,7 @@ HTTP_STATUS="$(
     "${AI_ASSISTANT_URL%/}/contexts/upgrade" \
     --header "Content-Type: application/json" \
     --data-binary "$(
-      PROJECT_NAME="${PROJECT_NAME}" \
+      PROJECT_NAME="${CONTEXT_PROJECT_NAME}" \
       python3 <<'PY'
 import json
 import os
@@ -108,19 +119,31 @@ if payload.get("workflow") != "context-upgrade":
         "ERROR: La respuesta no corresponde a context-upgrade"
     )
 
-if payload.get("project_name") is None:
+if payload.get("project_name") != "dp-api":
     raise SystemExit(
-        "ERROR: La respuesta no contiene project_name"
+        "ERROR: La respuesta no corresponde al proyecto dp-api"
     )
 
-if not payload.get("input_cleaned"):
+if "errors" not in payload:
+    raise SystemExit("ERROR: La respuesta no contiene errors")
+
+errors = payload["errors"]
+
+if not isinstance(errors, list) or errors:
+    raise SystemExit(f"ERROR: El upgrade informó errores: {errors}")
+
+if payload.get("input_cleaned") is not True:
     raise SystemExit(
         "ERROR: El ZIP de entrada no fue limpiado"
     )
 
 updated_files = payload.get("updated_files")
 
-if not isinstance(updated_files, list) or not updated_files:
+if (
+    not isinstance(updated_files, list)
+    or not updated_files
+    or not all(isinstance(path, str) and path for path in updated_files)
+):
     raise SystemExit(
         "ERROR: La respuesta no contiene archivos actualizados"
     )
@@ -131,6 +154,17 @@ if not isinstance(backup_directory, str) or not backup_directory:
     raise SystemExit(
         "ERROR: La respuesta no contiene backup_directory"
     )
+
+if not backup_directory.startswith("/suite/context/backup/"):
+    raise SystemExit(
+        "ERROR: backup_directory no pertenece a /suite/context/backup"
+    )
+
+print("Archivos actualizados:")
+for updated_file in updated_files:
+    print(f"- {updated_file}")
+
+print(f"Backup generado: {backup_directory}")
 PY
 
 [[ ! -e "${UPGRADE_ZIP}" ]] || {

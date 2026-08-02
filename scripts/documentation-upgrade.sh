@@ -2,7 +2,6 @@
 set -euo pipefail
 
 DP_API_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SBM_SUITE_ROOT="$(cd "${DP_API_ROOT}/.." && pwd)"
 ENV_FILE="${DP_API_ROOT}/.env.dev"
 
 [[ -f "${ENV_FILE}" ]] || {
@@ -12,20 +11,21 @@ ENV_FILE="${DP_API_ROOT}/.env.dev"
 
 get_env() {
   local key="$1"
-  local value
 
-  value="$(
-    grep -E "^${key}=" "${ENV_FILE}" \
-      | tail -n 1 \
-      | cut -d '=' -f2- \
-      | sed 's/^"//; s/"$//'
-  )"
-
-  printf '%s' "${value}"
+  awk -v key="${key}" '
+    index($0, key "=") == 1 { value = substr($0, length(key) + 2) }
+    END {
+      sub(/\r$/, "", value)
+      sub(/^"/, "", value)
+      sub(/"$/, "", value)
+      printf "%s", value
+    }
+  ' "${ENV_FILE}"
 }
 
 PROJECT_NAME="$(get_env DOPPLER_PROJECT)"
 AI_ASSISTANT_URL="$(get_env AI_ASSISTANT_URL)"
+SBM_SUITE_ROOT="$(get_env SBM_SUITE_ROOT)"
 
 [[ -n "${PROJECT_NAME}" ]] || {
   echo "ERROR: Falta DOPPLER_PROJECT"
@@ -34,6 +34,16 @@ AI_ASSISTANT_URL="$(get_env AI_ASSISTANT_URL)"
 
 [[ -n "${AI_ASSISTANT_URL}" ]] || {
   echo "ERROR: Falta AI_ASSISTANT_URL"
+  exit 1
+}
+
+[[ -n "${SBM_SUITE_ROOT}" ]] || {
+  echo "ERROR: Falta SBM_SUITE_ROOT"
+  exit 1
+}
+
+[[ -d "${SBM_SUITE_ROOT}" ]] || {
+  echo "ERROR: No existe ${SBM_SUITE_ROOT}"
   exit 1
 }
 

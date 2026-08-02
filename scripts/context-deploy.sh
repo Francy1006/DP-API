@@ -2,7 +2,6 @@
 set -euo pipefail
 
 DP_API_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SBM_SUITE_ROOT="$(cd "${DP_API_ROOT}/.." && pwd)"
 ENV_FILE="${DP_API_ROOT}/.env.dev"
 
 [[ -f "${ENV_FILE}" ]] || {
@@ -12,22 +11,24 @@ ENV_FILE="${DP_API_ROOT}/.env.dev"
 
 get_env() {
   local key="$1"
-  local value
 
-  value="$(
-    grep -E "^${key}=" "${ENV_FILE}" \
-      | tail -n 1 \
-      | cut -d '=' -f2- \
-      | sed 's/^"//; s/"$//'
-  )"
-
-  printf '%s' "${value}"
+  awk -v key="${key}" '
+    index($0, key "=") == 1 { value = substr($0, length(key) + 2) }
+    END {
+      sub(/\r$/, "", value)
+      sub(/^"/, "", value)
+      sub(/"$/, "", value)
+      printf "%s", value
+    }
+  ' "${ENV_FILE}"
 }
 
-PROJECT_NAME="$(get_env DOPPLER_PROJECT)"
+DOPPLER_PROJECT="$(get_env DOPPLER_PROJECT)"
 AI_ASSISTANT_URL="$(get_env AI_ASSISTANT_URL)"
+SBM_SUITE_ROOT="$(get_env SBM_SUITE_ROOT)"
+CONTEXT_PROJECT_NAME="dp-api"
 
-[[ -n "${PROJECT_NAME}" ]] || {
+[[ -n "${DOPPLER_PROJECT}" ]] || {
   echo "ERROR: Falta DOPPLER_PROJECT"
   exit 1
 }
@@ -37,14 +38,24 @@ AI_ASSISTANT_URL="$(get_env AI_ASSISTANT_URL)"
   exit 1
 }
 
+[[ -n "${SBM_SUITE_ROOT}" ]] || {
+  echo "ERROR: Falta SBM_SUITE_ROOT"
+  exit 1
+}
+
+[[ -d "${SBM_SUITE_ROOT}" ]] || {
+  echo "ERROR: No existe ${SBM_SUITE_ROOT}"
+  exit 1
+}
+
 CONTEXT_ROOT="${SBM_SUITE_ROOT}/context"
 INPUT_DIR="${CONTEXT_ROOT}/input"
 OUTPUT_DIR="${CONTEXT_ROOT}/output"
 PROMPT_TEMPLATE="${CONTEXT_ROOT}/SYS_PROMPT.md"
 FORMAT_CONTEXT_FILE="${CONTEXT_ROOT}/FORMAT_CONTEXT.md"
 QA_RESULTS_FILE="${DP_API_ROOT}/context/qa-results.md"
-PROJECT_TREE_SCRIPT="${DP_API_ROOT}/scripts/project-tree.sh"
-PROJECT_TREE_FILE="${DP_API_ROOT}/project-tree.txt"
+PROJECT_TREE_SCRIPT="${CONTEXT_ROOT}/project-tree.sh"
+PROJECT_TREE_FILE="${CONTEXT_ROOT}/project-tree.txt"
 RESPONSE_FILE="${OUTPUT_DIR}/context-export-response.json"
 
 [[ -f "${PROMPT_TEMPLATE}" ]] || {
@@ -62,21 +73,24 @@ mkdir -p "${INPUT_DIR}" "${OUTPUT_DIR}"
 find "${INPUT_DIR}" -mindepth 1 ! -name ".gitkeep" -delete
 find "${OUTPUT_DIR}" -mindepth 1 ! -name ".gitkeep" -delete
 
-sed "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" \
+sed "s/{{PROJECT_NAME}}/${CONTEXT_PROJECT_NAME}/g" \
   "${PROMPT_TEMPLATE}" > "${OUTPUT_DIR}/SYS_PROMPT.md"
 
-if [[ -f "${PROJECT_TREE_SCRIPT}" ]]; then
-  [[ -x "${PROJECT_TREE_SCRIPT}" ]] || {
-    echo "ERROR: ${PROJECT_TREE_SCRIPT} no es ejecutable"
-    exit 1
-  }
+[[ -f "${PROJECT_TREE_SCRIPT}" ]] || {
+  echo "ERROR: No existe ${PROJECT_TREE_SCRIPT}"
+  exit 1
+}
 
-  "${PROJECT_TREE_SCRIPT}"
-fi
+[[ -x "${PROJECT_TREE_SCRIPT}" ]] || {
+  echo "ERROR: ${PROJECT_TREE_SCRIPT} no es ejecutable"
+  exit 1
+}
+
+"${PROJECT_TREE_SCRIPT}"
 
 [[ -f "${PROJECT_TREE_FILE}" ]] || {
   echo "ERROR: No existe ${PROJECT_TREE_FILE}"
-  echo "Ejecuta scripts/project-tree.sh antes de context-deploy."
+  echo "Ejecuta ${PROJECT_TREE_SCRIPT} antes de context-deploy."
   exit 1
 }
 
@@ -84,17 +98,23 @@ cd "${DP_API_ROOT}"
 
 GIT_DIFF="$(
   {
-    git diff --no-ext-diff
-    git diff --cached --no-ext-diff
+    git diff --no-ext-diff -- . \
+      ':(exclude).env' ':(exclude).env.*' ':(exclude)**/.env' ':(exclude)**/.env.*'
+    git diff --cached --no-ext-diff -- . \
+      ':(exclude).env' ':(exclude).env.*' ':(exclude)**/.env' ':(exclude)**/.env.*'
   } 2>/dev/null
 )"
 
 CHANGED_FILES="$(
   {
-    git diff --name-only
-    git diff --cached --name-only
+    git diff --name-only -- . \
+      ':(exclude).env' ':(exclude).env.*' ':(exclude)**/.env' ':(exclude)**/.env.*'
+    git diff --cached --name-only -- . \
+      ':(exclude).env' ':(exclude).env.*' ':(exclude)**/.env' ':(exclude)**/.env.*'
     git ls-files --others --exclude-standard
-  } 2>/dev/null | sort -u
+  } 2>/dev/null \
+    | awk '!/(^|\/)\.env($|\.)/' \
+    | sort -u
 )"
 
 if [[ -n "${CHANGED_FILES}" ]]; then
@@ -105,9 +125,9 @@ if [[ -n "${CHANGED_FILES}" ]]; then
       | sed 's/,/, /g'
   )"
 
-  CHANGE_SUMMARY="Current ${PROJECT_NAME} changes affect: ${CHANGED_FILES_INLINE}."
+  CHANGE_SUMMARY="Current ${CONTEXT_PROJECT_NAME} changes affect: ${CHANGED_FILES_INLINE}."
 else
-  CHANGE_SUMMARY="No uncommitted changes detected in ${PROJECT_NAME}."
+  CHANGE_SUMMARY="No uncommitted changes detected in ${CONTEXT_PROJECT_NAME}."
 fi
 
 if [[ -f "${QA_RESULTS_FILE}" ]]; then
@@ -117,7 +137,7 @@ else
 fi
 
 PAYLOAD="$(
-  PROJECT_NAME="${PROJECT_NAME}" \
+  PROJECT_NAME="${CONTEXT_PROJECT_NAME}" \
   CHANGE_SUMMARY="${CHANGE_SUMMARY}" \
   CHANGED_FILES="${CHANGED_FILES}" \
   GIT_DIFF="${GIT_DIFF}" \
@@ -135,7 +155,7 @@ changed_files = [
 print(json.dumps({
     "project_name": os.environ["PROJECT_NAME"],
     "workflow": "context-deploy",
-    "project_root": "/suite/DP-API",
+    "project_root": "/suite/dp/DP-API",
     "source_context_root": "/suite",
     "format_context_path": "/suite/context/FORMAT_CONTEXT.md",
     "output_directory": "/suite/context/output",
@@ -166,7 +186,26 @@ if payload.get("status") != "completed":
         "ERROR: La exportación no terminó con status=completed"
     )
 
-print(json.dumps(payload, ensure_ascii=False, indent=2))
+if payload.get("workflow") != "context-deploy":
+    raise SystemExit(
+        "ERROR: La respuesta no corresponde a context-deploy"
+    )
+
+if payload.get("project_name") != "dp-api":
+    raise SystemExit(
+        "ERROR: La respuesta no corresponde al proyecto dp-api"
+    )
+
+if "errors" not in payload:
+    raise SystemExit("ERROR: La respuesta no contiene errors")
+
+errors = payload["errors"]
+if not isinstance(errors, list) or errors:
+    raise SystemExit(f"ERROR: La exportación informó errores: {errors}")
+
+print("Exportación de contexto completada.")
+print("Workflow: context-deploy")
+print("Proyecto: dp-api")
 PY
 
 echo

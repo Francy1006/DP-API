@@ -527,8 +527,8 @@ Relevant documentation domains:
 Documentation paths must use:
 
 ```text
-SBM-SUITE/context/documentation/<page>/<page>.md
-SBM-SUITE/context/documentation/<page>/subpages/<subpage>.md
+SBM-SUITE/context/documentation/pages/<page>/<page>.md
+SBM-SUITE/context/documentation/pages/<page>/subpages/<subpage>.md
 ```
 
 Specific paths will be added when the documentation structure is finalized.

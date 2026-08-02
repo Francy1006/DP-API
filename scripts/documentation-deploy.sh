@@ -2,7 +2,6 @@
 set -euo pipefail
 
 DP_API_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SBM_SUITE_ROOT="$(cd "${DP_API_ROOT}/.." && pwd)"
 ENV_FILE="${DP_API_ROOT}/.env.dev"
 
 [[ -f "${ENV_FILE}" ]] || {
@@ -12,20 +11,21 @@ ENV_FILE="${DP_API_ROOT}/.env.dev"
 
 get_env() {
   local key="$1"
-  local value
 
-  value="$(
-    grep -E "^${key}=" "${ENV_FILE}" \
-      | tail -n 1 \
-      | cut -d '=' -f2- \
-      | sed 's/^"//; s/"$//'
-  )"
-
-  printf '%s' "${value}"
+  awk -v key="${key}" '
+    index($0, key "=") == 1 { value = substr($0, length(key) + 2) }
+    END {
+      sub(/\r$/, "", value)
+      sub(/^"/, "", value)
+      sub(/"$/, "", value)
+      printf "%s", value
+    }
+  ' "${ENV_FILE}"
 }
 
 PROJECT_NAME="$(get_env DOPPLER_PROJECT)"
 AI_ASSISTANT_URL="$(get_env AI_ASSISTANT_URL)"
+SBM_SUITE_ROOT="$(get_env SBM_SUITE_ROOT)"
 
 [[ -n "${PROJECT_NAME}" ]] || {
   echo "ERROR: Falta DOPPLER_PROJECT"
@@ -37,14 +37,24 @@ AI_ASSISTANT_URL="$(get_env AI_ASSISTANT_URL)"
   exit 1
 }
 
+[[ -n "${SBM_SUITE_ROOT}" ]] || {
+  echo "ERROR: Falta SBM_SUITE_ROOT"
+  exit 1
+}
+
+[[ -d "${SBM_SUITE_ROOT}" ]] || {
+  echo "ERROR: No existe ${SBM_SUITE_ROOT}"
+  exit 1
+}
+
 DOCUMENTATION_ROOT="${SBM_SUITE_ROOT}/context/documentation"
 INPUT_DIR="${DOCUMENTATION_ROOT}/input"
 OUTPUT_DIR="${DOCUMENTATION_ROOT}/output"
 FORMAT_CONTEXT_FILE="${DOCUMENTATION_ROOT}/FORMAT_CONTEXT.md"
 SYSTEM_PROMPT_FILE="${DOCUMENTATION_ROOT}/SYS_PROMPT.md"
 QA_RESULTS_FILE="${DP_API_ROOT}/context/qa-results.md"
-PROJECT_TREE_SCRIPT="${DP_API_ROOT}/scripts/project-tree.sh"
-PROJECT_TREE_FILE="${DP_API_ROOT}/project-tree.txt"
+PROJECT_TREE_SCRIPT="${SBM_SUITE_ROOT}/context/project-tree.sh"
+PROJECT_TREE_FILE="${SBM_SUITE_ROOT}/context/project-tree.txt"
 RESPONSE_FILE="${OUTPUT_DIR}/documentation-export-response.json"
 
 [[ -f "${FORMAT_CONTEXT_FILE}" ]] || {
@@ -62,18 +72,21 @@ mkdir -p "${INPUT_DIR}" "${OUTPUT_DIR}"
 find "${INPUT_DIR}" -mindepth 1 ! -name ".gitkeep" -delete
 find "${OUTPUT_DIR}" -mindepth 1 ! -name ".gitkeep" -delete
 
-if [[ -f "${PROJECT_TREE_SCRIPT}" ]]; then
-  [[ -x "${PROJECT_TREE_SCRIPT}" ]] || {
-    echo "ERROR: ${PROJECT_TREE_SCRIPT} no es ejecutable"
-    exit 1
-  }
+[[ -f "${PROJECT_TREE_SCRIPT}" ]] || {
+  echo "ERROR: No existe ${PROJECT_TREE_SCRIPT}"
+  exit 1
+}
 
-  "${PROJECT_TREE_SCRIPT}"
-fi
+[[ -x "${PROJECT_TREE_SCRIPT}" ]] || {
+  echo "ERROR: ${PROJECT_TREE_SCRIPT} no es ejecutable"
+  exit 1
+}
+
+"${PROJECT_TREE_SCRIPT}"
 
 [[ -f "${PROJECT_TREE_FILE}" ]] || {
   echo "ERROR: No existe ${PROJECT_TREE_FILE}"
-  echo "Ejecuta scripts/project-tree.sh antes de documentation-deploy."
+  echo "Ejecuta ${PROJECT_TREE_SCRIPT} antes de documentation-deploy."
   exit 1
 }
 
@@ -132,7 +145,7 @@ changed_files = [
 print(json.dumps({
     "project_name": os.environ["PROJECT_NAME"],
     "workflow": "documentation-deploy",
-    "project_root": "/suite/DP-API",
+    "project_root": "/suite/dp/DP-API",
     "documentation_root": "/suite/context/documentation",
     "format_context_path": "/suite/context/documentation/FORMAT_CONTEXT.md",
     "system_prompt_path": "/suite/context/documentation/SYS_PROMPT.md",

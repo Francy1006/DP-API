@@ -1,6 +1,6 @@
 # PROJECT_CONTEXT.md
 
-> **Last updated:** 2026-07-30
+> **Last updated:** 2026-08-02
 >
 > **Purpose**
 >
@@ -110,15 +110,18 @@ Product
 → products app
 ```
 
-Canonical domain ownership:
+Current repository ownership:
 
 ```text
 Product  → products
 Material → material
-Service  → service
-Catalog  → catalog
+Service  → products (legacy CRUD mapping)
+Catalog  → products (legacy CRUD mapping)
 Ticket   → ticket
 ```
+
+The intended domain boundary keeps Service and Catalog independent, but their
+dedicated Django apps have not been created yet.
 
 Domains must not be merged merely to reduce duplication.
 
@@ -143,6 +146,51 @@ http://localhost:8081/admin
 ```
 
 Docker remains the official development and QA runtime.
+
+### Context workflow locations
+
+The repository is located at `dp/DP-API` within SBM Suite and is mounted in the
+assistant container at:
+
+```text
+/suite/dp/DP-API
+```
+
+The project-local `.env.dev` supplies `SBM_SUITE_ROOT`; this variable is the only
+allowed source for resolving the host suite root. Context scripts must not infer
+that root with parent-directory traversal.
+
+Shared context resources are owned globally:
+
+| Resource | Host path derived from `SBM_SUITE_ROOT` | Container path |
+|---|---|---|
+| Prompt | `${SBM_SUITE_ROOT}/context/SYS_PROMPT.md` | `/suite/context/SYS_PROMPT.md` |
+| Format | `${SBM_SUITE_ROOT}/context/FORMAT_CONTEXT.md` | `/suite/context/FORMAT_CONTEXT.md` |
+| Input | `${SBM_SUITE_ROOT}/context/input` | `/suite/context/input` |
+| Output | `${SBM_SUITE_ROOT}/context/output` | `/suite/context/output` |
+| Backup | `${SBM_SUITE_ROOT}/context/backup` | `/suite/context/backup` |
+| Tree script | `${SBM_SUITE_ROOT}/context/project-tree.sh` | `/suite/context/project-tree.sh` |
+| Tree output | `${SBM_SUITE_ROOT}/context/project-tree.txt` | `/suite/context/project-tree.txt` |
+
+DP-API owns `scripts/context-deploy.sh` and `scripts/context-upgrade.sh` as the
+local workflow clients. They consume `POST /contexts/export` and
+`POST /contexts/upgrade`, respectively, while SBM-AI-ASSISTANT owns package
+generation, archive validation, atomic replacement, backup creation and cleanup.
+Both workflows identify the project as `dp-api`. Deploy captures Git changes and
+QA evidence without including `.env*` files; upgrade accepts only the single
+global `context/input/context-upgrade.zip`, reports changed files and uses the
+single global `context/backup` directory.
+
+Repository validation recorded on 2026-08-02 covers shell syntax and static path
+contracts. No live backend request was executed because deploy cleans shared
+exchange directories and both operations depend on external mounted state.
+
+Current workflow limitations:
+
+- no repository-local automated backend mock covers these endpoints;
+- end-to-end atomicity and input cleanup after a request is accepted are backend responsibilities;
+- the client validates response metadata but does not independently validate the generated package or backup contents;
+- optional `context/qa-results.md` may be absent and is then reported as unavailable.
 
 ## 7. Configuration
 
@@ -173,7 +221,8 @@ Required rules:
 | `documentation` | Business instruction metadata | layered | active |
 | `products` | Product and shared item lookups | hybrid / hexagonal Product | active |
 | `material` | Canonical Material vertical | hexagonal | active |
-| `service` | Canonical Service vertical | hexagonal target | pending |
+| `products` (Service model) | Legacy Service CRUD pending extraction | conventional | active legacy |
+| `products` (Catalog model) | Legacy Catalog CRUD pending extraction | conventional | active legacy |
 | `providers` | Providers and lookup data | hybrid | active |
 | `pricing` | Pricing and fiscal configuration | hybrid | active |
 | `sales` | Future sales workflows | undefined | pending |
@@ -181,7 +230,21 @@ Required rules:
 | `branches` | Branches, platforms and agreements | layered | active |
 | `business` | Shared business lookup concepts | layered | active |
 
-`project-tree.txt` must be used by the context workflow to detect meaningful structural changes without copying the raw tree into this file.
+The global `${SBM_SUITE_ROOT}/context/project-tree.txt` must be used by the
+context workflow to detect meaningful structural changes without copying the
+raw tree into this file.
+
+Relevant reusable components currently present in the repository include:
+
+- workflow and QA scripts under `scripts/` plus the container bootstrap in `core/entrypoint.sh`;
+- Product, Material and Provider application use cases and repository adapters;
+- Product and Material price-calculation application modules;
+- shared pricing domain policies and `pricing/infrastructure/transactions.py`;
+- unmanaged ORM mappings in each app's `models.py`;
+- domain repository ports, DTOs, commands, clocks and presentation adapters inside the hexagonal verticals.
+
+There is no generic `services/` package. Reusable business services are kept
+inside the owning vertical rather than generalized across domains prematurely.
 
 ## 9. Data model ownership
 
@@ -479,7 +542,7 @@ Important accepted historical decisions:
 - AI uses APIs and Tools, not direct database writes.
 - Migrations occur one vertical capability at a time.
 - Product is the reference hexagonal vertical.
-- Product, Material, Service, Catalog and Ticket remain independent apps.
+- Product, Material, Service, Catalog and Ticket remain independent domain boundaries; Service and Catalog dedicated apps are still pending.
 - README describes stable intended behavior.
 - PROJECT_CONTEXT preserves actual state, constraints, history and pending work.
 - Product-focused SonarQube scope must not hide application code.
