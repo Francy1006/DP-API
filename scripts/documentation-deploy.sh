@@ -37,23 +37,23 @@ AI_ASSISTANT_URL="$(get_env AI_ASSISTANT_URL)"
   exit 1
 }
 
-CONTEXT_ROOT="${SBM_SUITE_ROOT}/context"
-INPUT_DIR="${CONTEXT_ROOT}/input"
-OUTPUT_DIR="${CONTEXT_ROOT}/output"
-PROMPT_TEMPLATE="${CONTEXT_ROOT}/SYS_PROMPT.md"
-FORMAT_CONTEXT_FILE="${CONTEXT_ROOT}/FORMAT_CONTEXT.md"
+DOCUMENTATION_ROOT="${SBM_SUITE_ROOT}/context/documentation"
+INPUT_DIR="${DOCUMENTATION_ROOT}/input"
+OUTPUT_DIR="${DOCUMENTATION_ROOT}/output"
+FORMAT_CONTEXT_FILE="${DOCUMENTATION_ROOT}/FORMAT_CONTEXT.md"
+SYSTEM_PROMPT_FILE="${DOCUMENTATION_ROOT}/SYS_PROMPT.md"
 QA_RESULTS_FILE="${DP_API_ROOT}/context/qa-results.md"
 PROJECT_TREE_SCRIPT="${DP_API_ROOT}/scripts/project-tree.sh"
 PROJECT_TREE_FILE="${DP_API_ROOT}/project-tree.txt"
-RESPONSE_FILE="${OUTPUT_DIR}/context-export-response.json"
-
-[[ -f "${PROMPT_TEMPLATE}" ]] || {
-  echo "ERROR: No existe ${PROMPT_TEMPLATE}"
-  exit 1
-}
+RESPONSE_FILE="${OUTPUT_DIR}/documentation-export-response.json"
 
 [[ -f "${FORMAT_CONTEXT_FILE}" ]] || {
   echo "ERROR: No existe ${FORMAT_CONTEXT_FILE}"
+  exit 1
+}
+
+[[ -f "${SYSTEM_PROMPT_FILE}" ]] || {
+  echo "ERROR: No existe ${SYSTEM_PROMPT_FILE}"
   exit 1
 }
 
@@ -61,9 +61,6 @@ mkdir -p "${INPUT_DIR}" "${OUTPUT_DIR}"
 
 find "${INPUT_DIR}" -mindepth 1 ! -name ".gitkeep" -delete
 find "${OUTPUT_DIR}" -mindepth 1 ! -name ".gitkeep" -delete
-
-sed "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" \
-  "${PROMPT_TEMPLATE}" > "${OUTPUT_DIR}/SYS_PROMPT.md"
 
 if [[ -f "${PROJECT_TREE_SCRIPT}" ]]; then
   [[ -x "${PROJECT_TREE_SCRIPT}" ]] || {
@@ -76,7 +73,7 @@ fi
 
 [[ -f "${PROJECT_TREE_FILE}" ]] || {
   echo "ERROR: No existe ${PROJECT_TREE_FILE}"
-  echo "Ejecuta scripts/project-tree.sh antes de context-deploy."
+  echo "Ejecuta scripts/project-tree.sh antes de documentation-deploy."
   exit 1
 }
 
@@ -113,7 +110,7 @@ fi
 if [[ -f "${QA_RESULTS_FILE}" ]]; then
   QA_RESULTS="$(cat "${QA_RESULTS_FILE}")"
 else
-  QA_RESULTS="No QA results file was supplied for this context deployment."
+  QA_RESULTS="No QA results file was supplied for this documentation deployment."
 fi
 
 PAYLOAD="$(
@@ -134,22 +131,25 @@ changed_files = [
 
 print(json.dumps({
     "project_name": os.environ["PROJECT_NAME"],
-    "workflow": "context-deploy",
+    "workflow": "documentation-deploy",
     "project_root": "/suite/DP-API",
-    "source_context_root": "/suite",
-    "format_context_path": "/suite/context/FORMAT_CONTEXT.md",
-    "output_directory": "/suite/context/output",
+    "documentation_root": "/suite/context/documentation",
+    "format_context_path": "/suite/context/documentation/FORMAT_CONTEXT.md",
+    "system_prompt_path": "/suite/context/documentation/SYS_PROMPT.md",
+    "output_directory": "/suite/context/documentation/output",
     "change_summary": os.environ["CHANGE_SUMMARY"],
     "changed_files": changed_files,
     "git_diff": os.environ["GIT_DIFF"],
-    "qa_results": os.environ["QA_RESULTS"]
+    "qa_results": os.environ["QA_RESULTS"],
+    "retrieved_context_chunks": []
 }))
 PY
 )"
 
 curl --fail --silent --show-error \
-  -X POST "${AI_ASSISTANT_URL%/}/contexts/export" \
-  -H "Content-Type: application/json" \
+  --request POST \
+  "${AI_ASSISTANT_URL%/}/documentation/export" \
+  --header "Content-Type: application/json" \
   --data-binary "${PAYLOAD}" \
   --output "${RESPONSE_FILE}"
 
@@ -164,6 +164,23 @@ payload = json.loads(response_path.read_text(encoding="utf-8"))
 if payload.get("status") != "completed":
     raise SystemExit(
         "ERROR: La exportación no terminó con status=completed"
+    )
+
+if payload.get("workflow") != "documentation-deploy":
+    raise SystemExit(
+        "ERROR: La respuesta no corresponde a documentation-deploy"
+    )
+
+if payload.get("collection_name") != "sbm_documentation":
+    raise SystemExit(
+        "ERROR: La colección esperada es sbm_documentation"
+    )
+
+zip_path = payload.get("documentation_zip_path")
+
+if not isinstance(zip_path, str) or not zip_path:
+    raise SystemExit(
+        "ERROR: La respuesta no contiene documentation_zip_path"
     )
 
 print(json.dumps(payload, ensure_ascii=False, indent=2))

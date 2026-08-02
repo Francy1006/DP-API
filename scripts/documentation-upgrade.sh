@@ -37,10 +37,10 @@ AI_ASSISTANT_URL="$(get_env AI_ASSISTANT_URL)"
   exit 1
 }
 
-CONTEXT_ROOT="${SBM_SUITE_ROOT}/context"
-INPUT_DIR="${CONTEXT_ROOT}/input"
-BACKUP_DIR="${CONTEXT_ROOT}/backup"
-UPGRADE_ZIP="${INPUT_DIR}/context-upgrade.zip"
+DOCUMENTATION_ROOT="${SBM_SUITE_ROOT}/context/documentation"
+INPUT_DIR="${DOCUMENTATION_ROOT}/input"
+BACKUP_DIR="${DOCUMENTATION_ROOT}/backup"
+UPGRADE_ZIP="${INPUT_DIR}/documentation-upgrade.zip"
 RESPONSE_FILE="$(mktemp)"
 
 trap 'rm -f "${RESPONSE_FILE}"' EXIT
@@ -71,7 +71,7 @@ HTTP_STATUS="$(
     --output "${RESPONSE_FILE}" \
     --write-out "%{http_code}" \
     --request POST \
-    "${AI_ASSISTANT_URL%/}/contexts/upgrade" \
+    "${AI_ASSISTANT_URL%/}/documentation/upgrade" \
     --header "Content-Type: application/json" \
     --data-binary "$(
       PROJECT_NAME="${PROJECT_NAME}" \
@@ -81,7 +81,7 @@ import os
 
 print(json.dumps({
     "project_name": os.environ["PROJECT_NAME"],
-    "workflow": "context-upgrade"
+    "workflow": "documentation-upgrade"
 }))
 PY
     )"
@@ -91,7 +91,7 @@ cat "${RESPONSE_FILE}"
 echo
 
 if [[ "${HTTP_STATUS}" -lt 200 || "${HTTP_STATUS}" -ge 300 ]]; then
-  echo "ERROR: Context upgrade respondió HTTP ${HTTP_STATUS}"
+  echo "ERROR: Documentation upgrade respondió HTTP ${HTTP_STATUS}"
   exit 1
 fi
 
@@ -103,9 +103,9 @@ from pathlib import Path
 response_path = Path(sys.argv[1])
 payload = json.loads(response_path.read_text(encoding="utf-8"))
 
-if payload.get("workflow") != "context-upgrade":
+if payload.get("workflow") != "documentation-upgrade":
     raise SystemExit(
-        "ERROR: La respuesta no corresponde a context-upgrade"
+        "ERROR: La respuesta no corresponde a documentation-upgrade"
     )
 
 if payload.get("project_name") is None:
@@ -138,4 +138,4 @@ PY
   exit 1
 }
 
-echo "Contextos actualizados correctamente."
+echo "Documentación actualizada correctamente."

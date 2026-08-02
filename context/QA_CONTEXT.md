@@ -1,200 +1,116 @@
 # QA_CONTEXT.md
 
-> **Last updated:** 2026-07-29
->
-> **Project:** DP-API
+> **Last updated:** 2026-07-30
 >
 > **Purpose**
 >
-> This document defines the QA rules, execution boundaries, test organization,
-> coverage expectations, SonarQube workflow, and acceptance criteria specific to
-> `DP-API`.
+> Project-specific QA context for `DP-API`. It defines technical QA details, quality gates, environments, test structure, test inventory, fixtures, coverage, SonarQube, validated evidence, defects, exceptions and pending work.
 >
-> It must be read together with:
+> **Accuracy note**
 >
-> ```text
-> ../../PROJECT_CONTEXT.md
-> ../../context/SUITE_CONTEXT.md
-> ../../context/BUSINESS_CONTEXT.md
-> ../../context/QA_CONTEXT.md
-> ./PROJECT_CONTEXT.md
-> ./DEPLOY_CONTEXT.md
-> ```
->
-> The suite-level QA context governs transversal behavior. This file governs
-> repository-local QA.
+> Only executed and evidenced validation may be recorded as completed. Planned commands, tests, coverage and SonarQube results must remain clearly separated from validated evidence.
 
----
+## 1. Project technical details
 
-## 1. QA responsibility
+| Attribute | Value |
+|---|---|
+| Project | DP-API |
+| Language | Python |
+| Framework | Django 4.2.x / Django REST Framework 3.14 |
+| Runtime | Docker Compose / container `dp-core` |
+| Test framework | pytest / pytest-django |
+| Coverage tool | pytest-cov / coverage.py |
+| Static analysis tool | SonarQube Community Build |
+| SonarQube project key | `DP-API` |
+| QA execution command | `./scripts/qa-check.sh` |
 
-DP-API QA validates the client-facing API boundary for Ditaly Pasta.
+Additional runtime details:
 
-It must protect:
+| Attribute | Value |
+|---|---|
+| Compose service | `api` |
+| Internal port | `8000` |
+| Host port | `8081` |
+| Shared network | `sbm-network` |
+| Coverage artifact | `coverage.xml` |
+| Database ownership | PostgreSQL and Flyway through SBM-DB |
+
+## 2. Project QA scope
+
+DP-API QA protects:
 
 - public REST contracts;
-- domain behavior;
+- client-facing domain behavior;
 - Hexagonal Architecture boundaries;
+- layered CRUD behavior;
 - unmanaged ORM mappings;
-- audit and confirmation behavior;
 - logical deletion;
+- audit and confirmation behavior;
 - entity versioning;
 - Price creation and versioning;
 - provider and relationship integrity;
-- authentication and authorization behavior;
-- compatibility with SBM Manager and future AI Tools.
+- authentication and authorization;
+- tenant and brand isolation;
+- compatibility with SBM-MANAGER;
+- compatibility with future SBM-AI-ASSISTANT Tools;
+- context and documentation synchronization when project behavior changes.
 
----
-
-## 2. Runtime
-
-Docker is the official QA runtime.
-
-Primary Compose service:
+Current project QA priority:
 
 ```text
-api
+Define and implement the complete evidence-based QA procedure for DP-API.
 ```
 
-Primary container:
+## 3. Required quality gates
 
-```text
-dp-core
-```
+| Gate | Requirement | Blocking | Evidence |
+|---|---|---:|---|
+| Focused tests | Affected domain tests pass | 1 | pytest output |
+| Complete suite | Full configured suite passes | 1 | pytest output |
+| Django system check | `manage.py check` returns 0 issues | 1 | command output |
+| Coverage | Configured minimum threshold is met | 1 | terminal and `coverage.xml` |
+| SonarQube | Quality Gate passes | 1 | scanner and server result |
+| API contract | Methods, paths, bodies, responses and errors validated | 1 | API tests |
+| Database compatibility | ORM matches PostgreSQL, Flyway and DBML | 1 | comparison evidence |
+| Security | Authentication, authorization and tenant isolation validated | 1 | security tests |
+| Regression | Previously corrected defects remain protected | 1 | regression tests |
+| Documentation | Context and README updates are synchronized | 1 | Git diff / context package |
 
-Validated local API port:
+A gate may be bypassed only through an explicit accepted exception.
 
-```text
-8081
-```
+## 4. Test environments
 
-Do not treat host Python execution as authoritative when the container runtime
-uses different dependencies or environment variables.
+| Environment | Purpose | Database | Restrictions |
+|---|---|---|---|
+| Local development | Focused implementation validation | Approved local PostgreSQL or isolated mocks | No final QA unless authorized |
+| Container test | Authoritative project test runtime | Dedicated or isolated test database | Must match container dependencies |
+| Integration | API/database and cross-project validation | Flyway-initialized PostgreSQL | No shared persistent mutations |
+| SonarQube local | Static analysis and Quality Gate | Independent SonarQube PostgreSQL | No business database access |
+| Production | Operational runtime only | Production PostgreSQL | No destructive QA |
 
----
+Docker is the authoritative project runtime.
 
-## 3. Context reading rule
+Host Python execution is not authoritative when dependencies or environment variables differ from the container.
 
-Before QA work, read:
-
-```text
-SBM-SUITE/PROJECT_CONTEXT.md
-SBM-SUITE/context/SUITE_CONTEXT.md
-SBM-SUITE/context/BUSINESS_CONTEXT.md
-SBM-SUITE/context/QA_CONTEXT.md
-DP-API/context/PROJECT_CONTEXT.md
-DP-API/context/QA_CONTEXT.md
-DP-API/context/DEPLOY_CONTEXT.md
-```
-
-For database-sensitive tests, also inspect the current:
-
-```text
-SBM-DB repository
-Flyway scripts
-DBML
-PostgreSQL schema
-triggers
-functions
-constraints
-indexes
-reference data
-```
-
-If the database source is missing, contradictory, or stale, stop and request it.
-
----
-
-## 4. QA stage separation
-
-### 4.1 Development stage
-
-During implementation, run only focused validation:
-
-```text
-focused domain tests
-focused serializer tests
-focused use-case tests
-focused ViewSet/API tests
-python manage.py check
-targeted import checks
-targeted endpoint smoke tests
-```
-
-Do not execute:
-
-```bash
-./scripts/qa-check.sh
-```
-
-during development unless the user explicitly authorizes it.
-
-Do not run the final SonarQube workflow during active implementation unless
-explicitly requested.
-
-### 4.2 Final project QA
-
-The user executes the final project QA manually after implementation review.
-
-Final QA may include:
-
-```bash
-./scripts/coverage.sh
-./scripts/sonar-scan.sh
-./scripts/qa-check.sh
-```
-
-### 4.3 Transversal QA
-
-After local acceptance, use the global QA context for flows involving:
-
-```text
-SBM-MANAGER
-SBM-API
-SBM-DB
-SBM-AI-ASSISTANT
-```
-
----
-
-## 5. Test organization
-
-Each canonical domain owns its tests.
-
-```text
-products/tests/
-material/tests/
-service/tests/
-catalog/tests/
-ticket/tests/
-providers/tests/
-pricing/tests/
-```
-
-Do not place tests for one domain inside another app merely because the entities
-share lookups or Price infrastructure.
+## 5. Test structure
 
 Canonical ownership:
 
 ```text
-Product  → products
-Material → material
-Service  → service
-Catalog  → catalog
-Ticket   → ticket
+Product  → products/tests/
+Material → material/tests/
+Service  → service/tests/
+Catalog  → catalog/tests/
+Ticket   → ticket/tests/
+Provider → providers/tests/
+Pricing  → pricing/tests/
 ```
 
-Avoid a repository-root `tests/` hierarchy unless a future transversal test
-strategy explicitly requires it.
-
----
-
-## 6. Recommended test layers
-
-Each business-critical vertical should include:
+Recommended structure for business-critical domains:
 
 ```text
 tests/
+├── __init__.py
 ├── conftest.py
 ├── factories.py
 ├── test_models.py
@@ -208,152 +124,164 @@ tests/
 └── test_regression.py
 ```
 
-The exact files may vary by domain complexity.
+Rules:
 
-### Models
-
-Validate:
-
-- field mappings;
-- unmanaged status;
-- relationships;
-- canonical names;
-- nullability assumptions;
-- database-owned generated fields.
-
-Do not unit-test PostgreSQL trigger internals as Python logic.
-
-### Domain and policies
-
-Validate:
-
-- pure business rules;
-- lifecycle transitions;
-- Price calculations;
-- invariants;
-- idempotency;
-- invalid state transitions.
-
-Domain tests must not depend on Django or DRF.
-
-### Use cases
-
-Validate:
-
-- orchestration;
-- repository-port interactions;
-- transaction intent;
-- audit behavior;
-- error mapping;
-- idempotency;
-- rollback-sensitive decisions.
-
-### Repositories
-
-Validate:
-
-- ORM mapping;
-- filtering;
-- logical visibility;
-- row locking when applicable;
-- persistence of domain changes;
-- compatibility with legacy records.
-
-Repository integration tests require a database initialized with the current
-Flyway schema.
-
-### Serializers
-
-Validate:
-
-- writable fields;
-- read-only fields;
-- canonical response fields;
-- relationship validation;
-- hidden audit fields;
-- invalid payloads;
-- incompatible Price Configuration.
-
-### Views and API
-
-Validate:
-
-- routes;
-- HTTP methods;
-- status codes;
-- pagination;
-- filters;
-- search;
-- logical delete actions;
-- disabled PUT or physical DELETE where applicable;
-- authentication;
-- authorization;
-- public error contracts.
-
-### Regression
-
-Protect every previously corrected defect.
-
----
-
-## 7. Naming convention
-
-Use:
+- each domain owns its tests;
+- do not place one domain's tests inside another app;
+- avoid a repository-root `tests/` directory unless explicitly approved;
+- test names use:
 
 ```text
 test_<behavior>_<condition>_<expected_result>
 ```
 
-Examples:
+## 6. Test inventory
+
+| Test ID | Description | Logic type | Components | Risk | Last execution | Result | Evidence |
+|---|---|---|---|---:|---|---|---|
+| DP-PROD-001 | Product focused test suite | unit | Product domain, serializers, use cases, views | 4 | 2026-07-29 | PASS | 54 tests passed |
+| DP-SUITE-001 | Complete configured pytest suite | integration | DP-API configured test scope | 4 | 2026-07-29 | PASS | 71 tests passed |
+| DP-DJANGO-001 | Django system check | static-analysis | Django project configuration | 4 | 2026-07-29 | PASS | 0 issues |
+| DP-COV-001 | Product pytest coverage | coverage | Product package | 3 | 2026-07-29 | PASS | 73.64% including branches |
+| DP-SONAR-001 | Product SonarQube analysis | static-analysis | Product scope | 4 | 2026-07-29 | PASS | Quality Gate Passed |
+| DP-API-PROD-001 | Product list and detail contract | api | `/api/products/` | 4 | 2026-07-29 | PASS | API regression suite |
+| DP-API-PROD-002 | Product create contract | api | Product, Price, PostgreSQL trigger | 5 | 2026-07-29 | PASS | HTTP 201 and regression tests |
+| DP-API-PROD-003 | Product PATCH and idempotency | api | Product use cases and repository | 5 | 2026-07-29 | PASS | Regression tests |
+| DP-API-PROD-004 | Product logical deletion | api | Product delete action | 4 | 2026-07-29 | PASS | Regression tests |
+| DP-API-PROD-005 | Disabled Product PUT and DELETE | api | Product ViewSet | 3 | 2026-07-29 | PASS | HTTP 405 tests |
+| DP-PRICE-001 | Product Price versioning | integration | Product, Price, transaction behavior | 5 | 2026-07-29 | PASS | Regression tests |
+| DP-MAT-001 | Material canonical app ownership | integration | `material`, `products` | 4 | N/A | pending | Final Material baseline pending |
+| DP-SERVICE-001 | Service schema and contract preflight | database | SBM-DB, Flyway, DBML, Service app | 5 | N/A | blocked | Current database evidence required |
+| DP-SEC-001 | Tenant isolation | security | Authentication, authorization, query scope | 5 | N/A | pending | No complete evidence |
+| DP-AUTH-001 | Django user and business user mapping | security | Django auth, `users.User` | 5 | N/A | pending | Architecture unresolved |
+
+Allowed logic types:
 
 ```text
-test_create_product_with_valid_data_returns_201
-test_patch_material_with_same_values_does_not_increment_version
-test_create_service_without_current_database_mapping_is_blocked
-test_delete_product_logically_hides_record_from_list
-test_put_product_returns_405
+unit
+integration
+api
+database
+security
+static-analysis
+coverage
+deployment
 ```
 
-Names must describe observable behavior.
+Risk scale:
 
----
-
-## 8. Database QA restrictions
-
-PostgreSQL and Flyway own the physical business schema.
-
-Forbidden:
-
-```bash
-python manage.py makemigrations
-python manage.py migrate
+```text
+0 = none
+1 = very low
+2 = low
+3 = medium
+4 = high
+5 = critical
 ```
 
-Also forbidden without separate authorization:
+## 7. Test data and fixtures
 
-- Django migration files;
-- PostgreSQL schema changes;
-- Flyway changes;
-- DBML changes;
-- trigger changes;
-- constraint changes;
-- index changes;
-- seed-data changes.
+Preferred:
 
-Allowed:
-
-- read-only schema inspection;
-- isolated test database;
+- deterministic builders;
+- reusable fixtures;
+- dedicated Flyway-initialized test database;
+- isolated test records;
 - rolled-back transactions;
-- focused smoke tests against approved development data.
+- minimal required data;
+- explicit business-user and Django-user distinction.
 
-Do not use shared development rows as deterministic fixtures.
+Avoid:
 
----
+- production-like hardcoded IDs;
+- dependence on shared development rows;
+- persistent mutation of development data;
+- random values where exact behavior matters;
+- credentials in fixtures;
+- mocking all ORM behavior for integration-sensitive tests.
 
-## 9. Database-sensitive domain preflight
+Current Product test support includes:
 
-Before testing a new or extracted domain, compare:
+```text
+products/tests/conftest.py
+products/tests/factories.py
+```
+
+Factory Boy and Faker are not currently required for the validated Product scope.
+
+## 8. Unit tests
+
+Unit tests validate:
+
+- pure domain policies;
+- value calculations;
+- lifecycle rules;
+- invariant enforcement;
+- serializer validation without persistence when practical;
+- use-case behavior through ports;
+- invalid state transitions;
+- idempotent decisions.
+
+Domain tests must not depend on Django or DRF.
+
+Do not unit-test PostgreSQL trigger internals as Python logic.
+
+## 9. Integration tests
+
+Integration tests validate:
+
+- ORM mappings;
+- repository adapters;
+- transaction behavior;
+- row locking where applicable;
+- legacy data compatibility;
+- Product and Price coordination;
+- provider relationships;
+- Flyway-initialized schema compatibility;
+- rollback behavior;
+- consumer-to-provider integration when required.
+
+Repository tests require a database initialized from the current Flyway schema.
+
+## 10. API tests
+
+Each endpoint test must validate:
+
+- HTTP method;
+- path;
+- authentication;
+- authorization;
+- request fields;
+- response fields;
+- status codes;
+- pagination;
+- filters;
+- search;
+- ordering;
+- read-only fields;
+- hidden internal fields;
+- error schema;
+- logical deletion;
+- idempotency;
+- disabled methods.
+
+Current Product contract:
+
+```text
+GET    /api/products/
+POST   /api/products/
+GET    /api/products/{id}/
+PATCH  /api/products/{id}/
+HEAD   /api/products/
+HEAD   /api/products/{id}/
+POST   /api/products/{id}/delete/
+PUT    /api/products/{id}/      → HTTP 405
+DELETE /api/products/{id}/      → HTTP 405
+```
+
+## 11. Database tests
+
+Mandatory comparison:
 
 ```text
 live PostgreSQL
@@ -365,64 +293,124 @@ live PostgreSQL
 ↔ public REST contract
 ```
 
-For Service, this preflight is mandatory before implementation or QA planning.
+Forbidden without separate authorization:
 
-Do not infer Service behavior from Product or Material.
-
----
-
-## 10. Hexagonal Architecture QA
-
-For business-critical domains, validate this dependency direction:
-
-```text
-presentation adapter
-→ application use case
-→ domain
-→ repository port
-→ infrastructure adapter
+```bash
+python manage.py makemigrations
+python manage.py migrate
 ```
 
-Prohibited dependencies:
+Also forbidden:
+
+- Django business-schema migration files;
+- Flyway changes;
+- DBML changes;
+- trigger changes;
+- constraint changes;
+- index changes;
+- persistent test mutation of shared data.
+
+Service implementation and QA remain blocked until the current database source is verified.
+
+## 12. Security tests
+
+Required scenarios:
+
+- unauthenticated request;
+- invalid credentials;
+- expired credentials;
+- unauthorized role;
+- missing permission;
+- wrong tenant;
+- cross-tenant read;
+- cross-tenant write;
+- invalid business-user reference;
+- object-level restriction;
+- client access to internal platform operations;
+- audit actor spoofing;
+- secret leakage;
+- permissive production CORS;
+- AI Tool using unrestricted credentials.
+
+Current unresolved risks:
+
+- Django auth and business users coexist;
+- token endpoint and global authentication classes may differ;
+- tenant isolation is not fully evidenced;
+- object-level permission enforcement is not fully evidenced;
+- business audit users may still be client-supplied.
+
+## 13. Static analysis
+
+Static-analysis rules:
+
+- run after coverage generation;
+- do not hide application code to improve metrics;
+- test files may be omitted from application coverage;
+- each new domain requires an explicit scope and baseline;
+- scanner credentials remain outside Git.
+
+Current SonarQube configuration:
 
 ```text
-domain → Django
-domain → DRF
-domain → ORM
-application → concrete ORM repository
+Project key: DP-API
+Branch: main
+sonar.sources=products
+sonar.tests=products/tests
+sonar.python.version=3.11
+sonar.python.coverage.reportPaths=coverage.xml
 ```
 
-Validate that:
-
-- controllers do not own complex workflows;
-- serializers do not own business orchestration;
-- use cases depend on ports;
-- repository adapters implement domain ports;
-- domain rules remain framework-independent;
-- no artificial Product/Material/Service shared abstraction exists.
-
----
-
-## 11. Product QA baseline
-
-Product is the accepted reference vertical.
-
-Latest validated baseline:
+Current scanner scripts:
 
 ```text
-Product tests                    54 passed
-Complete suite                   71 passed
-Django system check              0 issues
-SonarQube overall coverage       88.4%
-Security open issues             0
-Reliability open issues          0
-Maintainability open issues      0
-Accepted issues                  1
-Duplicated lines                 2.7%
-Quality Gate                     Passed
+scripts/sonar-scan.sh
+scripts/qa-check.sh
 ```
 
-Accepted Product finding:
+## 14. Coverage
+
+Current validated Product coverage:
+
+| Metric | Result |
+|---|---:|
+| Pytest coverage including branches | 73.64% |
+| Line coverage | 78.44% |
+| Branch coverage | 33.19% |
+| SonarQube overall coverage | 88.4% |
+
+Coverage artifact:
+
+```text
+coverage.xml
+```
+
+Rules:
+
+- regenerate coverage before SonarQube;
+- do not exclude untested domain, repository, serializer, model, view or use-case code;
+- do not compare pytest-cov and SonarQube percentages as identical metrics;
+- future module thresholds require explicit approval.
+
+## 15. SonarQube
+
+Latest validated Product scope:
+
+| Metric | Result |
+|---|---|
+| Quality Gate | Passed |
+| Security rating | A |
+| Security open issues | 0 |
+| Reliability rating | A |
+| Reliability open issues | 0 |
+| Maintainability rating | A |
+| Maintainability open issues | 0 |
+| Accepted issues | 1 |
+| Security hotspots | 0 |
+| Duplicated lines | 2.7% |
+| Overall coverage | 88.4% |
+
+Accepted issue:
 
 ```text
 Catalog.obs null=True
@@ -431,491 +419,134 @@ Catalog.obs null=True
 Reason:
 
 The unmanaged Django mapping must match the nullable Flyway/PostgreSQL column.
-Removing `null=True` would desynchronize the ORM and could change the REST
-contract.
 
-This is an accepted design issue, not a False Positive.
+The finding is accepted design alignment, not a False Positive.
 
----
+## 16. Current validated evidence
 
-## 12. Product behaviors to preserve
-
-### Read
-
-- list and detail return the accepted contract;
-- canonical `item_group` naming;
-- response labels remain available;
-- internal log remains hidden;
-- logically deleted records remain excluded.
-
-### Create
-
-- HTTP 201;
-- SKU generated by PostgreSQL;
-- Provider validation;
-- current Price created and linked;
-- compatible confirmed Price Configuration;
-- version starts correctly;
-- audit and confirmation metadata controlled by backend.
-
-### Update
-
-- PATCH supported;
-- PUT disabled when defined by contract;
-- physical DELETE disabled;
-- Provider immutable after creation;
-- effective changes increment version once;
-- idempotent updates do not increment;
-- Price changes create a new Price version;
-- shared legacy Prices remain protected;
-- transaction failure rolls back safely.
-
-### Logical deletion
-
-Method:
+Validated on:
 
 ```text
-POST
+2026-07-29
 ```
 
-Path:
+Evidence summary:
 
 ```text
-/api/products/{id}/delete/
+Product tests                    54 passed
+Complete suite                   71 passed
+Django system check              0 issues
+Coverage including branches      73.64%
+Line coverage                    78.44%
+Branch coverage                  33.19%
+SonarQube overall coverage       88.4%
+Security rating                  A
+Reliability rating               A
+Maintainability rating           A
+Open Security issues             0
+Open Reliability issues          0
+Open Maintainability issues      0
+Security hotspots                0
+Duplicated lines                 2.7%
+Quality Gate                     Passed
 ```
 
-Expected:
-
-- physical record remains;
-- inactive/deleted state is persisted;
-- audit fields are populated;
-- record disappears from normal queries.
-
----
-
-## 13. Material QA direction
-
-Material is owned exclusively by the `material` app.
-
-Validate:
-
-- no Material implementation remains in `products`;
-- canonical `/api/materials/` contract;
-- Material-specific domain and repository ports;
-- Price behavior independent from Product;
-- legacy dangling Price UUID compatibility;
-- lifecycle, confirmation, audit and logical deletion;
-- Material test ownership under `material/tests/`.
-
-A dedicated Material final QA baseline will be created separately after its
-complete acceptance.
-
----
-
-## 14. Service QA direction
-
-Service belongs exclusively to the future `service` app.
-
-Before Service QA:
-
-1. request the current SBM-DB source;
-2. inspect Flyway;
-3. inspect DBML;
-4. inspect live PostgreSQL read-only;
-5. inspect existing DP-API and SBM-API Service code;
-6. confirm the public contract.
-
-Do not create a final Service QA baseline before implementation is complete.
-
-During development:
-
-- focused Service tests only;
-- `python manage.py check`;
-- targeted import and endpoint smoke tests;
-- no `qa-check.sh`;
-- no final SonarQube run unless authorized.
-
----
-
-## 15. Pricing QA
-
-Validate:
-
-- compatible record type;
-- confirmed Price Configuration;
-- Decimal-based calculation;
-- exact monetary rounding;
-- Price creation;
-- Price versioning;
-- current/non-current transitions;
-- ownership of previous Price;
-- shared legacy Price protection;
-- idempotent updates;
-- transaction rollback;
-- audit linkage;
-- frontend and AI cannot submit derived values as authoritative.
-
----
-
-## 16. Provider QA
-
-Validate:
-
-- selector contract;
-- list and detail;
-- search and filters;
-- creation and partial update;
-- geographic relationships;
-- banking relationships;
-- confirmation and audit;
-- provider compatibility with Product, Material and Service;
-- no cross-domain ownership leakage.
-
----
-
-## 17. Authentication and authorization QA
-
-Current risks include:
-
-- Django auth and business users coexist;
-- token endpoint and global authentication classes may differ;
-- business audit users may still be client-supplied;
-- tenant isolation is not fully resolved.
-
-Validate where applicable:
-
-```text
-unauthenticated
-authenticated
-unauthorized
-wrong tenant
-wrong role
-missing permission
-invalid business-user reference
-```
-
-Do not use superuser access as proof of a valid client workflow.
-
----
-
-## 18. API contract QA
-
-For each endpoint validate:
-
-- HTTP method;
-- path;
-- authentication;
-- request fields;
-- response fields;
-- status codes;
-- pagination;
-- filters;
-- search;
-- ordering;
-- read-only fields;
-- hidden internal fields;
-- error schema;
-- logical deletion behavior;
-- idempotency where applicable.
-
-Endpoint documentation format:
-
-```text
-Method: POST
-
-/api/resource/
-```
-
----
-
-## 19. Test-data rules
-
-Preferred:
-
-- deterministic builders;
-- reusable fixtures;
-- isolated test records;
-- dedicated Flyway-initialized test database;
-- transaction rollback.
-
-Avoid:
-
-- hardcoded production-like IDs;
-- dependence on existing shared rows;
-- random values where exact behavior matters;
-- persistent mutation of development data;
-- credentials in fixtures;
-- mocking all ORM behavior in integration-sensitive tests.
-
-Use mocks only where they improve isolation.
-
----
-
-## 20. Coverage
-
-Coverage must measure application code honestly.
-
-Do not exclude:
-
-- untested domain modules;
-- repository adapters;
-- serializers;
-- views;
-- models;
-- use cases;
-
-merely to improve the percentage.
-
-Test files may be omitted from application coverage.
-
-Coverage outputs:
-
-```text
-terminal report
-coverage.xml
-```
-
-SonarQube imports `coverage.xml`; it does not execute pytest.
-
-Always regenerate coverage before a new SonarQube analysis.
-
----
-
-## 21. QA scripts
-
-Repository scripts:
-
-```text
-scripts/coverage.sh
-scripts/sonar-scan.sh
-scripts/qa-check.sh
-```
-
-Permissions:
-
-```bash
-chmod +x scripts/coverage.sh
-chmod +x scripts/sonar-scan.sh
-chmod +x scripts/qa-check.sh
-```
-
-Generate tests and coverage:
+Validated commands:
 
 ```bash
 ./scripts/coverage.sh
-```
-
-Run scanner:
-
-```bash
 ./scripts/sonar-scan.sh
-```
-
-Run complete flow:
-
-```bash
 ./scripts/qa-check.sh
 ```
 
-The complete flow is reserved for final QA, not normal development.
-
----
-
-## 22. Direct Docker commands
-
-Django system check:
+Direct container commands recorded:
 
 ```bash
-docker compose --env-file .env.dev run --rm --no-deps   --entrypoint python api manage.py check
+docker compose --env-file .env.dev run --rm --no-deps --entrypoint python api manage.py check
+docker compose --env-file .env.dev run --rm --no-deps --entrypoint pytest api
+docker compose --env-file .env.dev run --rm --no-deps --entrypoint pytest api products/tests/
 ```
 
-Complete pytest suite:
+This evidence applies to the configured Product-focused scope and current complete suite. It does not prove tenant isolation, production readiness or all future modules.
 
-```bash
-docker compose --env-file .env.dev run --rm --no-deps   --entrypoint pytest api
-```
+## 17. Known defects
 
-Product tests:
+| Defect ID | Description | Severity | Status | Evidence | Owner |
+|---|---|---:|---|---|---|
+| DP-AUTH-001 | Django auth and business-user identity mapping unresolved | 5 | open | Current architecture | DP-API |
+| DP-AUTH-002 | Token endpoint and accepted authentication classes may be inconsistent | 4 | open | Current settings context | DP-API |
+| DP-SEC-001 | Tenant isolation not fully evidenced | 5 | open | Missing security tests | DP-API |
+| DP-SEC-002 | Object-level permissions not fully evidenced | 5 | open | Missing security tests | DP-API |
+| DP-DATA-001 | Legacy Material Price identifiers may not resolve | 4 | mitigated | Compatibility behavior implemented | DP-API / SBM-DB |
+| DP-DATA-002 | Shared historical Product Price rows require compatibility handling | 4 | mitigated | Regression behavior implemented | DP-API / SBM-DB |
+| DP-RUNTIME-001 | Development server and fixed startup wait remain in use | 3 | open | Compose configuration | DP-API |
+| DP-CORS-001 | Permissive CORS is active in development configuration | 4 | open | Settings context | DP-API |
 
-```bash
-docker compose --env-file .env.dev run --rm --no-deps   --entrypoint pytest api products/tests/
-```
+## 18. Accepted exceptions
 
-Material tests:
+| Exception ID | Scope | Description | Risk | Reason | Owner | Expiration | Status |
+|---|---|---|---:|---|---|---|---|
+| DP-SONAR-001 | Product | `Catalog.obs null=True` remains in unmanaged ORM mapping | 2 | Required to match Flyway/PostgreSQL nullability | DP-API / SBM-DB | N/A | accepted |
+| DP-API-LEGACY-001 | Product | Duplicate Product endpoint remains temporarily in SBM-API | 3 | Consumer audit and retirement are separate work | DP-API / SBM-API | N/A | accepted temporarily |
+| DP-TRIGGER-001 | Product SKU | Existing trigger sequence strategy remains unchanged | 3 | Database-owned hardening task | SBM-DB | N/A | accepted temporarily |
 
-```bash
-docker compose --env-file .env.dev run --rm --no-deps   --entrypoint pytest api material/tests/
-```
+No other exception may be inferred from missing evidence.
 
-Service tests after app creation:
+## 19. Pending QA work
 
-```bash
-docker compose --env-file .env.dev run --rm --no-deps   --entrypoint pytest api service/tests/
-```
+1. Finalize the complete DP-API QA procedure.
+2. Define mandatory thresholds for every domain.
+3. Extend SonarQube and coverage to Material.
+4. Create the Service QA baseline after implementation.
+5. Add dedicated Flyway-initialized integration database.
+6. Add repository integration tests.
+7. Add tenant-isolation tests.
+8. Add object-level permission tests.
+9. Resolve token authentication behavior.
+10. Resolve Django user and business-user mapping.
+11. Add CI/CD Quality Gate enforcement.
+12. Add SBM-MANAGER Material integration validation.
+13. Add future AI Tool authorization tests.
+14. Add deployment and rollback validation.
+15. Standardize generated QA evidence for `context-deploy.sh`.
+16. Synchronize this project QA context with the global QA context automatically.
 
-Commands must be revalidated against the current Compose configuration before
-execution.
+## 20. Related documentation
 
----
+Relevant documentation domains:
 
-## 23. SonarQube
+- DP-API;
+- QA and Testing;
+- Development;
+- Security and DevSecOps;
+- Data Architecture;
+- DevOps;
+- Roadmap;
+- AI Engineering.
 
-Current Product project configuration uses:
+Documentation paths must use:
 
 ```text
-Project key: DP-API
-Branch: main
+SBM-SUITE/context/documentation/<page>/<page>.md
+SBM-SUITE/context/documentation/<page>/subpages/<subpage>.md
 ```
 
-Environment:
+Specific paths will be added when the documentation structure is finalized.
 
-```text
-SONAR_HOST_URL
-SONAR_TOKEN
-```
+## 21. Document boundary
 
-Never commit the token.
+This file defines DP-API QA policy, environments, test organization, current evidence, defects, exceptions and pending work.
 
-Current Product scope:
+It does not replace:
 
-```text
-sonar.sources=products
-sonar.tests=products/tests
-sonar.python.coverage.reportPaths=coverage.xml
-```
-
-Each new domain must receive a separately authorized scope and baseline.
-
-Do not combine multiple domains into one scope without an explicit decision.
-
----
-
-## 24. Quality Gate
-
-A passing Quality Gate is required for final acceptance when SonarQube applies.
-
-A pass does not prove:
-
-- production readiness;
-- correct tenant isolation;
-- correct frontend integration;
-- correct database mapping;
-- complete business acceptance.
-
-These require separate validation.
-
----
-
-## 25. Required evidence
-
-Every QA report must include:
-
-```text
-scope
-domain
-files tested
-commands executed
-focused-test result
-complete-suite result
-Django check result
-coverage result
-SonarQube result
-database mutation statement
-migration statement
-known risks
-final status
-```
-
-Never claim a command was executed when it was only planned.
-
----
-
-## 26. Acceptance statuses
-
-Use:
-
-```text
-PASS
-PASS WITH ACCEPTED RISK
-BLOCKED
-FAIL
-```
-
-Accepted risks must document:
-
-- issue;
-- impact;
-- reason;
-- owner;
-- next action.
-
----
-
-## 27. Context update rules
-
-After local QA:
-
-Update:
-
-```text
-DP-API/context/QA_CONTEXT.md
-```
-
-when:
-
-- commands change;
-- tests change;
-- coverage changes;
-- SonarQube changes;
-- a finding is accepted;
-- a domain baseline is completed.
-
-Update:
-
-```text
-DP-API/context/PROJECT_CONTEXT.md
-```
-
-when:
-
-- implementation status changes;
-- ownership changes;
-- architecture changes;
-- active objective changes.
-
-Update:
-
-```text
-DP-API/context/DEPLOY_CONTEXT.md
-```
-
-when:
-
-- environment variables change;
-- Docker configuration changes;
-- ports change;
-- startup changes;
-- deployment or rollback changes.
-
-Update global contexts when the change affects more than DP-API.
-
----
-
-## 28. Stable DP-API QA rules
-
-1. Docker is the official runtime.
-2. Flyway owns business schema changes.
-3. No Django migrations for Flyway-owned tables.
-4. Each domain owns its tests.
-5. Product remains the reference vertical.
-6. Material remains independent from Product.
-7. Service requires current database validation first.
-8. Do not execute `qa-check.sh` during development.
-9. Final QA is executed manually by the user.
-10. Do not create a final domain QA context before implementation is complete.
-11. Preserve public REST contracts unless separately authorized.
-12. Do not hide application code from coverage.
-13. Do not use superuser access as client-authorization proof.
-14. Do not mutate shared persistent data.
-15. Report missing sources instead of guessing.
-16. Work one validated step at a time.
+- raw pytest output;
+- `coverage.xml`;
+- SonarQube reports;
+- PostgreSQL inspection;
+- Flyway migrations;
+- DBML;
+- project deployment procedures;
+- global transversal QA;
+- security architecture;
+- implementation history;
+- documentation page content.
