@@ -413,10 +413,10 @@ and Ticket from `ticket`.
 
 | File name | Path | Description |
 |---|---|---|
-| `context-deploy.sh` | `scripts/context-deploy.sh` | Exports DP-API context evidence through `POST /contexts/export` using the global suite context paths. |
-| `context-upgrade.sh` | `scripts/context-upgrade.sh` | Applies the single reviewed context upgrade through `POST /contexts/upgrade` with global backup and cleanup validation. |
-| `documentation-deploy.sh` | `scripts/documentation-deploy.sh` | Exports documentation evidence using the suite root and global project tree. |
-| `documentation-upgrade.sh` | `scripts/documentation-upgrade.sh` | Applies a reviewed documentation upgrade from the global documentation exchange directory. |
+| `context-deploy.sh` | `scripts/context-deploy.sh` | Exports an explicitly selected lifecycle phase after validating `GET /contexts/contract`. |
+| `context-upgrade.sh` | `scripts/context-upgrade.sh` | Safely preflights the ZIP manifest and physical patches against the published contract before `POST /contexts/upgrade`. |
+| `documentation-deploy.sh` | `scripts/documentation-deploy.sh` | Exports final documentation evidence only after implementation, QA validation and context closure. |
+| `documentation-upgrade.sh` | `scripts/documentation-upgrade.sh` | Applies a reviewed final-state documentation upgrade from the global documentation exchange directory. |
 | `coverage.sh` | `scripts/coverage.sh` | Runs the coverage workflow and produces the report consumed by quality tooling. |
 | `qa-check.sh` | `scripts/qa-check.sh` | Orchestrates the repository QA sequence. |
 | `sonar-scan.sh` | `scripts/sonar-scan.sh` | Runs the configured SonarQube analysis. |
@@ -464,47 +464,35 @@ chmod +x scripts/sonar-scan.sh
 chmod +x scripts/qa-check.sh
 ```
 
-Run tests and generate `coverage.xml`:
-
-```bash
-./scripts/coverage.sh
-```
-
-Run SonarQube analysis:
-
-```bash
-./scripts/sonar-scan.sh
-```
-
-Run the complete QA sequence:
+Run tests, coverage and SonarScanner in sequence:
 
 ```bash
 ./scripts/qa-check.sh
 ```
 
-Run the complete pytest suite directly:
+The script persists bounded evidence in:
 
-```bash
-docker compose --env-file .env.dev run --rm --no-deps --entrypoint pytest api
+```text
+context/qa-results.md
 ```
 
-Run Product tests:
+Latest executed closure evidence (`2026-08-02`):
 
-```bash
-docker compose --env-file .env.dev run --rm --no-deps --entrypoint pytest api products/tests/
+```text
+Configured pytest scope          65 passed
+Failed tests                     0
+Pytest exit code                 0
+Total configured coverage        88%
+Coverage artifact                coverage.xml
+SonarScanner exit code           0
+Sonar analysis                   ANALYSIS SUCCESSFUL
+SonarScanner execution           EXECUTION SUCCESS
+Indexed Python files             40
 ```
 
-Run Material tests:
+The supplied scanner log does not include a server-side Quality Gate result for this run. Tenant isolation, object permissions, production readiness, deployment and database compatibility remain outside the validated scope.
 
-```bash
-docker compose --env-file .env.dev run --rm --no-deps --entrypoint pytest api material/tests/
-```
-
-There is currently no dedicated `service/tests/` suite because Service remains
-implemented in `products`. Service behavior must be covered through the
-applicable Product or full-suite tests until its dedicated app is created.
-
-Latest accepted Product quality baseline:
+Historical Product baseline (`2026-07-29`):
 
 ```text
 Product tests                    54 passed
@@ -519,8 +507,7 @@ Duplicated lines                 2.7%
 Quality Gate                     Passed
 ```
 
-Domain-specific QA baselines are maintained independently as each canonical app
-is completed.
+Domain-specific QA baselines remain independent as each canonical app is completed.
 
 ## SonarQube configuration
 
@@ -570,13 +557,17 @@ turn rejected operations into successful responses.
 README.md
 → final-state project overview, setup, configuration and usage
 
-PROJECT_CONTEXT.md
-→ implementation status, historical decisions, active objective, risks and
+context/PROJECT_CONTEXT.md
+→ active and pending objectives, current implementation state, risks and
   instructions for LLM-assisted development
+
+SBM-SUITE/context/COMPLETED_OBJECTIVES.md
+→ single global history of completed objectives grouped by project
 ```
 
-The README describes the completed architecture and developer workflow. The
-context file is the authoritative source for ongoing implementation state.
+The README describes completed architecture and developer workflow. The project
+context is the authoritative source for current operational development state.
+Completed-objective history is maintained only in the global suite context.
 
 ## License
 
@@ -591,10 +582,17 @@ SBM Suite
 
 ## Context lifecycle
 
-Export the current project change:
+The lifecycle has two context cycles and one final documentation cycle.
+
+### Before development
+
+Export the current project state and assigned objective with an explicit phase:
 
 ```bash
-./scripts/context-deploy.sh
+./scripts/context-deploy.sh \
+  planning-activation \
+  DP-MATERIAL-001 \
+  "Implementar la integración Material solicitada"
 ```
 
 Generated artifacts:
@@ -610,12 +608,70 @@ After ChatGPT generates `context-upgrade.zip`, place it at:
 ${SBM_SUITE_ROOT}/context/input/context-upgrade.zip
 ```
 
-Apply the reviewed update:
+Apply the reviewed planning update:
 
 ```bash
 ./scripts/context-upgrade.sh
 ```
 
-The upgrade validates paths, manifest metadata and hashes, creates a
-timestamped backup under `${SBM_SUITE_ROOT}/context/backup`, applies only
-allowlisted files atomically, and removes the input ZIP only after full success.
+This first upgrade synchronizes project and global active or pending objectives,
+proposes the branch name, and records planned QA when applicable. It must not
+claim the feature is implemented.
+
+### After development
+
+Run QA and SonarQube:
+
+```bash
+./scripts/qa-check.sh
+```
+
+Export intermediate implementation evidence without inferring the phase from
+Git, QA or changed files:
+
+```bash
+./scripts/context-deploy.sh \
+  implementation-progress \
+  DP-MATERIAL-001
+```
+
+After implementation and QA, export closing evidence explicitly:
+
+```bash
+./scripts/context-deploy.sh \
+  implementation-closure \
+  DP-MATERIAL-001
+```
+
+Apply the reviewed closing update:
+
+```bash
+./scripts/context-upgrade.sh
+```
+
+The closing upgrade updates actual QA evidence, removes the objective from active
+and pending contexts, and appends it only to
+`${SBM_SUITE_ROOT}/context/COMPLETED_OBJECTIVES.md`.
+
+### Final documentation
+
+Documentation is updated only after the objective is implemented, validated and
+closed:
+
+```bash
+./scripts/documentation-deploy.sh
+./scripts/documentation-upgrade.sh
+```
+
+The workflows validate paths, manifest metadata and hashes, create timestamped
+backups under `${SBM_SUITE_ROOT}/context/backup`, apply only allowlisted files
+atomically, and remove input ZIPs only after full success. Git branch creation,
+commit and push remain manual.
+
+Every context export first requires HTTP 200 from `GET /contexts/contract` and
+validates the published version, lifecycle phases, canonical project path and
+supported patch paths before cleaning global exchange outputs. Every upgrade
+reads `manifest.json` directly from the ZIP without extracting it, checks it
+against the same contract and rejects unsafe, unsupported or phase-incompatible
+patches before calling the backend. This client preflight supplements and does
+not replace backend validation.

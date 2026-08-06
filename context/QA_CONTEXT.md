@@ -8,7 +8,7 @@
 >
 > **Accuracy note**
 >
-> Only executed and evidenced validation may be recorded as completed. Planned commands, tests, coverage and SonarQube results must remain clearly separated from validated evidence.
+> Only executed and evidenced validation may be recorded as completed. Objective-specific QA may be planned before development, but planned commands, tests, coverage and SonarQube checks must remain pending, without execution date or result, until the closing context upgrade.
 
 ## 1. Project technical details
 
@@ -58,7 +58,17 @@ DP-API QA protects:
 Current project QA priority:
 
 ```text
-Define and implement the complete evidence-based QA procedure for DP-API.
+Maintain the implemented QA procedure and extend validated coverage to unresolved modules, security and integration scopes.
+```
+
+Lifecycle rule:
+
+```text
+objective activation
+→ define planned QA for the feature
+→ develop using synchronized contexts
+→ execute qa-check.sh and SonarScanner
+→ closing context upgrade reconciles actual evidence and closes the objective
 ```
 
 ## 3. Required quality gates
@@ -77,6 +87,8 @@ Define and implement the complete evidence-based QA procedure for DP-API.
 | Documentation | Context and README updates are synchronized | 1 | Git diff / context package |
 
 A gate may be bypassed only through an explicit accepted exception.
+
+During objective activation, applicable gates may be registered as planned requirements. They must not be marked as passed, failed or executed before evidence exists.
 
 ## 4. Test environments
 
@@ -154,6 +166,19 @@ test_<behavior>_<condition>_<expected_result>
 | DP-SERVICE-001 | Service schema and contract preflight | database | SBM-DB, Flyway, DBML, Service app | 5 | N/A | blocked | Current database evidence required |
 | DP-SEC-001 | Tenant isolation | security | Authentication, authorization, query scope | 5 | N/A | pending | No complete evidence |
 | DP-AUTH-001 | Django user and business user mapping | security | Django auth, `users.User` | 5 | N/A | pending | Architecture unresolved |
+| DP-SUITE-002 | DP-QA-001 configured pytest execution | integration | Configured DP-API pytest scope | 4 | 2026-08-02 | PASS | 65 tests passed; 0 failed; exit code 0 |
+| DP-COV-002 | DP-QA-001 configured pytest coverage | coverage | Configured DP-API pytest scope | 3 | 2026-08-02 | PASS | TOTAL 88%; `coverage.xml` generated |
+| DP-SONAR-002 | DP-QA-001 SonarScanner execution | static-analysis | 40 indexed Python files | 4 | 2026-08-02 | PASS | Exit code 0; `ANALYSIS SUCCESSFUL`; `EXECUTION SUCCESS` |
+| DP-QA-WORKFLOW-001 | Complete QA evidence workflow | integration | `qa-check.sh`, coverage and SonarScanner | 4 | 2026-08-02 | PASS | `qa-results.md` records successful test and scanner execution |
+
+Planning and closure rules:
+
+- The first context upgrade for a feature may add proposed tests tied to the active or pending objective.
+- Planned tests use `Last execution = N/A`, `Result = pending` and explicit planning evidence.
+- Planned tests must not include invented counts, coverage percentages or SonarQube results.
+- The closing context upgrade must reaffirm, modify or remove planned tests using actual `qa-results.md` evidence.
+- A completed objective must not retain unresolved mandatory QA entries unless an accepted exception is recorded.
+- Project QA changes must synchronize with `SBM-SUITE/context/QA_CONTEXT.md`.
 
 Allowed logic types:
 
@@ -370,6 +395,11 @@ scripts/qa-check.sh
 
 ## 14. Coverage
 
+Planning rule:
+
+- A feature objective may require coverage execution and a target scope before development.
+- Coverage percentages and pass/fail status are recorded only after `qa-check.sh` execution.
+
 Current validated Product coverage:
 
 | Metric | Result |
@@ -392,7 +422,25 @@ Rules:
 - do not compare pytest-cov and SonarQube percentages as identical metrics;
 - future module thresholds require explicit approval.
 
+### DP-QA-001 closure evidence
+
+| Metric | Result |
+|---|---:|
+| Collected tests | 65 |
+| Passed | 65 |
+| Failed | 0 |
+| Total configured pytest coverage | 88% |
+| Coverage artifact | `coverage.xml` |
+| Command exit code | 0 |
+
+This result applies to the configured pytest scope shown in `qa-results.md`. No separate approved coverage threshold is present in the supplied evidence.
+
 ## 15. SonarQube
+
+Planning rule:
+
+- A feature objective may require SonarQube validation before development begins.
+- Quality Gate, issue counts and ratings are recorded only from actual scanner and server evidence.
 
 Latest validated Product scope:
 
@@ -422,15 +470,63 @@ The unmanaged Django mapping must match the nullable Flyway/PostgreSQL column.
 
 The finding is accepted design alignment, not a False Positive.
 
+### DP-QA-001 closure evidence
+
+| Metric | Result |
+|---|---|
+| Project key | DP-API |
+| Indexed Python files | 40 |
+| Scanner exit code | 0 |
+| Analysis upload | successful |
+| Scanner execution | successful |
+| Server-side Quality Gate result | Not supplied in this run |
+
+The scanner log reports `ANALYSIS SUCCESSFUL` and `EXECUTION SUCCESS`. It does not authorize carrying the historical Quality Gate status forward as the result of this execution.
+
 ## 16. Current validated evidence
+
+### DP-QA-001 closure evidence
+
+Validated on:
+
+```text
+2026-08-02
+```
+
+Evidence summary:
+
+```text
+Configured pytest scope          65 passed
+Failed tests                     0
+Pytest exit code                 0
+Total configured coverage        88%
+Coverage artifact                coverage.xml
+SonarScanner exit code           0
+Sonar analysis                   ANALYSIS SUCCESSFUL
+SonarScanner execution           EXECUTION SUCCESS
+Indexed Python files             40
+```
+
+Validated command:
+
+```bash
+./scripts/qa-check.sh
+```
+
+Evidence boundaries:
+
+- the run validates the configured pytest and SonarScanner scope;
+- the log does not include a server-side Quality Gate result;
+- tenant isolation, object permissions, production readiness, deployment and database compatibility remain unvalidated;
+- no migration or deployment execution is evidenced.
+
+### Historical Product baseline
 
 Validated on:
 
 ```text
 2026-07-29
 ```
-
-Evidence summary:
 
 ```text
 Product tests                    54 passed
@@ -451,23 +547,7 @@ Duplicated lines                 2.7%
 Quality Gate                     Passed
 ```
 
-Validated commands:
-
-```bash
-./scripts/coverage.sh
-./scripts/sonar-scan.sh
-./scripts/qa-check.sh
-```
-
-Direct container commands recorded:
-
-```bash
-docker compose --env-file .env.dev run --rm --no-deps --entrypoint python api manage.py check
-docker compose --env-file .env.dev run --rm --no-deps --entrypoint pytest api
-docker compose --env-file .env.dev run --rm --no-deps --entrypoint pytest api products/tests/
-```
-
-This evidence applies to the configured Product-focused scope and current complete suite. It does not prove tenant isolation, production readiness or all future modules.
+The historical baseline is preserved as prior evidence and is not presented as the server result of the 2026-08-02 scanner execution.
 
 ## 17. Known defects
 
@@ -494,22 +574,19 @@ No other exception may be inferred from missing evidence.
 
 ## 19. Pending QA work
 
-1. Finalize the complete DP-API QA procedure.
-2. Define mandatory thresholds for every domain.
-3. Extend SonarQube and coverage to Material.
-4. Create the Service QA baseline after implementation.
-5. Add dedicated Flyway-initialized integration database.
-6. Add repository integration tests.
-7. Add tenant-isolation tests.
-8. Add object-level permission tests.
-9. Resolve token authentication behavior.
-10. Resolve Django user and business-user mapping.
-11. Add CI/CD Quality Gate enforcement.
-12. Add SBM-MANAGER Material integration validation.
-13. Add future AI Tool authorization tests.
-14. Add deployment and rollback validation.
-15. Standardize generated QA evidence for `context-deploy.sh`.
-16. Synchronize this project QA context with the global QA context automatically.
+1. Define mandatory thresholds for every canonical domain.
+2. Extend SonarQube and coverage to Material.
+3. Create the Service QA baseline after implementation.
+4. Add a dedicated Flyway-initialized integration database.
+5. Add repository integration tests.
+6. Add tenant-isolation tests.
+7. Add object-level permission tests.
+8. Resolve token authentication behavior.
+9. Resolve Django user and business-user mapping.
+10. Add CI/CD Quality Gate enforcement.
+11. Add SBM-MANAGER Material integration validation.
+12. Add future AI Tool authorization tests.
+13. Add deployment and rollback validation.
 
 ## 20. Related documentation
 
@@ -535,7 +612,7 @@ Specific paths will be added when the documentation structure is finalized.
 
 ## 21. Document boundary
 
-This file defines DP-API QA policy, environments, test organization, current evidence, defects, exceptions and pending work.
+This file defines DP-API QA policy, environments, planned and executed test organization, current evidence, defects, exceptions and pending work.
 
 It does not replace:
 

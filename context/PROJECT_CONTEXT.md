@@ -8,13 +8,13 @@
 >
 > **Accuracy note**
 >
-> Implemented behavior, QA results, database state and deployment status require repository or execution evidence. Planned work must not be represented as completed.
+> Implemented behavior, QA results, database state and deployment status require repository or execution evidence. Active objectives, pending objectives and completed-objective history remain explicitly separated.
 
 ## 1. Executive summary
 
 `DP-API` is the client-facing business API for Ditaly Pasta inside SBM Suite.
 
-Its current active objective is to define and implement a complete, evidence-based QA procedure while preserving the accepted Product reference vertical, the dedicated Material app and all database ownership boundaries.
+The evidence-based QA procedure and lifecycle-aware context workflow covered by `DP-QA-001` are implemented and closed. Current operational work remains in the pending Service, Material integration, Product endpoint retirement, security and production-hardening objectives.
 
 ## 2. Project purpose
 
@@ -39,22 +39,36 @@ AI-assisted operation
 
 `DP-API` must not provision tenants, create franchises, activate uncontracted modules or expose global platform administration.
 
-## 3. Current objectives
+## 3. Active objectives
 
 | ID | Objective | Status | Priority | Target date | Branch | Documentation |
 |---|---|---|---:|---|---|---|
-| DP-QA-001 | Define and implement the complete QA procedure for DP-API | active | 5 | N/A | `FEATURE-implements-qa-procedure` | `context/QA_CONTEXT.md`; QA and Testing documentation |
+
+Rules:
+
+- this section contains only objectives currently being addressed;
+- status is always `active`;
+- implementation must not begin without an assigned branch;
+- every objective change must synchronize with `SBM-SUITE/context/PROJECT_CONTEXT.md`;
+- completed objectives are removed and appended only to `SBM-SUITE/context/COMPLETED_OBJECTIVES.md`.
+
+## 4. Pending objectives
+
+| ID | Objective | Status | Priority | Target date | Branch | Documentation |
+|---|---|---|---:|---|---|---|
 | DP-SERVICE-001 | Create the dedicated Service app after validating the current database source | pending | 4 | N/A | N/A | Service architecture and roadmap documentation |
 | DP-MATERIAL-001 | Migrate and validate the SBM-MANAGER Material consumer | pending | 4 | N/A | N/A | Material integration documentation |
 | DP-PRODUCT-RETIRE-001 | Retire the duplicate SBM-API Product endpoint after the remaining consumer audit | pending | 3 | N/A | N/A | Product API migration documentation |
 
 Rules:
 
-- Completed or discarded objectives are removed from this table.
-- Implementation must not begin without an assigned branch.
-- Objective changes must synchronize with `SBM-SUITE/context/PROJECT_CONTEXT.md`.
+- this section contains only approved objectives not yet started;
+- status is always `pending`;
+- a branch must be assigned when an objective becomes active;
+- completed objectives never remain here;
+- every objective change must synchronize with `SBM-SUITE/context/PROJECT_CONTEXT.md`.
 
-## 4. Scope and ownership
+## 5. Scope and ownership
 
 `DP-API` owns normal client-facing Ditaly Pasta operations, including:
 
@@ -78,7 +92,7 @@ It does not own:
 - physical PostgreSQL schema changes;
 - AI orchestration.
 
-## 5. Architecture
+## 6. Architecture
 
 The project uses a hybrid architecture.
 
@@ -125,7 +139,7 @@ dedicated Django apps have not been created yet.
 
 Domains must not be merged merely to reduce duplication.
 
-## 6. Runtime and containers
+## 7. Runtime and containers
 
 Known local runtime:
 
@@ -179,7 +193,10 @@ generation, archive validation, atomic replacement, backup creation and cleanup.
 Both workflows identify the project as `dp-api`. Deploy captures Git changes and
 QA evidence without including `.env*` files; upgrade accepts only the single
 global `context/input/context-upgrade.zip`, reports changed files and uses the
-single global `context/backup` directory.
+single global `context/backup` directory. The first upgrade activates or records
+an objective before development; the closing upgrade removes the completed
+objective from project and global operational contexts and appends it only to
+`SBM-SUITE/context/COMPLETED_OBJECTIVES.md`.
 
 Repository validation recorded on 2026-08-02 covers shell syntax and static path
 contracts. No live backend request was executed because deploy cleans shared
@@ -192,7 +209,7 @@ Current workflow limitations:
 - the client validates response metadata but does not independently validate the generated package or backup contents;
 - optional `context/qa-results.md` may be absent and is then reported as unavailable.
 
-## 7. Configuration
+## 8. Configuration
 
 Current configuration characteristics:
 
@@ -212,7 +229,7 @@ Required rules:
 - CORS must not remain permissive outside development;
 - environment selection must become runtime-driven before production.
 
-## 8. Modules
+## 9. Modules
 
 | Module | Responsibility | Architecture | Status |
 |---|---|---|---|
@@ -246,7 +263,7 @@ Relevant reusable components currently present in the repository include:
 There is no generic `services/` package. Reusable business services are kept
 inside the owning vertical rather than generalized across domains prematurely.
 
-## 9. Data model ownership
+## 10. Data model ownership
 
 PostgreSQL, Flyway and DBML are authoritative for business schemas.
 
@@ -269,7 +286,7 @@ Rules:
 
 Known legacy concerns include dangling Material price identifiers and historical shared Product Price records. These must not be silently deleted or normalized.
 
-## 10. API surface
+## 11. API surface
 
 General endpoints:
 
@@ -301,7 +318,7 @@ Other registered resource groups include users, authorization, providers, pricin
 
 Every endpoint must be validated individually before use by a frontend or AI Tool.
 
-## 11. Authentication and authorization
+## 12. Authentication and authorization
 
 Current global DRF configuration includes:
 
@@ -339,7 +356,7 @@ identity
 
 Tenant isolation and object-level authorization remain unresolved production requirements.
 
-## 12. Integrations
+## 13. Integrations
 
 Current and planned integrations:
 
@@ -356,7 +373,7 @@ Product frontend integration is accepted.
 
 Material frontend integration remains pending.
 
-## 13. Implemented behavior
+## 14. Implemented behavior
 
 ### Product
 
@@ -397,7 +414,19 @@ The Provider vertical and selector response were repaired and locally validated.
 
 No current objective authorizes redesigning Product or Material.
 
-## 14. Validation evidence
+### QA and context lifecycle
+
+Implemented workflow behavior includes:
+
+- explicit `planning-activation`, `implementation-progress` and `implementation-closure` phases;
+- mandatory objective identifiers for every context export;
+- contract preflight through `GET /contexts/contract` before exchange cleanup;
+- bounded QA evidence written by `qa-check.sh` to `context/qa-results.md`;
+- client-side ZIP manifest and physical-patch preflight before backend upgrade;
+- mandatory project/global objective and QA synchronization during closure;
+- single global completed-objective history grouped by project.
+
+## 15. Validation evidence
 
 Latest recorded Product QA evidence:
 
@@ -428,7 +457,29 @@ Recorded date:
 
 This evidence applies to the recorded Product-focused scope. It does not prove the complete new DP-API QA procedure has been implemented.
 
-## 15. Database and migration impact
+### DP-QA-001 closure evidence
+
+Validated on:
+
+```text
+2026-08-02
+```
+
+```text
+Configured pytest scope          65 passed
+Failed tests                     0
+Pytest exit code                 0
+Total configured coverage        88%
+Coverage artifact                coverage.xml
+SonarScanner exit code           0
+Sonar analysis                   ANALYSIS SUCCESSFUL
+SonarScanner execution           EXECUTION SUCCESS
+Indexed Python files             40
+```
+
+The supplied scanner log proves successful analysis execution and upload. It does not include a server-side Quality Gate result for this run. No deployment, database or migration execution is evidenced.
+
+## 16. Database and migration impact
 
 Current context changes do not establish a new database or migration change.
 
@@ -439,7 +490,7 @@ Stable rules:
 - future Service work requires current PostgreSQL, Flyway and DBML inspection;
 - database changes require separate SBM-DB authorization.
 
-## 16. Security considerations
+## 17. Security considerations
 
 Known risks:
 
@@ -455,7 +506,7 @@ Known risks:
 
 Future AI Tools must preserve user identity, tenant scope, API authorization and auditability.
 
-## 17. Accepted risks and constraints
+## 18. Accepted risks and constraints
 
 | Risk | Level | Status | Constraint |
 |---|---:|---|---|
@@ -467,7 +518,7 @@ Future AI Tools must preserve user identity, tenant scope, API authorization and
 | Trigger concurrency strategy requires hardening | 3 | accepted temporarily | Database-owned future task |
 | Development server and fixed startup delay | 3 | open | Production hardening pending |
 
-## 18. Completed work
+## 19. Completed work
 
 - DP-API established as the client-facing API.
 - Product vertical implemented and accepted.
@@ -482,24 +533,22 @@ Future AI Tools must preserve user identity, tenant scope, API authorization and
 - Product Quality Gate passed.
 - Context export and upgrade scripts introduced.
 
-## 19. Pending work
+## 20. Pending work
 
-1. Define and implement the complete DP-API QA procedure.
-2. Update `context/QA_CONTEXT.md` through the authorized context workflow.
-3. Standardize full-project test inventory and evidence.
-4. Define coverage and SonarQube thresholds for all modules.
-5. Validate tenant isolation and object permissions.
-6. Resolve Django versus business-user identity.
-7. Migrate and validate the SBM-MANAGER Material consumer.
-8. Validate the Service database source.
-9. Create the dedicated Service app.
-10. Retire the duplicate Product endpoint after consumer audit.
-11. Extend QA coverage to Material and future modules.
-12. Add CI/CD Quality Gate enforcement.
-13. Harden production configuration, server and health checks.
-14. Implement the first read-only AI Tool.
+1. Standardize full-project test inventory and evidence beyond the currently configured Product scope.
+2. Define coverage and SonarQube thresholds for every canonical module.
+3. Validate tenant isolation and object permissions.
+4. Resolve Django versus business-user identity.
+5. Migrate and validate the SBM-MANAGER Material consumer.
+6. Validate the Service database source.
+7. Create the dedicated Service app.
+8. Retire the duplicate Product endpoint after consumer audit.
+9. Extend QA coverage to Material and future modules.
+10. Add CI/CD Quality Gate enforcement.
+11. Harden production configuration, server and health checks.
+12. Implement the first read-only AI Tool.
 
-## 20. Required behavior
+## 21. Required behavior
 
 Before changes:
 
@@ -508,7 +557,7 @@ Before changes:
 3. Identify canonical domain and API ownership.
 4. Verify PostgreSQL, Flyway and DBML when database-sensitive.
 5. Report missing evidence.
-6. Assign the objective branch before implementation.
+6. Register the objective as active or pending and assign its branch before implementation.
 
 During changes:
 
@@ -530,9 +579,10 @@ After changes:
 - report database and migration impact;
 - report security risks;
 - synchronize project and global contexts;
-- update related documentation through the documentation workflow.
+- when completed, remove the objective from active and pending sections and append it only to `SBM-SUITE/context/COMPLETED_OBJECTIVES.md`;
+- update related documentation only after implementation, QA validation and final context closure.
 
-## 21. Historical decisions
+## 22. Historical decisions
 
 Important accepted historical decisions:
 
@@ -544,14 +594,14 @@ Important accepted historical decisions:
 - Product is the reference hexagonal vertical.
 - Product, Material, Service, Catalog and Ticket remain independent domain boundaries; Service and Catalog dedicated apps are still pending.
 - README describes stable intended behavior.
-- PROJECT_CONTEXT preserves actual state, constraints, history and pending work.
+- PROJECT_CONTEXT preserves current operational state, constraints and pending work; completed-objective history belongs only to the global completed-objectives register.
 - Product-focused SonarQube scope must not hide application code.
 - Material was restored after a premature shared generalization caused degraded quality metrics.
 - Service implementation must stop when current database evidence is unavailable.
 
 The previous 3,000-line context has been consolidated into the canonical sections above. Git history remains the authoritative detailed historical record.
 
-## 22. Related documentation
+## 23. Related documentation
 
 Relevant documentation domains:
 
@@ -567,9 +617,9 @@ Relevant documentation domains:
 
 Repository-relative documentation paths must be added when the documentation structure is finalized.
 
-## 23. Document boundary
+## 24. Document boundary
 
-This file records current project purpose, objectives, architecture, implementation state, evidence, risks, completed work and pending work.
+This file records current project purpose, active and pending objectives, architecture, implementation state, evidence, risks, completed work summaries and pending work. Completed-objective history is stored only in `SBM-SUITE/context/COMPLETED_OBJECTIVES.md`.
 
 It does not replace:
 

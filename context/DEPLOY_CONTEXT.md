@@ -57,30 +57,45 @@ There is one backup directory: `context/backup`. The workflows must never create
 
 ## 4. Context deploy workflow
 
-Run after collecting the relevant QA evidence:
+The phase and objective are positional inputs and are never inferred from Git,
+QA, changed files, prompts or current context state. Accepted commands are:
 
 ```bash
-./scripts/context-deploy.sh
+./scripts/context-deploy.sh planning-activation DP-MATERIAL-001 \
+  "Implementar la integración Material solicitada"
+
+./scripts/context-deploy.sh implementation-progress DP-MATERIAL-001
+
+./scripts/context-deploy.sh implementation-closure DP-MATERIAL-001
 ```
+
+`objective_id` is mandatory for every phase. `planning-activation` also requires
+the literal objective text as `user_prompt`; it is optional for progress and
+closure.
 
 The script performs the following sequence:
 
-1. reads and validates the required variables from `.env.dev`;
-2. validates the global prompt and format files;
-3. prepares the global input and output directories and removes stale exchange artifacts while preserving `.gitkeep`;
-4. generates `/suite/context/output/SYS_PROMPT.md` from the global prompt for `dp-api`;
-5. requires and runs the executable global `project-tree.sh`, then requires the resulting global `project-tree.txt`;
-6. captures unstaged and staged Git diff, modified paths, untracked non-ignored paths and optional `context/qa-results.md`;
-7. excludes `.env` and `.env.*` paths from both the diff and changed-file list;
-8. sends `POST /contexts/export` to `AI_ASSISTANT_URL`;
-9. requires a completed response for workflow `context-deploy`, project `dp-api`, without reported errors;
-10. prints the global output and response paths.
+1. validates the explicit phase, objective and phase-specific prompt arguments;
+2. reads and validates the required variables from `.env.dev`;
+3. requests `GET /contexts/contract` and requires HTTP 200;
+4. validates `contract_version`, `lifecycle_phases`, `canonical_project_path` and `supported_patch_paths`;
+5. requires global/project context support for activation and progress, and all five closing patches for closure;
+6. aborts before creating or cleaning exchange outputs if the contract preflight fails;
+7. validates the global prompt and format files;
+8. prepares input/output and removes stale exchange artifacts while preserving `.gitkeep`;
+9. generates `/suite/context/output/SYS_PROMPT.md` for `dp-api`;
+10. requires and runs the global project-tree script and output;
+11. captures Git diff, modified files and optional QA results, excluding `.env*` paths;
+12. sends `POST /contexts/export` and validates the completed response.
 
 The backend payload contains exactly these path semantics:
 
 ```text
 project_name=dp-api
 workflow=context-deploy
+lifecycle_phase=<explicit phase>
+objective_id=<explicit objective>
+user_prompt=<literal text or null>
 project_root=/suite/dp/DP-API
 source_context_root=/suite
 format_context_path=/suite/context/FORMAT_CONTEXT.md
@@ -126,13 +141,30 @@ The script:
 1. reads and validates `.env.dev` and `SBM_SUITE_ROOT`;
 2. searches only `${SBM_SUITE_ROOT}/context/input/context-upgrade.zip`;
 3. requires that this file exists and that exactly one `*.zip` exists directly in the global input directory;
-4. creates or reuses only `${SBM_SUITE_ROOT}/context/backup`;
-5. calls `POST /contexts/upgrade` with project `dp-api` and workflow `context-upgrade`;
-6. preserves the ZIP when the request fails at transport or HTTP level;
-7. validates `workflow`, `project_name`, `errors`, `input_cleaned`, non-empty `updated_files` and `backup_directory` in a successful response;
-8. requires the reported backup to be under `/suite/context/backup/`;
-9. verifies the backend removed the input ZIP only after success;
-10. prints every updated file and the generated backup path.
+4. requests `GET /contexts/contract` and requires HTTP 200;
+5. inspects the root `manifest.json` with Python's ZIP reader without extracting files;
+6. rejects duplicate, absolute, parent-traversal, backslash or symbolic-link members;
+7. validates contract version, phase, objective, canonical path and supported patches;
+8. checks every physical `patches/*` file against both contract and manifest support;
+9. rejects `completed-objectives.json` during activation or progress;
+10. requires all five closing patches during implementation closure;
+11. creates or reuses only `${SBM_SUITE_ROOT}/context/backup` after preflight succeeds;
+12. calls `POST /contexts/upgrade` with the validated manifest metadata;
+13. preserves the ZIP on transport, HTTP or preflight failure;
+14. validates the backend response, verifies cleanup and prints updated files and backup.
+
+The five mandatory closing patches are:
+
+```text
+patches/completed-objectives.json
+patches/global-project-context.json
+patches/project-context.json
+patches/global-qa-context.json
+patches/project-qa-context.json
+```
+
+Activation and progress reject the completed-objectives patch but do not require
+it. Client preflight never replaces the backend's authoritative validation.
 
 The backend is responsible for validating archive type, paths, allowlist, manifest, hashes, UTF-8 content, duplicate members, symbolic links, archive limits and Zip Slip before changing any target.
 
@@ -173,12 +205,34 @@ bash -n scripts/context-deploy.sh
 bash -n scripts/context-upgrade.sh
 ```
 
-Static searches verify the absence of legacy mount paths, plural backup paths and DP-API-local project-tree references in active context workflows. A real endpoint call is not part of static validation because it would clean shared input/output directories and invoke an external service.
+An isolated temporary harness with a fake contract/backend and synthetic ZIPs
+also validates missing or invalid arguments, unavailable or incompatible
+contracts, manifest/patch phase rules and one valid case for every phase. It
+does not read the real `.env.dev`, clean shared outputs or call a real upgrade.
+
+Static searches verify the absence of legacy mount paths, plural backup paths
+and DP-API-local project-tree references in active context workflows. A live
+endpoint call is intentionally excluded because it would affect shared context
+state and invoke an external service.
+
+Live closure-export validation:
+
+```text
+Command: ./scripts/context-deploy.sh implementation-closure DP-QA-001
+Contract version: ea52d21594ed827bee97759500386658293f46b74fb0636fa3960003e47dca55
+Export status: completed
+Indexed sources: 15
+Indexed chunks: 1107
+Errors: none
+```
+
+The export completed and generated the reviewed package. This evidence does not claim that the resulting context upgrade has already been applied.
 
 ## 10. Current limitations
 
 - End-to-end success depends on the mounted suite context and a compatible SBM-AI-ASSISTANT backend.
 - The client can preserve the input on transport and HTTP failure; once a backend has accepted a request, transactionality and cleanup ordering are backend responsibilities.
-- The scripts validate response metadata but do not independently inspect backend-created archive contents or restored files.
-- `context/qa-results.md` is optional, so missing QA evidence is reported in the payload rather than synthesized.
-- No repository-local automated tests currently mock the context backend; syntax and static contract checks are the available local verification.
+- The upgrade client safely inspects manifest and member paths but does not extract or independently apply archive contents.
+- `context/qa-results.md` is optional for activation and progress, but implementation closure requires a non-empty QA evidence file.
+- The supplied SonarScanner log proves successful scanner execution and upload, not a server-side Quality Gate result.
+- Git branch creation, commit and push remain manual.
