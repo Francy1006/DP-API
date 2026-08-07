@@ -485,6 +485,43 @@ The scanner log reports `ANALYSIS SUCCESSFUL` and `EXECUTION SUCCESS`. It does n
 
 ## 16. Current validated evidence
 
+### DP-TEST-001 closure evidence
+
+Validated on:
+
+```text
+2026-08-07
+```
+
+Evidence summary:
+
+```text
+Generated at                     2026-08-07T04:29:30Z
+Configured pytest scope          65 passed
+Failed tests                     0
+Pytest exit code                 0
+Total configured coverage        88%
+Coverage artifact                coverage.xml
+SonarScanner exit code           0
+Sonar analysis                   ANALYSIS SUCCESSFUL
+SonarScanner execution           EXECUTION SUCCESS
+Server-side Quality Gate         OK
+Indexed Python files             40
+```
+
+Validated command:
+
+```bash
+./scripts/qa-check.sh
+```
+
+Evidence boundaries:
+
+- the run validates the configured pytest, coverage, SonarScanner and server-side Quality Gate scope;
+- tenant isolation, object permissions, production readiness, deployment and database compatibility remain unvalidated;
+- no migration or deployment execution is evidenced;
+- no source-code or implementation change is evidenced for `DP-TEST-001`; this validation supports lifecycle-only/no-op closure.
+
 ### DP-QA-001 closure evidence
 
 Validated on:
