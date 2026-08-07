@@ -25,7 +25,7 @@ get_env() {
 
 DOPPLER_PROJECT="$(get_env DOPPLER_PROJECT)"
 AI_ASSISTANT_URL="$(get_env AI_ASSISTANT_URL)"
-SBM_SUITE_ROOT="$(get_env SBM_SUITE_ROOT)"
+SBM_SUITE_ROOT_RAW="$(get_env SBM_SUITE_ROOT)"
 CONTEXT_PROJECT_NAME="dp-api"
 EXPECTED_CANONICAL_PROJECT_PATH="/suite/dp/DP-API"
 
@@ -39,15 +39,30 @@ EXPECTED_CANONICAL_PROJECT_PATH="/suite/dp/DP-API"
   exit 1
 }
 
-[[ -n "${SBM_SUITE_ROOT}" ]] || {
+[[ -n "${SBM_SUITE_ROOT_RAW}" ]] || {
   echo "ERROR: Falta SBM_SUITE_ROOT"
   exit 1
 }
 
-[[ -d "${SBM_SUITE_ROOT}" ]] || {
-  echo "ERROR: No existe ${SBM_SUITE_ROOT}"
-  exit 1
+resolve_suite_root() {
+  local configured_path="$1"
+  local candidate
+
+  if [[ "${configured_path}" = /* ]]; then
+    candidate="${configured_path}"
+  else
+    candidate="${DP_API_ROOT}/${configured_path}"
+  fi
+
+  [[ -d "${candidate}" ]] || {
+    echo "ERROR: No existe SBM_SUITE_ROOT resuelto en ${candidate}" >&2
+    return 1
+  }
+
+  (cd "${candidate}" && pwd)
 }
+
+SBM_SUITE_ROOT="$(resolve_suite_root "${SBM_SUITE_ROOT_RAW}")"
 
 CONTEXT_ROOT="${SBM_SUITE_ROOT}/context"
 INPUT_DIR="${CONTEXT_ROOT}/input"

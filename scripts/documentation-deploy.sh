@@ -3,6 +3,7 @@ set -euo pipefail
 
 DP_API_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="${DP_API_ROOT}/.env.dev"
+EXPECTED_CANONICAL_PROJECT_PATH="/suite/dp/DP-API"
 
 [[ -f "${ENV_FILE}" ]] || {
   echo "ERROR: No existe ${ENV_FILE}"
@@ -25,7 +26,7 @@ get_env() {
 
 PROJECT_NAME="$(get_env DOPPLER_PROJECT)"
 AI_ASSISTANT_URL="$(get_env AI_ASSISTANT_URL)"
-SBM_SUITE_ROOT="$(get_env SBM_SUITE_ROOT)"
+SBM_SUITE_ROOT_RAW="$(get_env SBM_SUITE_ROOT)"
 
 [[ -n "${PROJECT_NAME}" ]] || {
   echo "ERROR: Falta DOPPLER_PROJECT"
@@ -37,16 +38,30 @@ SBM_SUITE_ROOT="$(get_env SBM_SUITE_ROOT)"
   exit 1
 }
 
-[[ -n "${SBM_SUITE_ROOT}" ]] || {
+[[ -n "${SBM_SUITE_ROOT_RAW}" ]] || {
   echo "ERROR: Falta SBM_SUITE_ROOT"
   exit 1
 }
 
-[[ -d "${SBM_SUITE_ROOT}" ]] || {
-  echo "ERROR: No existe ${SBM_SUITE_ROOT}"
-  exit 1
+resolve_suite_root() {
+  local configured_path="$1"
+  local candidate
+
+  if [[ "${configured_path}" = /* ]]; then
+    candidate="${configured_path}"
+  else
+    candidate="${DP_API_ROOT}/${configured_path}"
+  fi
+
+  [[ -d "${candidate}" ]] || {
+    echo "ERROR: No existe SBM_SUITE_ROOT resuelto en ${candidate}" >&2
+    return 1
+  }
+
+  (cd "${candidate}" && pwd)
 }
 
+SBM_SUITE_ROOT="$(resolve_suite_root "${SBM_SUITE_ROOT_RAW}")"
 DOCUMENTATION_ROOT="${SBM_SUITE_ROOT}/context/documentation"
 INPUT_DIR="${DOCUMENTATION_ROOT}/input"
 OUTPUT_DIR="${DOCUMENTATION_ROOT}/output"
@@ -86,7 +101,6 @@ find "${OUTPUT_DIR}" -mindepth 1 ! -name ".gitkeep" -delete
 
 [[ -f "${PROJECT_TREE_FILE}" ]] || {
   echo "ERROR: No existe ${PROJECT_TREE_FILE}"
-  echo "Ejecuta ${PROJECT_TREE_SCRIPT} antes de documentation-deploy."
   exit 1
 }
 
@@ -94,17 +108,23 @@ cd "${DP_API_ROOT}"
 
 GIT_DIFF="$(
   {
-    git diff --no-ext-diff
-    git diff --cached --no-ext-diff
+    git diff --no-ext-diff -- . \
+      ':(exclude).env' ':(exclude).env.*' ':(exclude)**/.env' ':(exclude)**/.env.*'
+    git diff --cached --no-ext-diff -- . \
+      ':(exclude).env' ':(exclude).env.*' ':(exclude)**/.env' ':(exclude)**/.env.*'
   } 2>/dev/null
 )"
 
 CHANGED_FILES="$(
   {
-    git diff --name-only
-    git diff --cached --name-only
+    git diff --name-only -- . \
+      ':(exclude).env' ':(exclude).env.*' ':(exclude)**/.env' ':(exclude)**/.env.*'
+    git diff --cached --name-only -- . \
+      ':(exclude).env' ':(exclude).env.*' ':(exclude)**/.env' ':(exclude)**/.env.*'
     git ls-files --others --exclude-standard
-  } 2>/dev/null | sort -u
+  } 2>/dev/null \
+    | awk '!/(^|\/)\.env($|\.)/' \
+    | sort -u
 )"
 
 if [[ -n "${CHANGED_FILES}" ]]; then
@@ -114,7 +134,6 @@ if [[ -n "${CHANGED_FILES}" ]]; then
       | paste -sd ',' - \
       | sed 's/,/, /g'
   )"
-
   CHANGE_SUMMARY="Current ${PROJECT_NAME} changes affect: ${CHANGED_FILES_INLINE}."
 else
   CHANGE_SUMMARY="No uncommitted changes detected in ${PROJECT_NAME}."
@@ -126,8 +145,10 @@ else
   QA_RESULTS="No QA results file was supplied for this documentation deployment."
 fi
 
+
 PAYLOAD="$(
   PROJECT_NAME="${PROJECT_NAME}" \
+  PROJECT_ROOT="${EXPECTED_CANONICAL_PROJECT_PATH}" \
   CHANGE_SUMMARY="${CHANGE_SUMMARY}" \
   CHANGED_FILES="${CHANGED_FILES}" \
   GIT_DIFF="${GIT_DIFF}" \
@@ -145,7 +166,7 @@ changed_files = [
 print(json.dumps({
     "project_name": os.environ["PROJECT_NAME"],
     "workflow": "documentation-deploy",
-    "project_root": "/suite/dp/DP-API",
+    "project_root": os.environ["PROJECT_ROOT"],
     "documentation_root": "/suite/context/documentation",
     "format_context_path": "/suite/context/documentation/FORMAT_CONTEXT.md",
     "system_prompt_path": "/suite/context/documentation/SYS_PROMPT.md",
@@ -159,7 +180,7 @@ print(json.dumps({
 PY
 )"
 
-curl --fail --silent --show-error \
+curl --fail-with-body --silent --show-error \
   --request POST \
   "${AI_ASSISTANT_URL%/}/documentation/export" \
   --header "Content-Type: application/json" \
@@ -175,28 +196,22 @@ response_path = Path(sys.argv[1])
 payload = json.loads(response_path.read_text(encoding="utf-8"))
 
 if payload.get("status") != "completed":
-    raise SystemExit(
-        "ERROR: La exportación no terminó con status=completed"
-    )
-
+    raise SystemExit("ERROR: La exportación no terminó con status=completed")
 if payload.get("workflow") != "documentation-deploy":
-    raise SystemExit(
-        "ERROR: La respuesta no corresponde a documentation-deploy"
-    )
-
+    raise SystemExit("ERROR: La respuesta no corresponde a documentation-deploy")
+if payload.get("project_name") != "dp-api":
+    raise SystemExit("ERROR: La respuesta no corresponde al proyecto dp-api")
 if payload.get("collection_name") != "sbm_documentation":
-    raise SystemExit(
-        "ERROR: La colección esperada es sbm_documentation"
-    )
-
+    raise SystemExit("ERROR: La colección esperada es sbm_documentation")
+errors = payload.get("errors")
+if not isinstance(errors, list) or errors:
+    raise SystemExit(f"ERROR: La exportación informó errores: {errors}")
 zip_path = payload.get("documentation_zip_path")
-
 if not isinstance(zip_path, str) or not zip_path:
-    raise SystemExit(
-        "ERROR: La respuesta no contiene documentation_zip_path"
-    )
+    raise SystemExit("ERROR: La respuesta no contiene documentation_zip_path")
 
-print(json.dumps(payload, ensure_ascii=False, indent=2))
+print("Exportación de documentación completada.")
+print(f"Paquete: {zip_path}")
 PY
 
 echo

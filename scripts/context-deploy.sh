@@ -70,7 +70,7 @@ get_env() {
 
 DOPPLER_PROJECT="$(get_env DOPPLER_PROJECT)"
 AI_ASSISTANT_URL="$(get_env AI_ASSISTANT_URL)"
-SBM_SUITE_ROOT="$(get_env SBM_SUITE_ROOT)"
+SBM_SUITE_ROOT_RAW="$(get_env SBM_SUITE_ROOT)"
 CONTEXT_PROJECT_NAME="dp-api"
 EXPECTED_CANONICAL_PROJECT_PATH="/suite/dp/DP-API"
 
@@ -84,15 +84,30 @@ EXPECTED_CANONICAL_PROJECT_PATH="/suite/dp/DP-API"
   exit 1
 }
 
-[[ -n "${SBM_SUITE_ROOT}" ]] || {
+[[ -n "${SBM_SUITE_ROOT_RAW}" ]] || {
   echo "ERROR: Falta SBM_SUITE_ROOT"
   exit 1
 }
 
-[[ -d "${SBM_SUITE_ROOT}" ]] || {
-  echo "ERROR: No existe ${SBM_SUITE_ROOT}"
-  exit 1
+resolve_suite_root() {
+  local configured_path="$1"
+  local candidate
+
+  if [[ "${configured_path}" = /* ]]; then
+    candidate="${configured_path}"
+  else
+    candidate="${DP_API_ROOT}/${configured_path}"
+  fi
+
+  [[ -d "${candidate}" ]] || {
+    echo "ERROR: No existe SBM_SUITE_ROOT resuelto en ${candidate}" >&2
+    return 1
+  }
+
+  (cd "${candidate}" && pwd)
 }
+
+SBM_SUITE_ROOT="$(resolve_suite_root "${SBM_SUITE_ROOT_RAW}")"
 
 CONTEXT_ROOT="${SBM_SUITE_ROOT}/context"
 INPUT_DIR="${CONTEXT_ROOT}/input"
@@ -102,11 +117,14 @@ FORMAT_CONTEXT_FILE="${CONTEXT_ROOT}/FORMAT_CONTEXT.md"
 QA_RESULTS_FILE="${DP_API_ROOT}/context/qa-results.md"
 PROJECT_TREE_SCRIPT="${CONTEXT_ROOT}/project-tree.sh"
 PROJECT_TREE_FILE="${CONTEXT_ROOT}/project-tree.txt"
-RESPONSE_FILE="${OUTPUT_DIR}/context-export-response.json"
+SYSTEM_PROMPT_FILE="${OUTPUT_DIR}/SYS_PROMPT.md"
+CONTEXT_PACKAGE_FILE="${OUTPUT_DIR}/context-package.zip"
+UPLOAD_ZIP_FILE="${OUTPUT_DIR}/context-deploy-package.zip"
+RESPONSE_FILE="$(mktemp)"
 CONTRACT_RESPONSE_FILE="$(mktemp)"
 CONTRACT_METADATA_FILE="$(mktemp)"
 
-trap 'rm -f "${CONTRACT_RESPONSE_FILE}" "${CONTRACT_METADATA_FILE}"' EXIT
+trap 'rm -f "${RESPONSE_FILE}" "${CONTRACT_RESPONSE_FILE}" "${CONTRACT_METADATA_FILE}"' EXIT
 
 CONTRACT_HTTP_STATUS="$(
   curl --silent --show-error \
@@ -228,7 +246,7 @@ find "${OUTPUT_DIR}" -mindepth 1 ! -name ".gitkeep" -delete
 
 python3 - \
   "${PROMPT_TEMPLATE}" \
-  "${OUTPUT_DIR}/SYS_PROMPT.md" \
+  "${SYSTEM_PROMPT_FILE}" \
   "${CONTRACT_METADATA_FILE}" \
   "${CONTEXT_PROJECT_NAME}" \
   "${LIFECYCLE_PHASE}" \
@@ -402,14 +420,17 @@ curl --fail-with-body --silent --show-error \
 python3 - \
   "${RESPONSE_FILE}" \
   "${LIFECYCLE_PHASE}" \
-  "${OBJECTIVE_ID}" <<'PY'
+  "${OBJECTIVE_ID}" \
+  "${UPLOAD_ZIP_FILE}" <<'PY'
 import json
 import sys
 from pathlib import Path
+from zipfile import BadZipFile, ZipFile
 
 response_path = Path(sys.argv[1])
 expected_lifecycle_phase = sys.argv[2]
 expected_objective_id = sys.argv[3]
+upload_zip_path = Path(sys.argv[4])
 
 payload = json.loads(response_path.read_text(encoding="utf-8"))
 
@@ -445,6 +466,37 @@ errors = payload["errors"]
 if not isinstance(errors, list) or errors:
     raise SystemExit(f"ERROR: La exportación informó errores: {errors}")
 
+context_zip_path = payload.get("context_zip_path")
+upload_response_path = payload.get("upload_zip_path")
+if not isinstance(context_zip_path, str) or Path(context_zip_path).name != "context-package.zip":
+    raise SystemExit("ERROR: context_zip_path inválido")
+if not isinstance(upload_response_path, str) or Path(upload_response_path).name != "context-deploy-package.zip":
+    raise SystemExit("ERROR: upload_zip_path inválido")
+if not upload_zip_path.is_file():
+    raise SystemExit(f"ERROR: No existe el paquete único {upload_zip_path}")
+
+try:
+    with ZipFile(upload_zip_path) as archive:
+        names = {name for name in archive.namelist() if not name.endswith("/")}
+        expected = {
+            "context-export-response.json",
+            "context-package.zip",
+            "SYS_PROMPT.md",
+        }
+        if names != expected:
+            raise SystemExit(
+                "ERROR: El paquete único no contiene exactamente los 3 artefactos requeridos"
+            )
+        embedded_response = json.loads(
+            archive.read("context-export-response.json").decode("utf-8")
+        )
+        if embedded_response != payload:
+            raise SystemExit(
+                "ERROR: La respuesta embebida no coincide con la respuesta del backend"
+            )
+except (BadZipFile, UnicodeDecodeError, json.JSONDecodeError) as exc:
+    raise SystemExit(f"ERROR: Paquete único inválido: {exc}") from exc
+
 print("Exportación de contexto completada.")
 print("Workflow: context-deploy")
 print("Proyecto: dp-api")
@@ -452,6 +504,13 @@ print(f"Fase: {payload['lifecycle_phase']}")
 print(f"Objetivo: {payload['objective_id']}")
 PY
 
+rm -f "${CONTEXT_PACKAGE_FILE}" "${SYSTEM_PROMPT_FILE}"
+
+[[ -f "${UPLOAD_ZIP_FILE}" ]] || {
+  echo "ERROR: No existe ${UPLOAD_ZIP_FILE}" >&2
+  exit 1
+}
+
 echo
-echo "Generado en: ${OUTPUT_DIR}"
-echo "Respuesta: ${RESPONSE_FILE}"
+echo "Paquete único para ChatGPT:"
+echo "${UPLOAD_ZIP_FILE}"

@@ -43,6 +43,7 @@ AI-assisted operation
 
 | ID | Objective | Status | Priority | Target date | Branch | Documentation |
 |---|---|---|---:|---|---|---|
+| DP-TEST-001 | test fix | active | 5 | 2026-08-06 | BUGFIX-test-fix | N/A |
 
 Rules:
 
