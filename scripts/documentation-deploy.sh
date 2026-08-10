@@ -1,219 +1,40 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DP_API_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ENV_FILE="${DP_API_ROOT}/.env.dev"
-EXPECTED_CANONICAL_PROJECT_PATH="/suite/dp/DP-API"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+ENV_FILE="${PROJECT_ROOT}/.env.dev"
 
-[[ -f "${ENV_FILE}" ]] || {
-  echo "ERROR: No existe ${ENV_FILE}"
-  exit 1
-}
-
-get_env() {
-  local key="$1"
-
-  awk -v key="${key}" '
-    index($0, key "=") == 1 { value = substr($0, length(key) + 2) }
-    END {
-      sub(/\r$/, "", value)
-      sub(/^"/, "", value)
-      sub(/"$/, "", value)
-      printf "%s", value
-    }
-  ' "${ENV_FILE}"
-}
-
-PROJECT_NAME="$(get_env DOPPLER_PROJECT)"
-AI_ASSISTANT_URL="$(get_env AI_ASSISTANT_URL)"
-SBM_SUITE_ROOT_RAW="$(get_env SBM_SUITE_ROOT)"
-
-[[ -n "${PROJECT_NAME}" ]] || {
-  echo "ERROR: Falta DOPPLER_PROJECT"
-  exit 1
-}
-
-[[ -n "${AI_ASSISTANT_URL}" ]] || {
-  echo "ERROR: Falta AI_ASSISTANT_URL"
-  exit 1
-}
-
-[[ -n "${SBM_SUITE_ROOT_RAW}" ]] || {
-  echo "ERROR: Falta SBM_SUITE_ROOT"
-  exit 1
-}
-
-resolve_suite_root() {
-  local configured_path="$1"
-  local candidate
-
-  if [[ "${configured_path}" = /* ]]; then
-    candidate="${configured_path}"
-  else
-    candidate="${DP_API_ROOT}/${configured_path}"
-  fi
-
-  [[ -d "${candidate}" ]] || {
-    echo "ERROR: No existe SBM_SUITE_ROOT resuelto en ${candidate}" >&2
-    return 1
-  }
-
-  (cd "${candidate}" && pwd)
-}
-
-SBM_SUITE_ROOT="$(resolve_suite_root "${SBM_SUITE_ROOT_RAW}")"
-DOCUMENTATION_ROOT="${SBM_SUITE_ROOT}/context/documentation"
-INPUT_DIR="${DOCUMENTATION_ROOT}/input"
-OUTPUT_DIR="${DOCUMENTATION_ROOT}/output"
-FORMAT_CONTEXT_FILE="${DOCUMENTATION_ROOT}/FORMAT_CONTEXT.md"
-SYSTEM_PROMPT_FILE="${DOCUMENTATION_ROOT}/SYS_PROMPT.md"
-QA_RESULTS_FILE="${DP_API_ROOT}/context/qa-results.md"
-PROJECT_TREE_SCRIPT="${SBM_SUITE_ROOT}/context/project-tree.sh"
-PROJECT_TREE_FILE="${SBM_SUITE_ROOT}/context/project-tree.txt"
-RESPONSE_FILE="${OUTPUT_DIR}/documentation-export-response.json"
-
-[[ -f "${FORMAT_CONTEXT_FILE}" ]] || {
-  echo "ERROR: No existe ${FORMAT_CONTEXT_FILE}"
-  exit 1
-}
-
-[[ -f "${SYSTEM_PROMPT_FILE}" ]] || {
-  echo "ERROR: No existe ${SYSTEM_PROMPT_FILE}"
-  exit 1
-}
-
-mkdir -p "${INPUT_DIR}" "${OUTPUT_DIR}"
-
-find "${INPUT_DIR}" -mindepth 1 ! -name ".gitkeep" -delete
-find "${OUTPUT_DIR}" -mindepth 1 ! -name ".gitkeep" -delete
-
-[[ -f "${PROJECT_TREE_SCRIPT}" ]] || {
-  echo "ERROR: No existe ${PROJECT_TREE_SCRIPT}"
-  exit 1
-}
-
-[[ -x "${PROJECT_TREE_SCRIPT}" ]] || {
-  echo "ERROR: ${PROJECT_TREE_SCRIPT} no es ejecutable"
-  exit 1
-}
-
-"${PROJECT_TREE_SCRIPT}"
-
-[[ -f "${PROJECT_TREE_FILE}" ]] || {
-  echo "ERROR: No existe ${PROJECT_TREE_FILE}"
-  exit 1
-}
-
-cd "${DP_API_ROOT}"
-
-GIT_DIFF="$(
-  {
-    git diff --no-ext-diff -- . \
-      ':(exclude).env' ':(exclude).env.*' ':(exclude)**/.env' ':(exclude)**/.env.*'
-    git diff --cached --no-ext-diff -- . \
-      ':(exclude).env' ':(exclude).env.*' ':(exclude)**/.env' ':(exclude)**/.env.*'
-  } 2>/dev/null
-)"
-
-CHANGED_FILES="$(
-  {
-    git diff --name-only -- . \
-      ':(exclude).env' ':(exclude).env.*' ':(exclude)**/.env' ':(exclude)**/.env.*'
-    git diff --cached --name-only -- . \
-      ':(exclude).env' ':(exclude).env.*' ':(exclude)**/.env' ':(exclude)**/.env.*'
-    git ls-files --others --exclude-standard
-  } 2>/dev/null \
-    | awk '!/(^|\/)\.env($|\.)/' \
-    | sort -u
-)"
-
-if [[ -n "${CHANGED_FILES}" ]]; then
-  CHANGED_FILES_INLINE="$(
-    printf '%s\n' "${CHANGED_FILES}" \
-      | awk 'NF' \
-      | paste -sd ',' - \
-      | sed 's/,/, /g'
+if [[ -z "${SBM_SUITE_ROOT:-}" && -f "${ENV_FILE}" ]]; then
+  SBM_SUITE_ROOT="$(
+    awk '
+      index($0, "SBM_SUITE_ROOT=") == 1 {
+        value = substr($0, length("SBM_SUITE_ROOT=") + 1)
+      }
+      END {
+        sub(/\r$/, "", value)
+        sub(/^"/, "", value)
+        sub(/"$/, "", value)
+        printf "%s", value
+      }
+    ' "${ENV_FILE}"
   )"
-  CHANGE_SUMMARY="Current ${PROJECT_NAME} changes affect: ${CHANGED_FILES_INLINE}."
-else
-  CHANGE_SUMMARY="No uncommitted changes detected in ${PROJECT_NAME}."
 fi
 
-if [[ -f "${QA_RESULTS_FILE}" ]]; then
-  QA_RESULTS="$(cat "${QA_RESULTS_FILE}")"
-else
-  QA_RESULTS="No QA results file was supplied for this documentation deployment."
+[[ -n "${SBM_SUITE_ROOT:-}" ]] || {
+  echo "ERROR: Falta SBM_SUITE_ROOT" >&2
+  exit 1
+}
+
+if [[ "${SBM_SUITE_ROOT}" != /* ]]; then
+  SBM_SUITE_ROOT="${PROJECT_ROOT}/${SBM_SUITE_ROOT}"
 fi
+SBM_SUITE_ROOT="$(cd "${SBM_SUITE_ROOT}" && pwd)"
+GLOBAL_SCRIPT="${SBM_SUITE_ROOT}/context/scripts/documentation-deploy.sh"
 
+[[ -x "${GLOBAL_SCRIPT}" ]] || {
+  echo "ERROR: No existe o no es ejecutable ${GLOBAL_SCRIPT}" >&2
+  exit 1
+}
 
-PAYLOAD="$(
-  PROJECT_NAME="${PROJECT_NAME}" \
-  PROJECT_ROOT="${EXPECTED_CANONICAL_PROJECT_PATH}" \
-  CHANGE_SUMMARY="${CHANGE_SUMMARY}" \
-  CHANGED_FILES="${CHANGED_FILES}" \
-  GIT_DIFF="${GIT_DIFF}" \
-  QA_RESULTS="${QA_RESULTS}" \
-  python3 <<'PY'
-import json
-import os
-
-changed_files = [
-    line.strip()
-    for line in os.environ["CHANGED_FILES"].splitlines()
-    if line.strip()
-]
-
-print(json.dumps({
-    "project_name": os.environ["PROJECT_NAME"],
-    "workflow": "documentation-deploy",
-    "project_root": os.environ["PROJECT_ROOT"],
-    "documentation_root": "/suite/context/documentation",
-    "format_context_path": "/suite/context/documentation/FORMAT_CONTEXT.md",
-    "system_prompt_path": "/suite/context/documentation/SYS_PROMPT.md",
-    "output_directory": "/suite/context/documentation/output",
-    "change_summary": os.environ["CHANGE_SUMMARY"],
-    "changed_files": changed_files,
-    "git_diff": os.environ["GIT_DIFF"],
-    "qa_results": os.environ["QA_RESULTS"],
-    "retrieved_context_chunks": []
-}))
-PY
-)"
-
-curl --fail-with-body --silent --show-error \
-  --request POST \
-  "${AI_ASSISTANT_URL%/}/documentation/export" \
-  --header "Content-Type: application/json" \
-  --data-binary "${PAYLOAD}" \
-  --output "${RESPONSE_FILE}"
-
-python3 - "${RESPONSE_FILE}" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-response_path = Path(sys.argv[1])
-payload = json.loads(response_path.read_text(encoding="utf-8"))
-
-if payload.get("status") != "completed":
-    raise SystemExit("ERROR: La exportación no terminó con status=completed")
-if payload.get("workflow") != "documentation-deploy":
-    raise SystemExit("ERROR: La respuesta no corresponde a documentation-deploy")
-if payload.get("project_name") != "dp-api":
-    raise SystemExit("ERROR: La respuesta no corresponde al proyecto dp-api")
-if payload.get("collection_name") != "sbm_documentation":
-    raise SystemExit("ERROR: La colección esperada es sbm_documentation")
-errors = payload.get("errors")
-if not isinstance(errors, list) or errors:
-    raise SystemExit(f"ERROR: La exportación informó errores: {errors}")
-zip_path = payload.get("documentation_zip_path")
-if not isinstance(zip_path, str) or not zip_path:
-    raise SystemExit("ERROR: La respuesta no contiene documentation_zip_path")
-
-print("Exportación de documentación completada.")
-print(f"Paquete: {zip_path}")
-PY
-
-echo
-echo "Generado en: ${OUTPUT_DIR}"
-echo "Respuesta: ${RESPONSE_FILE}"
+exec "${GLOBAL_SCRIPT}" dp-api "$@"

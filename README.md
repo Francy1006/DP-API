@@ -413,14 +413,13 @@ and Ticket from `ticket`.
 
 | File name | Path | Description |
 |---|---|---|
-| `context-deploy.sh` | `scripts/context-deploy.sh` | Exports an explicitly selected lifecycle phase after validating `GET /contexts/contract`. |
-| `context-upgrade.sh` | `scripts/context-upgrade.sh` | Safely preflights the ZIP manifest and physical patches against the published contract before `POST /contexts/upgrade`. |
-| `documentation-deploy.sh` | `scripts/documentation-deploy.sh` | Exports final documentation evidence only after implementation, QA validation and context closure. |
-| `documentation-upgrade.sh` | `scripts/documentation-upgrade.sh` | Applies a reviewed final-state documentation upgrade from the global documentation exchange directory. |
+| `context-deploy.sh` | `scripts/context-deploy.sh` | Compatibility wrapper for the suite-global Context deploy workflow, identifying this project as `dp-api`. |
+| `context-upgrade.sh` | `scripts/context-upgrade.sh` | Compatibility wrapper for the suite-global Context upgrade workflow; the global script reads the project from the manifest. |
+| `documentation-deploy.sh` | `scripts/documentation-deploy.sh` | Compatibility wrapper for global, multi-project Documentation reconciliation, identifying the origin as `dp-api`. |
+| `documentation-upgrade.sh` | `scripts/documentation-upgrade.sh` | Compatibility wrapper for the suite-global Documentation upgrade workflow. |
 | `coverage.sh` | `scripts/coverage.sh` | Runs the coverage workflow and produces the report consumed by quality tooling. |
 | `qa-check.sh` | `scripts/qa-check.sh` | Orchestrates the repository QA sequence. |
 | `sonar-scan.sh` | `scripts/sonar-scan.sh` | Runs the configured SonarQube analysis. |
-| `project-tree.sh` | `project-tree.sh` | Compatibility launcher for the suite-global `context/project-tree.sh`; it does not generate a tree inside DP-API. |
 | `entrypoint.sh` | `core/entrypoint.sh` | Shared API-container startup sequence. |
 | `calculate_price.py` | `products/application/calculate_price.py` | Product application service for price calculation. |
 | `calculate_price.py` | `material/application/calculate_price.py` | Material application service for price calculation. |
@@ -591,7 +590,7 @@ Export the current project state and assigned objective with an explicit phase:
 ```bash
 ./scripts/context-deploy.sh \
   planning-activation \
-  DP-MATERIAL-001 \
+  '[{"objective_id":"DP-MATERIAL-001","objective":"Implementar la integración Material solicitada","status":"active","priority":3,"target_date":"N/A","branch":"FEATURE-material-integration"}]' \
   "Implementar la integración Material solicitada"
 ```
 
@@ -632,7 +631,7 @@ Git, QA or changed files:
 ```bash
 ./scripts/context-deploy.sh \
   implementation-progress \
-  DP-MATERIAL-001
+  '[{"objective_id":"DP-MATERIAL-001"}]'
 ```
 
 After implementation and QA, export closing evidence explicitly:
@@ -640,7 +639,7 @@ After implementation and QA, export closing evidence explicitly:
 ```bash
 ./scripts/context-deploy.sh \
   implementation-closure \
-  DP-MATERIAL-001
+  '[{"objective_id":"DP-MATERIAL-001"}]'
 ```
 
 Apply the reviewed closing update:
@@ -663,15 +662,8 @@ closed:
 ./scripts/documentation-upgrade.sh
 ```
 
-The workflows validate paths, manifest metadata and hashes, create timestamped
-backups under `${SBM_SUITE_ROOT}/context/backup`, apply only allowlisted files
-atomically, and remove input ZIPs only after full success. Git branch creation,
-commit and push remain manual.
-
-Every context export first requires HTTP 200 from `GET /contexts/contract` and
-validates the published version, lifecycle phases, canonical project path and
-supported patch paths before cleaning global exchange outputs. Every upgrade
-reads `manifest.json` directly from the ZIP without extracting it, checks it
-against the same contract and rejects unsafe, unsupported or phase-incompatible
-patches before calling the backend. This client preflight supplements and does
-not replace backend validation.
+These local commands only resolve `SBM_SUITE_ROOT` and delegate with `exec` to
+the canonical scripts under `${SBM_SUITE_ROOT}/context/scripts`. Contract,
+registry, lifecycle, Git, QA, payload, ZIP, backup, Context and Documentation
+behavior is owned globally. Documentation reconciliation is suite-wide rather
+than restricted to DP-API. Git branch creation, commit and push remain manual.

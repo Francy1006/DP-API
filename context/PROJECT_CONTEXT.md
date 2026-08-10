@@ -186,28 +186,23 @@ Shared context resources are owned globally:
 | Tree script | `${SBM_SUITE_ROOT}/context/project-tree.sh` | `/suite/context/project-tree.sh` |
 | Tree output | `${SBM_SUITE_ROOT}/context/project-tree.txt` | `/suite/context/project-tree.txt` |
 
-DP-API owns `scripts/context-deploy.sh` and `scripts/context-upgrade.sh` as the
-local workflow clients. They consume `POST /contexts/export` and
-`POST /contexts/upgrade`, respectively, while SBM-AI-ASSISTANT owns package
-generation, archive validation, atomic replacement, backup creation and cleanup.
-Both workflows identify the project as `dp-api`. Deploy captures Git changes and
-QA evidence without including `.env*` files; upgrade accepts only the single
-global `context/input/context-upgrade.zip`, reports changed files and uses the
-single global `context/backup` directory. The first upgrade activates or records
-an objective before development; the closing upgrade removes the completed
-objective from project and global operational contexts and appends it only to
-`SBM-SUITE/context/COMPLETED_OBJECTIVES.md`.
+DP-API keeps four compatibility wrappers under `scripts/`. They resolve only
+`SBM_SUITE_ROOT` and use `exec` to invoke the canonical implementations in
+`${SBM_SUITE_ROOT}/context/scripts`. Context deploy and Documentation deploy
+identify the origin as `dp-api`; both upgrade scripts leave project resolution
+to the global manifest-driven workflow. Project Registry, canonical mappings,
+lifecycle validation, Git/QA evidence, HTTP payloads, ZIP handling, backups and
+multi-project Documentation reconciliation are global responsibilities.
 
-Repository validation recorded on 2026-08-02 covers shell syntax and static path
-contracts. No live backend request was executed because deploy cleans shared
-exchange directories and both operations depend on external mounted state.
+DP-API does not own a Project Tree script. Consumers use the single canonical
+`${SBM_SUITE_ROOT}/context/project-tree.sh` implementation directly.
 
-Current workflow limitations:
+Repository validation covers wrapper shell syntax and static delegation paths.
+No live lifecycle request is part of repository-local validation because the
+global commands mutate shared exchange state and depend on external services.
 
-- no repository-local automated backend mock covers these endpoints;
-- end-to-end atomicity and input cleanup after a request is accepted are backend responsibilities;
-- the client validates response metadata but does not independently validate the generated package or backup contents;
-- optional `context/qa-results.md` may be absent and is then reported as unavailable.
+Workflow validation and end-to-end behavior are tested and maintained by the
+global Context implementation, not duplicated in DP-API.
 
 ## 8. Configuration
 
