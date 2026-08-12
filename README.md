@@ -413,10 +413,6 @@ and Ticket from `ticket`.
 
 | File name | Path | Description |
 |---|---|---|
-| `context-deploy.sh` | `scripts/context-deploy.sh` | Compatibility wrapper for the suite-global Context deploy workflow, identifying this project as `dp-api`. |
-| `context-upgrade.sh` | `scripts/context-upgrade.sh` | Compatibility wrapper for the suite-global Context upgrade workflow; the global script reads the project from the manifest. |
-| `documentation-deploy.sh` | `scripts/documentation-deploy.sh` | Compatibility wrapper for global, multi-project Documentation reconciliation, identifying the origin as `dp-api`. |
-| `documentation-upgrade.sh` | `scripts/documentation-upgrade.sh` | Compatibility wrapper for the suite-global Documentation upgrade workflow. |
 | `coverage.sh` | `scripts/coverage.sh` | Runs the coverage workflow and produces the report consumed by quality tooling. |
 | `qa-check.sh` | `scripts/qa-check.sh` | Orchestrates the repository QA sequence. |
 | `sonar-scan.sh` | `scripts/sonar-scan.sh` | Runs the configured SonarQube analysis. |
@@ -581,14 +577,18 @@ SBM Suite
 
 ## Context lifecycle
 
-The lifecycle has two context cycles and one final documentation cycle.
+Context and Documentation are managed exclusively from the suite-level
+`context` repository. The commands below must be run from `SBM-SUITE/context`;
+DP-API does not provide local wrappers for them. The lifecycle has two context
+cycles and one final documentation cycle.
 
 ### Before development
 
 Export the current project state and assigned objective with an explicit phase:
 
 ```bash
-./scripts/context-deploy.sh \
+# From SBM-SUITE/context
+./scripts/context-deploy.sh dp-api \
   planning-activation \
   '[{"objective_id":"DP-MATERIAL-001","objective":"Implementar la integración Material solicitada","status":"active","priority":3,"target_date":"N/A","branch":"FEATURE-material-integration"}]' \
   "Implementar la integración Material solicitada"
@@ -622,6 +622,7 @@ claim the feature is implemented.
 Run QA and SonarQube:
 
 ```bash
+# From SBM-SUITE/DP/DP-API
 ./scripts/qa-check.sh
 ```
 
@@ -629,7 +630,8 @@ Export intermediate implementation evidence without inferring the phase from
 Git, QA or changed files:
 
 ```bash
-./scripts/context-deploy.sh \
+# From SBM-SUITE/context
+./scripts/context-deploy.sh dp-api \
   implementation-progress \
   '[{"objective_id":"DP-MATERIAL-001"}]'
 ```
@@ -637,7 +639,8 @@ Git, QA or changed files:
 After implementation and QA, export closing evidence explicitly:
 
 ```bash
-./scripts/context-deploy.sh \
+# From SBM-SUITE/context
+./scripts/context-deploy.sh dp-api \
   implementation-closure \
   '[{"objective_id":"DP-MATERIAL-001"}]'
 ```
@@ -658,12 +661,12 @@ Documentation is updated only after the objective is implemented, validated and
 closed:
 
 ```bash
+# From SBM-SUITE/context
 ./scripts/documentation-deploy.sh
 ./scripts/documentation-upgrade.sh
 ```
 
-These local commands only resolve `SBM_SUITE_ROOT` and delegate with `exec` to
-the canonical scripts under `${SBM_SUITE_ROOT}/context/scripts`. Contract,
+These are the canonical scripts owned by `SBM-SUITE/context`. Contract,
 registry, lifecycle, Git, QA, payload, ZIP, backup, Context and Documentation
-behavior is owned globally. Documentation reconciliation is suite-wide rather
-than restricted to DP-API. Git branch creation, commit and push remain manual.
+behavior is owned there. Documentation reconciliation is suite-wide rather than
+restricted to DP-API. Git branch creation, commit and push remain manual.

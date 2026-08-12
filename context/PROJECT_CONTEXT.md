@@ -170,9 +170,10 @@ assistant container at:
 /suite/dp/DP-API
 ```
 
-The project-local `.env.dev` supplies `SBM_SUITE_ROOT`; this variable is the only
-allowed source for resolving the host suite root. Context scripts must not infer
-that root with parent-directory traversal.
+DP-API does not configure or resolve the lifecycle script location. All Context,
+Documentation and Project Tree commands run from the local
+`SBM-SUITE/context` repository root, whose canonical scripts own their resource
+resolution.
 
 Shared context resources are owned globally:
 
@@ -183,21 +184,19 @@ Shared context resources are owned globally:
 | Input | `${SBM_SUITE_ROOT}/context/input` | `/suite/context/input` |
 | Output | `${SBM_SUITE_ROOT}/context/output` | `/suite/context/output` |
 | Backup | `${SBM_SUITE_ROOT}/context/backup` | `/suite/context/backup` |
-| Tree script | `${SBM_SUITE_ROOT}/context/project-tree.sh` | `/suite/context/project-tree.sh` |
+| Tree script | `${SBM_SUITE_ROOT}/context/scripts/project-tree.sh` | `/suite/context/scripts/project-tree.sh` |
 | Tree output | `${SBM_SUITE_ROOT}/context/project-tree.txt` | `/suite/context/project-tree.txt` |
 
-DP-API keeps four compatibility wrappers under `scripts/`. They resolve only
-`SBM_SUITE_ROOT` and use `exec` to invoke the canonical implementations in
-`${SBM_SUITE_ROOT}/context/scripts`. Context deploy and Documentation deploy
-identify the origin as `dp-api`; both upgrade scripts leave project resolution
-to the global manifest-driven workflow. Project Registry, canonical mappings,
-lifecycle validation, Git/QA evidence, HTTP payloads, ZIP handling, backups and
-multi-project Documentation reconciliation are global responsibilities.
+DP-API has no local wrappers or implementations for Context and Documentation.
+Their deploy and upgrade commands must be run from `SBM-SUITE/context`, using
+the canonical scripts in its `scripts/` directory. Project Registry, canonical
+mappings, lifecycle validation, Git/QA evidence, HTTP payloads, ZIP handling,
+backups and multi-project Documentation reconciliation are global
+responsibilities.
 
 DP-API does not own a Project Tree script. Consumers use the single canonical
-`${SBM_SUITE_ROOT}/context/project-tree.sh` implementation directly.
+`${SBM_SUITE_ROOT}/context/scripts/project-tree.sh` implementation directly.
 
-Repository validation covers wrapper shell syntax and static delegation paths.
 No live lifecycle request is part of repository-local validation because the
 global commands mutate shared exchange state and depend on external services.
 
