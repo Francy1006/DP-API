@@ -168,3 +168,4 @@ Thumbs.db
 .sonar/
 context/qa-results.md
 report-task.txt
+.scannerwork/
